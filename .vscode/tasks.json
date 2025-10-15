@@ -1,0 +1,107 @@
+{
+  // Tasks to run the backend, frontend, and Aspire host. Use the "start:dev" task to start backend+frontend.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "start:backend",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["run", "--project", "backend/RecipeApi/RecipeApi.csproj"],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "problemMatcher": [
+        "$msCompile"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "start:frontend",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "dev"],
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": false
+      }
+    },
+    {
+      "label": "start:aspire",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["run", "--project", "aspire/FoodRecipesApp/FoodRecipesApp.csproj"],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [
+        "$msCompile"
+      ],
+      "group": "build"
+    },
+    {
+      "label": "start:aspire-with-otlp",
+      "type": "shell",
+      "command": "dotnet",
+      "args": ["run", "--project", "aspire/FoodRecipesApp/FoodRecipesApp.csproj"],
+      "options": {
+        "env": {
+          "ASPNETCORE_URLS": "http://localhost:5000",
+          "ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL": "http://localhost:4318",
+          "ASPIRE_ALLOW_UNSECURED_TRANSPORT": "true"
+        }
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [
+        "$msCompile"
+      ],
+      "group": "build"
+    },
+    {
+      "label": "start:aspire-no-dashboard",
+      "type": "shell",
+      "command": "cd aspire/FoodRecipesApp && dotnet build -c Debug && cd ../.. && ASPNETCORE_URLS=http://localhost:15112 ASPIRE_ALLOW_UNSECURED_TRANSPORT=true ASPNETCORE_ENVIRONMENT=Development DOTNET_ENVIRONMENT=Development DOTNET_DASHBOARD_OTLP_ENDPOINT_URL=http://localhost:19190 DOTNET_RESOURCE_SERVICE_ENDPOINT_URL=http://localhost:20128 dotnet aspire/FoodRecipesApp/bin/Debug/net9.0/FoodRecipesApp.dll",
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "start:dev",
+      "dependsOn": ["start:backend", "start:frontend"],
+      "dependsOrder": "parallel",
+      "type": "shell",
+      "command": "echo",
+      "args": ["Starting backend and frontend in background..."],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

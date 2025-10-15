@@ -1,0 +1,50 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Attach to Backend (.NET)",
+      "type": "coreclr",
+      "request": "attach",
+      "processId": "${command:pickProcess}",
+      "justMyCode": true
+    },
+    {
+      "name": "Launch Frontend (Chrome)",
+      "type": "pwa-chrome",
+      "request": "launch",
+      "url": "http://localhost:3000",
+      "webRoot": "${workspaceFolder}/frontend",
+      "preLaunchTask": "start:frontend"
+    },
+    {
+      "name": "Attach to Aspire Host (.NET)",
+      "type": "coreclr",
+      "request": "attach",
+      "processId": "${command:pickProcess}",
+      "justMyCode": true
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Dev: Backend + Frontend",
+      "preLaunchTask": "start:dev",
+      "configurations": ["Attach to Backend (.NET)", "Launch Frontend (Chrome)"]
+    },
+    {
+      "name": "Aspire: Run AppHost",
+      "preLaunchTask": "start:aspire",
+      "configurations": ["Attach to Aspire Host (.NET)"]
+    }
+    ,
+    {
+      "name": "Aspire: With OTLP",
+      "preLaunchTask": "start:aspire-with-otlp",
+      "configurations": ["Attach to Aspire Host (.NET)"]
+    },
+    {
+      "name": "Aspire: No Dashboard",
+      "preLaunchTask": "start:aspire-no-dashboard",
+      "configurations": ["Attach to Aspire Host (.NET)"]
+    }
+  ]
+}

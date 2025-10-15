@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/solution/" />
+  <Project Path="../aspire/FoodRecipesApp.ServiceDefaults/FoodRecipesApp.ServiceDefaults.csproj" />
+  <Project Path="../aspire/FoodRecipesApp/FoodRecipesApp.csproj" />
+  <Project Path="RecipeApi/RecipeApi.csproj" />
+</Solution>
