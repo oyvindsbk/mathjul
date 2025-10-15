@@ -20,11 +20,11 @@ public class RecipeImageProcessor : IRecipeImageProcessor
     public RecipeImageProcessor(IConfiguration configuration, ILogger<RecipeImageProcessor> logger)
     {
         var azureEndpoint = configuration["AzureOpenAI:Endpoint"] 
-            ?? throw new InvalidOperationException("Azure OpenAI endpoint is not configured");
+            ?? throw new InvalidOperationException("A required configuration value is missing.");
         var apiKey = configuration["AzureOpenAI:ApiKey"] 
-            ?? throw new InvalidOperationException("Azure OpenAI API key is not configured");
+            ?? throw new InvalidOperationException("A required configuration value is missing.");
         var deploymentName = configuration["AzureOpenAI:DeploymentName"] 
-            ?? throw new InvalidOperationException("Azure OpenAI deployment name is not configured");
+            ?? throw new InvalidOperationException("A required configuration value is missing.");
         
         var client = new AzureOpenAIClient(new Uri(azureEndpoint), new ApiKeyCredential(apiKey));
         _chatClient = client.GetChatClient(deploymentName);
