@@ -83,7 +83,11 @@ export default function UploadRecipe() {
       const formData = new FormData();
       formData.append('image', selectedFile);
 
-      const response = await fetch('http://localhost:5238/api/recipes/from-image', {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      if (!apiBaseUrl) {
+        throw new Error('API base URL is not set. Please define NEXT_PUBLIC_API_BASE_URL in your environment variables.');
+      }
+      const response = await fetch(`${apiBaseUrl}/api/recipes/from-image`, {
         method: 'POST',
         body: formData,
       });
