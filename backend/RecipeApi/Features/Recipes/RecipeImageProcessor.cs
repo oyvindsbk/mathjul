@@ -105,6 +105,11 @@ Respond with ONLY valid JSON in this exact format:
                 cancellationToken
             );
 
+            if (chatCompletion.Value.Content == null || chatCompletion.Value.Content.Count == 0)
+            {
+                _logger.LogError("OpenAI response contained no content.");
+                return RecipeExtractionResult.Failure("OpenAI response contained no content.");
+            }
             var responseContent = chatCompletion.Value.Content[0].Text;
             _logger.LogInformation("Received response from OpenAI: {Response}", responseContent);
 
