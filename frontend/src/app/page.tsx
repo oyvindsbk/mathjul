@@ -20,7 +20,7 @@ export default function Home() {
     const fetchRecipes = async () => {
       try {
         // Use environment variable or fallback to localhost for development
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5238';
+        const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5238';
         const response = await fetch(`${apiUrl}/api/recipes`);
         
         if (!response.ok) {

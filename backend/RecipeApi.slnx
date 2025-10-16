@@ -1,5 +1,28 @@
 <Solution>
-  <Folder Name="/solution/" />
+  <Folder Name="/solution/">
+    <Folder Name="/scripts/">
+      <File Path="../scripts/setup.sh" />
+      <File Path="../scripts/README.md" />
+    </Folder>
+    <Folder Name="/infrastructure/">
+      <File Path="../infrastructure/main.bicep" />
+      <File Path="../infrastructure/README.md" />
+      <Folder Name="/modules/">
+        <File Path="../infrastructure/modules/key-vault.bicep" />
+        <File Path="../infrastructure/modules/key-vault-access.bicep" />
+        <File Path="../infrastructure/modules/sql-server.bicep" />
+        <File Path="../infrastructure/modules/container-app.bicep" />
+        <File Path="../infrastructure/modules/static-web-app.bicep" />
+      </Folder>
+    </Folder>
+    <Folder Name="/.github/">
+      <Folder Name="/workflows/">
+        <File Path="../.github/workflows/infrastructure.yml" />
+        <File Path="../.github/workflows/deploy.yml" />
+      </Folder>
+    </Folder>
+    <File Path="../DEPLOYMENT.md" />
+  </Folder>
   <Project Path="../aspire/FoodRecipesApp.ServiceDefaults/FoodRecipesApp.ServiceDefaults.csproj" />
   <Project Path="../aspire/FoodRecipesApp/FoodRecipesApp.csproj" />
   <Project Path="RecipeApi/RecipeApi.csproj" />

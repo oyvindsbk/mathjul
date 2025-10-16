@@ -1,0 +1,72 @@
+name: Deploy Infrastructure
+
+on:
+  workflow_dispatch:
+
+env:
+  AZURE_RESOURCE_GROUP: 'rg-recipe-app-prod'
+  AZURE_LOCATION: 'northeurope'
+
+jobs:
+  deploy-infrastructure:
+    runs-on: ubuntu-latest
+    environment: prod
+    outputs:
+      container-app-url: ${{ steps.bicep-deploy.outputs.containerAppUrl }}
+      static-web-app-url: ${{ steps.bicep-deploy.outputs.staticWebAppUrl }}
+      key-vault-name: ${{ steps.bicep-deploy.outputs.keyVaultName }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Create Resource Group
+      run: |
+        az group create \
+          --name ${{ env.AZURE_RESOURCE_GROUP }} \
+          --location ${{ env.AZURE_LOCATION }}
+    
+    - name: Check and purge soft-deleted Key Vault
+      run: |
+        # Check if there's a soft-deleted vault with our naming pattern
+        DELETED_VAULT=$(az keyvault list-deleted \
+          --query "[?starts_with(name, 'kv-recipe-prod')].name" \
+          -o tsv | head -n1)
+        
+        if [ ! -z "$DELETED_VAULT" ]; then
+          echo "⚠️ Found soft-deleted Key Vault: $DELETED_VAULT"
+          echo "🗑️ Purging to allow redeployment..."
+          az keyvault purge --name "$DELETED_VAULT" --no-wait
+          echo "✅ Purge initiated (may take a few minutes)"
+          sleep 30  # Wait a bit for purge to process
+        else
+          echo "✅ No soft-deleted Key Vaults found"
+        fi
+    
+    - name: Deploy Bicep
+      id: bicep-deploy
+      uses: azure/arm-deploy@v1
+      with:
+        scope: resourcegroup
+        resourceGroupName: ${{ env.AZURE_RESOURCE_GROUP }}
+        template: ./infrastructure/main.bicep
+        parameters: >
+          environment=prod
+          sqlAdminUsername=${{ secrets.SQL_ADMIN_USERNAME }}
+          sqlAdminPassword=${{ secrets.SQL_ADMIN_PASSWORD }}
+          azureOpenAIEndpoint=${{ secrets.AZURE_OPENAI_ENDPOINT }}
+          azureOpenAIKey=${{ secrets.AZURE_OPENAI_KEY }}
+          azureOpenAIDeploymentName=${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
+        failOnStdErr: false
+    
+    - name: Display deployment info
+      run: |
+        echo "✅ Infrastructure deployed successfully!"
+        echo "🔐 Key Vault: ${{ steps.bicep-deploy.outputs.keyVaultName }}"
+        echo "🔗 Backend API: ${{ steps.bicep-deploy.outputs.containerAppUrl }}"
+        echo "🔗 Frontend: ${{ steps.bicep-deploy.outputs.staticWebAppUrl }}"

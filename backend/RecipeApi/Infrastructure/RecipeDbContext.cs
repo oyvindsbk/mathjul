@@ -29,6 +29,8 @@ public class RecipeDbContext : DbContext
         });
 
         // Seed initial data
+        var seedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        
         modelBuilder.Entity<Recipe>().HasData(
             new Recipe
             {
@@ -38,8 +40,8 @@ public class RecipeDbContext : DbContext
                 CookTime = "20 minutes",
                 Difficulty = "Medium",
                 ImageUrl = "/api/placeholder/300/200",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = seedDate,
+                UpdatedAt = seedDate
             },
             new Recipe
             {
@@ -49,8 +51,8 @@ public class RecipeDbContext : DbContext
                 CookTime = "45 minutes",
                 Difficulty = "Medium",
                 ImageUrl = "/api/placeholder/300/200",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = seedDate,
+                UpdatedAt = seedDate
             },
             new Recipe
             {
@@ -60,8 +62,8 @@ public class RecipeDbContext : DbContext
                 CookTime = "25 minutes",
                 Difficulty = "Easy",
                 ImageUrl = "/api/placeholder/300/200",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = seedDate,
+                UpdatedAt = seedDate
             },
             new Recipe
             {
@@ -71,8 +73,8 @@ public class RecipeDbContext : DbContext
                 CookTime = "15 minutes",
                 Difficulty = "Easy",
                 ImageUrl = "/api/placeholder/300/200",
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                CreatedAt = seedDate,
+                UpdatedAt = seedDate
             }
         );
     }

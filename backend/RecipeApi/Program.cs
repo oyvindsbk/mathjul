@@ -4,9 +4,19 @@ using RecipeApi.Features.Recipes;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add Aspire service defaults and SQL Server integration
+// Configure database context based on build configuration
+#if DEBUG
+// Use Aspire service defaults in development
 builder.AddServiceDefaults();
 builder.AddSqlServerDbContext<RecipeDbContext>("recipedb");
+#else
+// Production: Configure SQL Server directly
+var connectionString = builder.Configuration.GetConnectionString("RecipeDb")
+    ?? throw new InvalidOperationException("Connection string 'RecipeDb' not found.");
+
+builder.Services.AddDbContext<RecipeDbContext>(options =>
+    options.UseSqlServer(connectionString));
+#endif
 
 // Add services to the container.
 builder.Services.AddControllers();
@@ -23,7 +33,6 @@ builder.Services.AddCors(options =>
         {
             if (builder.Environment.IsDevelopment())
             {
-                // In development, allow any localhost origin (for Aspire proxying and direct access)
                 policy.SetIsOriginAllowed(origin => 
                     {
                         var uri = new Uri(origin);
@@ -35,10 +44,21 @@ builder.Services.AddCors(options =>
             }
             else
             {
-                // In production, restrict to specific origins
-                policy.WithOrigins("https://your-production-domain.com")
+                var allowedOrigins = builder.Configuration
+                    .GetSection("Cors:AllowedOrigins")
+                    .Get<string[]>();
+                
+                if (allowedOrigins == null || allowedOrigins.Length == 0)
+                {
+                    throw new InvalidOperationException(
+                        "CORS configuration is required in production. " +
+                        "Set Cors:AllowedOrigins in appsettings.Production.json or via environment variables.");
+                }
+                
+                policy.WithOrigins(allowedOrigins)
                     .AllowAnyHeader()
-                    .AllowAnyMethod();
+                    .AllowAnyMethod()
+                    .AllowCredentials();
             }
         });
 });
