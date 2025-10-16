@@ -111,6 +111,11 @@ Respond with ONLY valid JSON in this exact format:
                 return RecipeExtractionResult.Failure("OpenAI response contained no content.");
             }
             var responseContent = chatCompletion.Value.Content[0].Text;
+            if (string.IsNullOrWhiteSpace(responseContent))
+            {
+                _logger.LogError("OpenAI response content text was null or empty.");
+                return RecipeExtractionResult.Failure("OpenAI response content text was null or empty.");
+            }
             _logger.LogInformation("Received response from OpenAI: {Response}", responseContent);
 
             // Parse the JSON response
