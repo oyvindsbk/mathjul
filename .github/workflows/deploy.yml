@@ -1,0 +1,219 @@
+name: Deploy Application
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+        default: dev
+
+env:
+  DOTNET_VERSION: '9.0.x'
+  NODE_VERSION: '20.x'
+  AZURE_RESOURCE_GROUP: rg-recipe-app-${{ github.event.inputs.environment || 'dev' }}
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+
+jobs:
+  get-resources:
+    runs-on: ubuntu-latest
+    outputs:
+      container-app-name: ${{ steps.get-names.outputs.container-app-name }}
+      static-web-app-name: ${{ steps.get-names.outputs.static-web-app-name }}
+    
+    steps:
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Get resource names
+      id: get-names
+      run: |
+        CONTAINER_APP_NAME=$(az containerapp list \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --query "[0].name" -o tsv)
+        STATIC_WEB_APP_NAME=$(az staticwebapp list \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --query "[0].name" -o tsv)
+        echo "container-app-name=$CONTAINER_APP_NAME" >> $GITHUB_OUTPUT
+        echo "static-web-app-name=$STATIC_WEB_APP_NAME" >> $GITHUB_OUTPUT
+
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ github.repository }}/recipe-api
+        tags: |
+          type=sha,prefix={{branch}}-
+          type=ref,event=branch
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend/RecipeApi
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  deploy-backend:
+    runs-on: ubuntu-latest
+    needs: [get-resources, build-and-push-image]
+    
+    steps:
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Update Container App
+      run: |
+        # Extract first tag from the list
+        IMAGE_TAG=$(echo "${{ needs.build-and-push-image.outputs.image-tag }}" | head -n1)
+        
+        az containerapp update \
+          --name ${{ needs.get-resources.outputs.container-app-name }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --image "$IMAGE_TAG"
+    
+    - name: Display backend URL
+      run: |
+        URL=$(az containerapp show \
+          --name ${{ needs.get-resources.outputs.container-app-name }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --query "properties.configuration.ingress.fqdn" -o tsv)
+        echo "✅ Backend deployed to: https://$URL"
+
+  migrate-database:
+    runs-on: ubuntu-latest
+    needs: deploy-backend
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    
+    - name: Install EF Core tools
+      run: dotnet tool install --global dotnet-ef
+    
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Run EF Migrations
+      run: |
+        dotnet ef database update \
+          --project ./backend/RecipeApi/RecipeApi.csproj \
+          --connection "${{ secrets.AZURE_SQL_CONNECTION_STRING }}"
+      env:
+        ASPNETCORE_ENVIRONMENT: Production
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    needs: [get-resources, migrate-database]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+    
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Get Static Web App token
+      id: get-token
+      run: |
+        TOKEN=$(az staticwebapp secrets list \
+          --name ${{ needs.get-resources.outputs.static-web-app-name }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --query "properties.apiKey" -o tsv)
+        echo "::add-mask::$TOKEN"
+        echo "token=$TOKEN" >> $GITHUB_OUTPUT
+    
+    - name: Build and Deploy Static Web App
+      uses: Azure/static-web-apps-deploy@v1
+      with:
+        azure_static_web_apps_api_token: ${{ steps.get-token.outputs.token }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        action: "upload"
+        app_location: "/frontend"
+        api_location: ""
+        output_location: ".next"
+    
+    - name: Display frontend URL
+      id: frontend-url
+      run: |
+        URL=$(az staticwebapp show \
+          --name ${{ needs.get-resources.outputs.static-web-app-name }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --query "defaultHostname" -o tsv)
+        echo "url=https://$URL" >> $GITHUB_OUTPUT
+        echo "✅ Frontend deployed to: https://$URL"
+    
+    outputs:
+      frontend-url: ${{ steps.frontend-url.outputs.url }}
+
+  update-backend-cors:
+    runs-on: ubuntu-latest
+    needs: [get-resources, deploy-frontend]
+    
+    steps:
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Update Backend CORS Configuration
+      run: |
+        echo "🔧 Updating backend CORS to allow: ${{ needs.deploy-frontend.outputs.frontend-url }}"
+        
+        az containerapp update \
+          --name ${{ needs.get-resources.outputs.container-app-name }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --set-env-vars "Cors__AllowedOrigins__0=${{ needs.deploy-frontend.outputs.frontend-url }}"
+        
+        echo "✅ CORS configuration updated successfully!"
