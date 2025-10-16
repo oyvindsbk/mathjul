@@ -8,20 +8,11 @@ on:
       - 'frontend/**'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to deploy to'
-        required: true
-        type: choice
-        options:
-          - dev
-          - prod
-        default: dev
 
 env:
   DOTNET_VERSION: '9.0.x'
   NODE_VERSION: '20.x'
-  AZURE_RESOURCE_GROUP: rg-recipe-app-${{ github.event.inputs.environment || 'dev' }}
+  AZURE_RESOURCE_GROUP: rg-recipe-app-prod
 
 permissions:
   contents: read

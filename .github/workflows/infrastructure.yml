@@ -2,24 +2,15 @@ name: Deploy Infrastructure
 
 on:
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to deploy to'
-        required: true
-        type: choice
-        options:
-          - dev
-          - prod
-        default: dev
 
 env:
-  AZURE_RESOURCE_GROUP: 'rg-recipe-app-${{ github.event.inputs.environment }}'
+  AZURE_RESOURCE_GROUP: 'rg-recipe-app-prod'
   AZURE_LOCATION: 'northeurope'
 
 jobs:
   deploy-infrastructure:
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.environment }}
+    environment: prod
     outputs:
       container-app-url: ${{ steps.bicep-deploy.outputs.containerAppUrl }}
       static-web-app-url: ${{ steps.bicep-deploy.outputs.staticWebAppUrl }}
@@ -48,7 +39,7 @@ jobs:
         resourceGroupName: ${{ env.AZURE_RESOURCE_GROUP }}
         template: ./infrastructure/main.bicep
         parameters: >
-          environment=${{ github.event.inputs.environment }}
+          environment=prod
           sqlAdminUsername=${{ secrets.SQL_ADMIN_USERNAME }}
           sqlAdminPassword=${{ secrets.SQL_ADMIN_PASSWORD }}
           azureOpenAIEndpoint=${{ secrets.AZURE_OPENAI_ENDPOINT }}
