@@ -14,7 +14,7 @@ on:
 
 env:
   AZURE_RESOURCE_GROUP: 'rg-recipe-app-${{ github.event.inputs.environment }}'
-  AZURE_LOCATION: 'westeurope'
+  AZURE_LOCATION: 'northeurope'
 
 jobs:
   deploy-infrastructure:
