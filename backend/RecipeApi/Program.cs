@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Infrastructure;
+using RecipeApi.Features.Recipes;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,15 +12,34 @@ builder.AddSqlServerDbContext<RecipeDbContext>("recipedb");
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
+// Register RecipeImageProcessor service
+builder.Services.AddScoped<IRecipeImageProcessor, RecipeImageProcessor>();
+
 // Add CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            policy.WithOrigins("http://localhost:3000") // Next.js dev server
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
+            if (builder.Environment.IsDevelopment())
+            {
+                // In development, allow any localhost origin (for Aspire proxying and direct access)
+                policy.SetIsOriginAllowed(origin => 
+                    {
+                        var uri = new Uri(origin);
+                        return uri.Host == "localhost" || uri.Host == "127.0.0.1";
+                    })
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials();
+            }
+            else
+            {
+                // In production, restrict to specific origins
+                policy.WithOrigins("https://your-production-domain.com")
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            }
         });
 });
 
@@ -55,7 +75,21 @@ using (var scope = app.Services.CreateScope())
         try
         {
             logger.LogInformation("Attempting to connect to database (attempt {Count}/{Max})...", retryCount + 1, maxRetries);
-            context.Database.EnsureCreated();
+            
+            // In development, drop and recreate the database to apply schema changes
+            if (app.Environment.IsDevelopment())
+            {
+                logger.LogInformation("Development mode: Dropping and recreating database...");
+                await context.Database.EnsureDeletedAsync();
+                await context.Database.EnsureCreatedAsync();
+                logger.LogInformation("Database recreated successfully!");
+            }
+            else
+            {
+                // In production, only create if it doesn't exist
+                await context.Database.EnsureCreatedAsync();
+            }
+            
             logger.LogInformation("Database connection successful!");
             break;
         }

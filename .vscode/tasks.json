@@ -42,7 +42,19 @@
       }
     },
     {
+      "label": "cleanup:containers",
+      "type": "shell",
+      "command": "docker ps -q --filter publish=1433 | xargs -r docker stop && docker ps -aq --filter publish=1433 | xargs -r docker rm || true",
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      },
+      "problemMatcher": []
+    },
+    {
       "label": "start:aspire",
+      "dependsOn": ["cleanup:containers"],
+      "dependsOrder": "sequence",
       "type": "shell",
       "command": "dotnet",
       "args": ["run", "--project", "aspire/FoodRecipesApp/FoodRecipesApp.csproj"],
