@@ -135,7 +135,7 @@ export default function UploadRecipe() {
     }
   };
 
-  const handleEditField = (field: keyof ExtractedRecipe, value: any) => {
+  const handleEditField = (field: keyof ExtractedRecipe, value: string | string[] | number | null) => {
     if (!extractedRecipe) return;
     setExtractedRecipe({ ...extractedRecipe, [field]: value });
   };
@@ -201,6 +201,7 @@ export default function UploadRecipe() {
             </div>
           ) : (
             <div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={previewUrl}
                 alt="Preview"
