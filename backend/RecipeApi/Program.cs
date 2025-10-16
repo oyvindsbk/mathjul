@@ -4,9 +4,22 @@ using RecipeApi.Features.Recipes;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add Aspire service defaults and SQL Server integration
-builder.AddServiceDefaults();
-builder.AddSqlServerDbContext<RecipeDbContext>("recipedb");
+// Configure database context based on environment
+if (builder.Environment.IsDevelopment())
+{
+    // Use Aspire service defaults in development
+    builder.AddServiceDefaults();
+    builder.AddSqlServerDbContext<RecipeDbContext>("recipedb");
+}
+else
+{
+    // Production: Configure SQL Server directly
+    var connectionString = builder.Configuration.GetConnectionString("RecipeDb")
+        ?? throw new InvalidOperationException("Connection string 'RecipeDb' not found.");
+    
+    builder.Services.AddDbContext<RecipeDbContext>(options =>
+        options.UseSqlServer(connectionString));
+}
 
 // Add services to the container.
 builder.Services.AddControllers();
