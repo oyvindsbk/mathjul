@@ -86,53 +86,53 @@ namespace RecipeApi.Migrations
                         {
                             Id = 1,
                             CookTime = "20 minutes",
-                            CreatedAt = new DateTime(2025, 10, 16, 10, 38, 19, 247, DateTimeKind.Utc).AddTicks(8520),
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "A traditional Italian pasta dish with eggs, cheese, and pancetta",
                             Difficulty = "Medium",
                             ImageUrl = "/api/placeholder/300/200",
                             Ingredients = "",
                             Instructions = "",
                             Title = "Classic Spaghetti Carbonara",
-                            UpdatedAt = new DateTime(2025, 10, 16, 10, 38, 19, 247, DateTimeKind.Utc).AddTicks(8680)
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
                         new
                         {
                             Id = 2,
                             CookTime = "45 minutes",
-                            CreatedAt = new DateTime(2025, 10, 16, 10, 38, 19, 247, DateTimeKind.Utc).AddTicks(9090),
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Creamy and flavorful Indian curry with tender chicken pieces",
                             Difficulty = "Medium",
                             ImageUrl = "/api/placeholder/300/200",
                             Ingredients = "",
                             Instructions = "",
                             Title = "Chicken Tikka Masala",
-                            UpdatedAt = new DateTime(2025, 10, 16, 10, 38, 19, 247, DateTimeKind.Utc).AddTicks(9090)
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
                         new
                         {
                             Id = 3,
                             CookTime = "25 minutes",
-                            CreatedAt = new DateTime(2025, 10, 16, 10, 38, 19, 247, DateTimeKind.Utc).AddTicks(9090),
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Soft and chewy homemade cookies with chocolate chips",
                             Difficulty = "Easy",
                             ImageUrl = "/api/placeholder/300/200",
                             Ingredients = "",
                             Instructions = "",
                             Title = "Chocolate Chip Cookies",
-                            UpdatedAt = new DateTime(2025, 10, 16, 10, 38, 19, 247, DateTimeKind.Utc).AddTicks(9090)
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         },
                         new
                         {
                             Id = 4,
                             CookTime = "15 minutes",
-                            CreatedAt = new DateTime(2025, 10, 16, 10, 38, 19, 247, DateTimeKind.Utc).AddTicks(9100),
+                            CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
                             Description = "Fresh romaine lettuce with homemade caesar dressing and croutons",
                             Difficulty = "Easy",
                             ImageUrl = "/api/placeholder/300/200",
                             Ingredients = "",
                             Instructions = "",
                             Title = "Caesar Salad",
-                            UpdatedAt = new DateTime(2025, 10, 16, 10, 38, 19, 247, DateTimeKind.Utc).AddTicks(9100)
+                            UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         });
                 });
 #pragma warning restore 612, 618

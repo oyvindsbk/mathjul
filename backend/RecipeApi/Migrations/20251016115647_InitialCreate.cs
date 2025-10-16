@@ -42,10 +42,10 @@ namespace RecipeApi.Migrations
                 columns: new[] { "Id", "CookTime", "CookTimeMinutes", "CreatedAt", "Description", "Difficulty", "ImageUrl", "Ingredients", "Instructions", "PrepTime", "Servings", "Title", "UpdatedAt" },
                 values: new object[,]
                 {
-                    { 1, "20 minutes", null, new DateTime(2025, 10, 16, 10, 38, 19, 247, DateTimeKind.Utc).AddTicks(8520), "A traditional Italian pasta dish with eggs, cheese, and pancetta", "Medium", "/api/placeholder/300/200", "", "", null, null, "Classic Spaghetti Carbonara", new DateTime(2025, 10, 16, 10, 38, 19, 247, DateTimeKind.Utc).AddTicks(8680) },
-                    { 2, "45 minutes", null, new DateTime(2025, 10, 16, 10, 38, 19, 247, DateTimeKind.Utc).AddTicks(9090), "Creamy and flavorful Indian curry with tender chicken pieces", "Medium", "/api/placeholder/300/200", "", "", null, null, "Chicken Tikka Masala", new DateTime(2025, 10, 16, 10, 38, 19, 247, DateTimeKind.Utc).AddTicks(9090) },
-                    { 3, "25 minutes", null, new DateTime(2025, 10, 16, 10, 38, 19, 247, DateTimeKind.Utc).AddTicks(9090), "Soft and chewy homemade cookies with chocolate chips", "Easy", "/api/placeholder/300/200", "", "", null, null, "Chocolate Chip Cookies", new DateTime(2025, 10, 16, 10, 38, 19, 247, DateTimeKind.Utc).AddTicks(9090) },
-                    { 4, "15 minutes", null, new DateTime(2025, 10, 16, 10, 38, 19, 247, DateTimeKind.Utc).AddTicks(9100), "Fresh romaine lettuce with homemade caesar dressing and croutons", "Easy", "/api/placeholder/300/200", "", "", null, null, "Caesar Salad", new DateTime(2025, 10, 16, 10, 38, 19, 247, DateTimeKind.Utc).AddTicks(9100) }
+                    { 1, "20 minutes", null, new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "A traditional Italian pasta dish with eggs, cheese, and pancetta", "Medium", "/api/placeholder/300/200", "", "", null, null, "Classic Spaghetti Carbonara", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { 2, "45 minutes", null, new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Creamy and flavorful Indian curry with tender chicken pieces", "Medium", "/api/placeholder/300/200", "", "", null, null, "Chicken Tikka Masala", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { 3, "25 minutes", null, new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Soft and chewy homemade cookies with chocolate chips", "Easy", "/api/placeholder/300/200", "", "", null, null, "Chocolate Chip Cookies", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) },
+                    { 4, "15 minutes", null, new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc), "Fresh romaine lettuce with homemade caesar dressing and croutons", "Easy", "/api/placeholder/300/200", "", "", null, null, "Caesar Salad", new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc) }
                 });
         }
 
