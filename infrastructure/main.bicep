@@ -91,7 +91,7 @@ module staticWebApp 'modules/static-web-app.bicep' = {
   name: 'staticWebAppDeployment'
   params: {
     staticWebAppName: staticWebAppName
-    location: location
+    location: 'westeurope' // Static Web Apps not available in northeurope
     apiUrl: containerApp.outputs.containerAppUrl
     tags: commonTags
   }
