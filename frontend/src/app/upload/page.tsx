@@ -113,7 +113,8 @@ export default function UploadRecipe() {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:5238/api/recipes/save-extracted', {
+      const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      const response = await fetch(`${apiBaseUrl}/api/recipes/save-extracted`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
