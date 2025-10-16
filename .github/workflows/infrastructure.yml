@@ -31,6 +31,23 @@ jobs:
           --name ${{ env.AZURE_RESOURCE_GROUP }} \
           --location ${{ env.AZURE_LOCATION }}
     
+    - name: Check and purge soft-deleted Key Vault
+      run: |
+        # Check if there's a soft-deleted vault with our naming pattern
+        DELETED_VAULT=$(az keyvault list-deleted \
+          --query "[?starts_with(name, 'kv-recipe-prod')].name" \
+          -o tsv | head -n1)
+        
+        if [ ! -z "$DELETED_VAULT" ]; then
+          echo "⚠️ Found soft-deleted Key Vault: $DELETED_VAULT"
+          echo "🗑️ Purging to allow redeployment..."
+          az keyvault purge --name "$DELETED_VAULT" --no-wait
+          echo "✅ Purge initiated (may take a few minutes)"
+          sleep 30  # Wait a bit for purge to process
+        else
+          echo "✅ No soft-deleted Key Vaults found"
+        fi
+    
     - name: Deploy Bicep
       id: bicep-deploy
       uses: azure/arm-deploy@v1

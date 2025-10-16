@@ -23,6 +23,8 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     enabledForTemplateDeployment: true
     enableSoftDelete: true
     softDeleteRetentionInDays: 7
+    enablePurgeProtection: false // Allow purging to enable redeployment
+    createMode: 'default' // Use 'recover' to recover a soft-deleted vault
     publicNetworkAccess: 'Enabled'
     networkAcls: {
       defaultAction: 'Allow'
