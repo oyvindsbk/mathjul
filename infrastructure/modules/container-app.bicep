@@ -124,7 +124,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
               value: keyVault.properties.vaultUri
             }
             {
-              name: 'ConnectionStrings__DefaultConnection'
+              name: 'ConnectionStrings__RecipeDb'
               secretRef: 'sql-connection-string'
             }
             {
