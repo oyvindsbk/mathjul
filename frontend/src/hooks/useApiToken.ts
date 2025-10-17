@@ -32,11 +32,32 @@ export function useApiToken() {
       }
 
       // Fetch new token from backend
+      // Important: Call the token endpoint on the SAME domain (Static Web App)
+      // so that Static Web Apps authentication headers are included
       try {
         const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+        
+        // First, try to get token from the Container Apps backend directly
+        // This requires the X-MS-CLIENT-PRINCIPAL header which we need to get from /.auth/me
+        const authResponse = await fetch('/.auth/me');
+        if (!authResponse.ok) {
+          throw new Error('Not authenticated with Static Web Apps');
+        }
+        
+        const authData = await authResponse.json();
+        if (!authData.clientPrincipal) {
+          throw new Error('No client principal found');
+        }
+
+        // Encode the client principal as base64 to send to backend
+        const principalJson = JSON.stringify(authData.clientPrincipal);
+        const principalBase64 = btoa(principalJson);
+
         const response = await fetch(`${apiBaseUrl}/api/auth/token`, {
           method: 'POST',
-          credentials: 'include', // Include cookies for Static Web Apps auth
+          headers: {
+            'X-MS-CLIENT-PRINCIPAL': principalBase64,
+          },
         });
 
         if (!response.ok) {
