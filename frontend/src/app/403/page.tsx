@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/components/AuthButton';
+import Link from 'next/link';
 
 export default function AccessDenied() {
   const { email } = useAuth();
@@ -47,12 +48,12 @@ export default function AccessDenied() {
           >
             Logout
           </a>
-          <a
+          <Link
             href="/"
             className="text-sm text-blue-600 hover:text-blue-700"
           >
             ← Back to home
-          </a>
+          </Link>
         </div>
       </div>
     </div>

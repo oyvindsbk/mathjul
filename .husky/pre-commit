@@ -1,0 +1,49 @@
+#!/bin/sh
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo "${YELLOW}🔍 Running pre-commit checks...${NC}"
+
+# Check if there are frontend changes
+FRONTEND_CHANGED=$(git diff --cached --name-only | grep "^frontend/")
+
+if [ -n "$FRONTEND_CHANGED" ]; then
+  echo "${YELLOW}📝 Frontend files changed, running checks...${NC}"
+  
+  cd frontend || exit 1
+  
+  # Run ESLint
+  echo "${YELLOW}🔧 Running ESLint...${NC}"
+  npx next lint
+  if [ $? -ne 0 ]; then
+    echo "${RED}❌ ESLint failed. Please fix the errors above.${NC}"
+    exit 1
+  fi
+  echo "${GREEN}✅ ESLint passed${NC}"
+  
+  # Run TypeScript type check
+  echo "${YELLOW}📘 Running TypeScript type check...${NC}"
+  npx tsc --noEmit
+  if [ $? -ne 0 ]; then
+    echo "${RED}❌ TypeScript type check failed. Please fix the errors above.${NC}"
+    exit 1
+  fi
+  echo "${GREEN}✅ TypeScript check passed${NC}"
+  
+  # Run lint-staged for auto-fixes
+  echo "${YELLOW}🎨 Running lint-staged...${NC}"
+  npx lint-staged
+  if [ $? -ne 0 ]; then
+    echo "${RED}❌ lint-staged failed${NC}"
+    exit 1
+  fi
+  echo "${GREEN}✅ lint-staged passed${NC}"
+  
+  cd ..
+fi
+
+echo "${GREEN}✅ All pre-commit checks passed!${NC}"
