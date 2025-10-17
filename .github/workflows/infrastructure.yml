@@ -62,6 +62,8 @@ jobs:
           azureOpenAIEndpoint=${{ secrets.AZURE_OPENAI_ENDPOINT }}
           azureOpenAIKey=${{ secrets.AZURE_OPENAI_KEY }}
           azureOpenAIDeploymentName=${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
+          googleClientId=${{ secrets.GOOGLE_CLIENT_ID }}
+          googleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}
         failOnStdErr: false
     
     - name: Display deployment info

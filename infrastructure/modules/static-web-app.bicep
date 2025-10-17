@@ -7,6 +7,14 @@ param location string
 @description('The backend API URL')
 param apiUrl string
 
+@description('Google OAuth Client ID')
+@secure()
+param googleClientId string = ''
+
+@description('Google OAuth Client Secret')
+@secure()
+param googleClientSecret string = ''
+
 @description('Tags to apply to resources')
 param tags object = {}
 
@@ -36,6 +44,8 @@ resource staticWebAppSettings 'Microsoft.Web/staticSites/config@2023-01-01' = {
   name: 'appsettings'
   properties: {
     NEXT_PUBLIC_API_BASE_URL: apiUrl
+    GOOGLE_CLIENT_ID: googleClientId
+    GOOGLE_CLIENT_SECRET: googleClientSecret
   }
 }
 

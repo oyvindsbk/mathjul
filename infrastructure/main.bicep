@@ -26,6 +26,14 @@ param azureOpenAIDeploymentName string = 'gpt-4.1-nano'
 @description('Initial approved email addresses for access control (comma-separated)')
 param approvedEmails string = ''
 
+@description('Google OAuth Client ID')
+@secure()
+param googleClientId string = ''
+
+@description('Google OAuth Client Secret')
+@secure()
+param googleClientSecret string = ''
+
 // Generate unique names
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var sqlServerName = 'sql-recipe-${environment}-${uniqueSuffix}'
@@ -97,6 +105,8 @@ module staticWebApp 'modules/static-web-app.bicep' = {
     staticWebAppName: staticWebAppName
     location: 'westeurope' // Static Web Apps not available in northeurope
     apiUrl: containerApp.outputs.containerAppUrl
+    googleClientId: googleClientId
+    googleClientSecret: googleClientSecret
     tags: commonTags
   }
 }
