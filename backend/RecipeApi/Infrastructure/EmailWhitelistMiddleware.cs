@@ -29,6 +29,13 @@ public class EmailWhitelistMiddleware
 
     public async Task InvokeAsync(HttpContext context)
     {
+        // Skip authentication for OPTIONS requests (CORS preflight)
+        if (context.Request.Method == "OPTIONS")
+        {
+            await _next(context);
+            return;
+        }
+
         // Skip authentication for health checks and public endpoints
         var path = context.Request.Path.Value?.ToLower() ?? "";
         if (path.StartsWith("/health") || 

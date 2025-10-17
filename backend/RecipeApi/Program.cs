@@ -91,10 +91,13 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 
-// Add email whitelist middleware before CORS
+// IMPORTANT: CORS must come before authentication/authorization middleware
+// to handle preflight OPTIONS requests correctly
+app.UseCors("AllowFrontend");
+
+// Add email whitelist middleware after CORS
 app.UseMiddleware<EmailWhitelistMiddleware>();
 
-app.UseCors("AllowFrontend");
 app.MapControllers();
 
 // Ensure database is created with retry logic for container startup
