@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { AuthButton } from "@/components/AuthButton";
 
 interface Recipe {
   id: number;
@@ -89,6 +90,11 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
+        {/* Auth Button */}
+        <div className="flex justify-end mb-8">
+          <AuthButton />
+        </div>
+        
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             Food Recipes

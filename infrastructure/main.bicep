@@ -23,6 +23,9 @@ param azureOpenAIKey string
 @description('Azure OpenAI deployment name')
 param azureOpenAIDeploymentName string = 'gpt-4.1-nano'
 
+@description('Initial approved email addresses for access control (comma-separated)')
+param approvedEmails string = ''
+
 // Generate unique names
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var sqlServerName = 'sql-recipe-${environment}-${uniqueSuffix}'
@@ -44,6 +47,7 @@ module keyVault 'modules/key-vault.bicep' = {
   params: {
     keyVaultName: keyVaultName
     location: location
+    approvedEmails: empty(approvedEmails) ? '[]' : '["${replace(approvedEmails, ',', '","')}"]'
     tags: commonTags
   }
 }

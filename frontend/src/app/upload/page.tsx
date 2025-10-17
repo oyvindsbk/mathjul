@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { AuthButton } from '@/components/AuthButton';
 
 interface ExtractedRecipe {
   title: string;
@@ -95,12 +96,21 @@ export default function UploadRecipe() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
+        if (response.status === 403) {
+          throw new Error('Access denied. Your account is not authorized. Please contact an administrator.');
+        }
         throw new Error(data.errorMessage || 'Failed to extract recipe');
       }
 
       setExtractedRecipe(data.extractedRecipe);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to extract recipe');
+      const errorMessage = err instanceof Error ? err.message : 'Failed to extract recipe';
+      setError(errorMessage);
+      
+      // If access denied, redirect to 403 page after showing error
+      if (errorMessage.includes('Access denied')) {
+        setTimeout(() => router.push('/403'), 2000);
+      }
     } finally {
       setIsExtracting(false);
     }
@@ -145,12 +155,15 @@ export default function UploadRecipe() {
       <main className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-4xl font-bold">Upload Recipe Image</h1>
-          <button
-            onClick={() => router.push('/')}
-            className="px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
-          >
-            ← Back to Recipes
-          </button>
+          <div className="flex items-center gap-4">
+            <AuthButton />
+            <button
+              onClick={() => router.push('/')}
+              className="px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
+            >
+              ← Back to Recipes
+            </button>
+          </div>
         </div>
 
         {/* File Upload Area */}

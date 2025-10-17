@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Infrastructure;
 using RecipeApi.Features.Recipes;
+using Azure.Identity;
+using Azure.Security.KeyVault.Secrets;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +26,18 @@ builder.Services.AddOpenApi();
 
 // Register RecipeImageProcessor service
 builder.Services.AddScoped<IRecipeImageProcessor, RecipeImageProcessor>();
+
+// Configure Key Vault client for email whitelist
+SecretClient? secretClient = null;
+if (!builder.Environment.IsDevelopment())
+{
+    var keyVaultUri = builder.Configuration["KeyVault__VaultUri"];
+    if (!string.IsNullOrEmpty(keyVaultUri))
+    {
+        secretClient = new SecretClient(new Uri(keyVaultUri), new DefaultAzureCredential());
+        builder.Services.AddSingleton(secretClient);
+    }
+}
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -76,6 +90,9 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
+
+// Add email whitelist middleware before CORS
+app.UseMiddleware<EmailWhitelistMiddleware>();
 
 app.UseCors("AllowFrontend");
 app.MapControllers();
