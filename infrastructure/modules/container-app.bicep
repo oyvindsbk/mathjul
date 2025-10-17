@@ -24,6 +24,10 @@ param azureOpenAIDeploymentName string
 @description('Frontend URL for CORS (optional)')
 param frontendUrl string = ''
 
+@description('JWT Secret Key for token signing')
+@secure()
+param jwtSecretKey string
+
 @description('Container image')
 param containerImage string = 'mcr.microsoft.com/dotnet/samples:aspnetapp'
 
@@ -146,6 +150,18 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
             {
               name: 'Cors__AllowedOrigins__0'
               value: frontendUrl != '' ? frontendUrl : 'https://placeholder-update-after-deployment.com'
+            }
+            {
+              name: 'Jwt__SecretKey'
+              value: jwtSecretKey
+            }
+            {
+              name: 'Jwt__Issuer'
+              value: 'RecipeApi'
+            }
+            {
+              name: 'Jwt__Audience'
+              value: 'RecipeFrontend'
             }
           ]
         }

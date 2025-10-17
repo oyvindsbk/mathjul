@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthButton } from '@/components/AuthButton';
+import { useApiToken } from '@/hooks/useApiToken';
 
 interface ExtractedRecipe {
   title: string;
@@ -24,6 +25,7 @@ export default function UploadRecipe() {
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const { token, loading: tokenLoading, error: tokenError } = useApiToken();
 
   const handleFileSelect = (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -77,6 +79,11 @@ export default function UploadRecipe() {
   const handleExtractRecipe = async () => {
     if (!selectedFile) return;
 
+    if (!token) {
+      setError('Authentication token not available. Please try logging in again.');
+      return;
+    }
+
     setIsExtracting(true);
     setError(null);
 
@@ -91,6 +98,9 @@ export default function UploadRecipe() {
       const response = await fetch(`${apiBaseUrl}/api/recipes/from-image`, {
         method: 'POST',
         body: formData,
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
 
       const data = await response.json();
@@ -119,6 +129,11 @@ export default function UploadRecipe() {
   const handleSaveRecipe = async () => {
     if (!extractedRecipe) return;
 
+    if (!token) {
+      setError('Authentication token not available. Please try logging in again.');
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
 
@@ -128,6 +143,7 @@ export default function UploadRecipe() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify(extractedRecipe),
       });
@@ -241,10 +257,17 @@ export default function UploadRecipe() {
           )}
         </div>
 
+        {/* Token Loading State */}
+        {tokenLoading && (
+          <div className="mb-8 p-4 bg-blue-100 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-800 rounded-lg text-blue-700 dark:text-blue-400">
+            Preparing authentication...
+          </div>
+        )}
+
         {/* Error Message */}
-        {error && (
+        {(error || tokenError) && (
           <div className="mb-8 p-4 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400">
-            {error}
+            {error || tokenError}
           </div>
         )}
 

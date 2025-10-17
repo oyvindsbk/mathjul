@@ -34,6 +34,10 @@ param googleClientId string = ''
 @secure()
 param googleClientSecret string = ''
 
+@description('JWT Secret Key for backend token signing')
+@secure()
+param jwtSecretKey string
+
 // Generate unique names
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var sqlServerName = 'sql-recipe-${environment}-${uniqueSuffix}'
@@ -85,6 +89,7 @@ module containerApp 'modules/container-app.bicep' = {
     azureOpenAIEndpoint: azureOpenAIEndpoint
     azureOpenAIKey: azureOpenAIKey
     azureOpenAIDeploymentName: azureOpenAIDeploymentName
+    jwtSecretKey: jwtSecretKey
     tags: commonTags
   }
 }

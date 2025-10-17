@@ -1,6 +1,7 @@
 using Azure.Security.KeyVault.Secrets;
 using System.Security.Claims;
 using System.Text.Json;
+using RecipeApi.Features.Auth;
 
 namespace RecipeApi.Infrastructure;
 
@@ -10,6 +11,7 @@ public class EmailWhitelistMiddleware
     private readonly ILogger<EmailWhitelistMiddleware> _logger;
     private readonly SecretClient? _secretClient;
     private readonly IConfiguration _configuration;
+    private readonly ITokenService _tokenService;
     private List<string> _approvedEmails = new();
     private DateTime _lastRefresh = DateTime.MinValue;
     private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
@@ -19,11 +21,13 @@ public class EmailWhitelistMiddleware
         RequestDelegate next, 
         ILogger<EmailWhitelistMiddleware> logger,
         IConfiguration configuration,
+        ITokenService tokenService,
         SecretClient? secretClient = null)
     {
         _next = next;
         _logger = logger;
         _configuration = configuration;
+        _tokenService = tokenService;
         _secretClient = secretClient;
     }
 
@@ -41,14 +45,15 @@ public class EmailWhitelistMiddleware
         if (path.StartsWith("/health") || 
             path.StartsWith("/.auth") ||
             path == "/" ||
-            path == "/api/recipes" && context.Request.Method == "GET")
+            path == "/api/recipes" && context.Request.Method == "GET" ||
+            path == "/api/auth/token") // Allow token endpoint for authenticated users
         {
             await _next(context);
             return;
         }
 
-        // Get user email from Static Web Apps authentication
-        var email = GetUserEmail(context);
+        // Get user email from either JWT token or Static Web Apps authentication
+        var email = GetUserEmailFromToken(context) ?? GetUserEmailFromStaticWebApps(context);
 
         if (string.IsNullOrEmpty(email))
         {
@@ -83,7 +88,32 @@ public class EmailWhitelistMiddleware
         await _next(context);
     }
 
-    private string? GetUserEmail(HttpContext context)
+    private string? GetUserEmailFromToken(HttpContext context)
+    {
+        // Check for JWT Bearer token in Authorization header
+        var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
+        if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var token = authHeader.Substring("Bearer ".Length).Trim();
+        var principal = _tokenService.ValidateToken(token);
+        
+        if (principal == null)
+        {
+            return null;
+        }
+
+        // Extract email from claims
+        var emailClaim = principal.Claims.FirstOrDefault(c => 
+            c.Type == ClaimTypes.Email || 
+            c.Type == "emails");
+
+        return emailClaim?.Value;
+    }
+
+    private string? GetUserEmailFromStaticWebApps(HttpContext context)
     {
         // Static Web Apps passes user info in X-MS-CLIENT-PRINCIPAL header
         var principalHeader = context.Request.Headers["X-MS-CLIENT-PRINCIPAL"].FirstOrDefault();

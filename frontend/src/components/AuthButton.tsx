@@ -56,6 +56,14 @@ export function useAuth() {
 export function AuthButton() {
   const { user, loading, email } = useAuth();
 
+  const handleLogout = () => {
+    // Clear API token from localStorage
+    localStorage.removeItem('api_token');
+    localStorage.removeItem('api_token_expiry');
+    // Redirect to logout
+    window.location.href = '/.auth/logout';
+  };
+
   if (loading) {
     return (
       <div className="flex items-center gap-2">
@@ -70,12 +78,12 @@ export function AuthButton() {
         <span className="text-sm text-gray-600">
           👤 {email || 'User'}
         </span>
-        <a
-          href="/.auth/logout"
+        <button
+          onClick={handleLogout}
           className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
         >
           Logout
-        </a>
+        </button>
       </div>
     );
   }

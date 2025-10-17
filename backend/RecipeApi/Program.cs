@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Infrastructure;
 using RecipeApi.Features.Recipes;
+using RecipeApi.Features.Auth;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 
@@ -24,8 +25,9 @@ builder.Services.AddDbContext<RecipeDbContext>(options =>
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
-// Register RecipeImageProcessor service
+// Register services
 builder.Services.AddScoped<IRecipeImageProcessor, RecipeImageProcessor>();
+builder.Services.AddSingleton<ITokenService, TokenService>();
 
 // Configure Key Vault client for email whitelist
 SecretClient? secretClient = null;

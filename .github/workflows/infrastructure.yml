@@ -64,6 +64,7 @@ jobs:
           azureOpenAIDeploymentName=${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME }}
           googleClientId=${{ secrets.GOOGLE_CLIENT_ID }}
           googleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}
+          jwtSecretKey=${{ secrets.JWT_SECRET_KEY }}
         failOnStdErr: false
     
     - name: Display deployment info
