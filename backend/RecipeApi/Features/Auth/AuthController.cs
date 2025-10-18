@@ -40,7 +40,7 @@ public class AuthController : ControllerBase
             
             string? email = null;
 
-            // Try to get email from claims
+            // Try to get email from claims first (for X-MS-CLIENT-PRINCIPAL from Static Web Apps reverse proxy)
             if (principal.RootElement.TryGetProperty("claims", out var claims))
             {
                 foreach (var claim in claims.EnumerateArray())
@@ -57,7 +57,13 @@ public class AuthController : ControllerBase
                 }
             }
 
-            // Fallback: try userId field
+            // Fallback: try userDetails field (format from /.auth/me)
+            if (string.IsNullOrEmpty(email) && principal.RootElement.TryGetProperty("userDetails", out var userDetails))
+            {
+                email = userDetails.GetString();
+            }
+
+            // Fallback: try userId field which might be the email
             if (string.IsNullOrEmpty(email) && principal.RootElement.TryGetProperty("userId", out var userId))
             {
                 var userIdValue = userId.GetString();
