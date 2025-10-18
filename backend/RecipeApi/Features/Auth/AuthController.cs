@@ -30,8 +30,12 @@ public class AuthController : ControllerBase
 
         try
         {
+            _logger.LogInformation("Attempting to decode X-MS-CLIENT-PRINCIPAL header: {HeaderLength} chars", principalHeader?.Length ?? 0);
+            
             var decodedBytes = Convert.FromBase64String(principalHeader);
             var decodedJson = System.Text.Encoding.UTF8.GetString(decodedBytes);
+            _logger.LogInformation("Decoded principal JSON: {Json}", decodedJson);
+            
             var principal = JsonDocument.Parse(decodedJson);
             
             string? email = null;
@@ -84,10 +88,15 @@ public class AuthController : ControllerBase
                 expiresIn = 86400 // 24 hours in seconds
             });
         }
+        catch (FormatException fex)
+        {
+            _logger.LogError(fex, "Base64 decoding failed for X-MS-CLIENT-PRINCIPAL header");
+            return BadRequest(new { error = "Invalid authentication header format" });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to generate token");
-            return StatusCode(500, new { error = "Failed to generate token" });
+            _logger.LogError(ex, "Failed to generate token: {Message}", ex.Message);
+            return StatusCode(500, new { error = "Failed to generate token", details = ex.Message });
         }
     }
 }

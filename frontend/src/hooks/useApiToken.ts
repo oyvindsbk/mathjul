@@ -61,7 +61,9 @@ export function useApiToken() {
         });
 
         if (!response.ok) {
-          throw new Error('Failed to fetch API token');
+          const errorData = await response.text();
+          console.error('Token response error:', response.status, errorData);
+          throw new Error(`Token endpoint returned ${response.status}: ${errorData}`);
         }
 
         const data = await response.json();
