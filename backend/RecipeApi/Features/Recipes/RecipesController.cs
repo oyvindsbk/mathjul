@@ -40,6 +40,36 @@ public class RecipesController : ControllerBase
         return Ok(recipes);
     }
 
+    [HttpGet("{id}")]
+    public async Task<ActionResult<RecipeDetailDto>> GetRecipeById(int id)
+    {
+        var recipe = await _context.Recipes.FindAsync(id);
+        
+        if (recipe == null)
+        {
+            return NotFound(new { message = "Recipe not found" });
+        }
+
+        var recipeDetail = new RecipeDetailDto
+        {
+            Id = recipe.Id,
+            Title = recipe.Title,
+            Description = recipe.Description,
+            CookTime = recipe.CookTime,
+            CookTimeMinutes = recipe.CookTimeMinutes,
+            PrepTime = recipe.PrepTime,
+            Difficulty = recipe.Difficulty,
+            ImageUrl = recipe.ImageUrl,
+            Servings = recipe.Servings,
+            Ingredients = recipe.Ingredients.Split(new[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries).ToList(),
+            Instructions = recipe.Instructions.Split(new[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries).ToList(),
+            CreatedAt = recipe.CreatedAt,
+            UpdatedAt = recipe.UpdatedAt
+        };
+
+        return Ok(recipeDetail);
+    }
+
     [HttpPost("from-image")]
     [RequestSizeLimit(10 * 1024 * 1024)] // 10MB
     public async Task<ActionResult<RecipeExtractionResponse>> ExtractRecipeFromImage(IFormFile image)
@@ -131,6 +161,23 @@ public class RecipeDto
     public string CookTime { get; set; } = string.Empty;
     public string Difficulty { get; set; } = string.Empty;
     public string ImageUrl { get; set; } = string.Empty;
+}
+
+public class RecipeDetailDto
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string CookTime { get; set; } = string.Empty;
+    public int? CookTimeMinutes { get; set; }
+    public int? PrepTime { get; set; }
+    public string Difficulty { get; set; } = string.Empty;
+    public string ImageUrl { get; set; } = string.Empty;
+    public int? Servings { get; set; }
+    public List<string> Ingredients { get; set; } = new();
+    public List<string> Instructions { get; set; } = new();
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 }
 
 public class RecipeExtractionResponse

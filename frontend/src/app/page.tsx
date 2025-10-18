@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { AuthButton } from "@/components/AuthButton";
 
 interface Recipe {
@@ -154,9 +155,12 @@ export default function Home() {
                     {recipe.difficulty}
                   </span>
                 </div>
-                <button className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors duration-200">
+                <Link 
+                  href={`/recipes/${recipe.id}`}
+                  className="block w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors duration-200 text-center"
+                >
                   View Recipe
-                </button>
+                </Link>
               </div>
             </div>
           ))}
