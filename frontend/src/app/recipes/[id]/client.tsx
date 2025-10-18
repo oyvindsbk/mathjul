@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useApiToken } from "@/hooks/useApiToken";
 
 interface RecipeDetail {
   id: number;
@@ -20,6 +21,7 @@ interface RecipeDetail {
 }
 
 export default function RecipeDetailClient({ id }: { id: string }) {
+  const { token } = useApiToken();
   const [recipe, setRecipe] = useState<RecipeDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +30,15 @@ export default function RecipeDetailClient({ id }: { id: string }) {
     const fetchRecipe = async () => {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5238';
-        const response = await fetch(`${apiUrl}/api/recipes/${id}`);
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const response = await fetch(`${apiUrl}/api/recipes/${id}`, { headers });
         
         if (!response.ok) {
           throw new Error(`Failed to fetch recipe: ${response.statusText}`);
@@ -47,7 +57,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
     if (id) {
       fetchRecipe();
     }
-  }, [id]);
+  }, [id, token]);
 
   if (loading) {
     return (
