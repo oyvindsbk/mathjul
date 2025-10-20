@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { recipeService } from "@/lib/services/recipe.service";
+import { useAuth } from "@/lib/context/AuthContext";
 import type { Recipe } from "@/lib/mock-data";
 
 interface RecipeDetail extends Recipe {
@@ -22,12 +23,12 @@ export default function RecipeDetailClient({ id }: { id: string }) {
   const [recipe, setRecipe] = useState<RecipeDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { token } = useAuth();
 
   useEffect(() => {
     const fetchRecipe = async () => {
       try {
-        const data = await recipeService.getRecipeById(id);
-        
+        const data = await recipeService.getRecipeById(id, token || undefined);
         if (!data) {
           setError('Recipe not found');
           setRecipe(null);
@@ -45,7 +46,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
     if (id) {
       fetchRecipe();
     }
-  }, [id]);
+  }, [id, token]);
 
   if (loading) {
     return (
@@ -115,7 +116,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
             </div>
 
             <p className="text-lg text-gray-600 mb-6">{recipe.description}</p>
-
+            
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-y border-gray-200">
               {recipe.prepTime && (
                 <div className="text-center">

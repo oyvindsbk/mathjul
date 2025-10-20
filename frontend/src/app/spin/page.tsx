@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { recipeService } from "@/lib/services/recipe.service";
+import { useAuth } from "@/lib/context/AuthContext";
 import type { Recipe } from "@/lib/mock-data";
 
 export default function SpinPage() {
@@ -11,12 +12,13 @@ export default function SpinPage() {
   const [error, setError] = useState<string | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const { token } = useAuth();
   const wheelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchRecipes = async () => {
       try {
-        const data = await recipeService.getAllRecipes();
+        const data = await recipeService.getAllRecipes(token || undefined);
         setRecipes(data);
       } catch (err) {
         console.error('Error fetching recipes:', err);
@@ -27,7 +29,7 @@ export default function SpinPage() {
     };
 
     fetchRecipes();
-  }, []);
+  }, [token]);
 
   const handleSpin = () => {
     if (isSpinning || recipes.length === 0) return;

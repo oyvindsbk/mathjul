@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useAuth as useAuthContext } from '@/lib/context/AuthContext';
 
 interface UserInfo {
   identityProvider: string;
@@ -10,7 +11,7 @@ interface UserInfo {
   claims: Array<{ typ: string; val: string }>;
 }
 
-export function useAuth() {
+function useStaticWebAppsAuth() {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -54,7 +55,8 @@ export function useAuth() {
 }
 
 export function AuthButton() {
-  const { user, loading, email } = useAuth();
+  const { user, loading, email } = useStaticWebAppsAuth();
+  const { logout } = useAuthContext();
 
   const handleLogout = async () => {
     try {
@@ -66,6 +68,10 @@ export function AuthButton() {
     } catch (error) {
       console.error('Failed to logout:', error);
     }
+    
+    // Clear the JWT token from context and localStorage
+    logout();
+    
     // Redirect to login
     window.location.href = '/login';
   };

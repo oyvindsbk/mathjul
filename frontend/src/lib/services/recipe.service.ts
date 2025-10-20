@@ -10,7 +10,7 @@ class RecipeService {
   /**
    * Fetch all recipes
    */
-  async getAllRecipes(): Promise<Recipe[]> {
+  async getAllRecipes(token?: string): Promise<Recipe[]> {
     if (appConfig.mocking.enabled) {
       return mockRecipes;
     }
@@ -18,7 +18,8 @@ class RecipeService {
     try {
       const response = await this.fetchWithTimeout(
         `${appConfig.api.baseUrl}/api/recipes`,
-        appConfig.mocking.fetchTimeout
+        appConfig.mocking.fetchTimeout,
+        token
       );
 
       if (!response.ok) {
@@ -35,7 +36,7 @@ class RecipeService {
   /**
    * Fetch a single recipe by ID
    */
-  async getRecipeById(id: string | number): Promise<Recipe | null> {
+  async getRecipeById(id: string | number, token?: string): Promise<Recipe | null> {
     if (appConfig.mocking.enabled) {
       const recipe = mockRecipes.find((r) => r.id === Number(id));
       return recipe || null;
@@ -44,7 +45,8 @@ class RecipeService {
     try {
       const response = await this.fetchWithTimeout(
         `${appConfig.api.baseUrl}/api/recipes/${id}`,
-        appConfig.mocking.fetchTimeout
+        appConfig.mocking.fetchTimeout,
+        token
       );
 
       if (!response.ok) {
@@ -65,24 +67,30 @@ class RecipeService {
   /**
    * Get recipe IDs for static generation
    */
-  async getRecipeIds(): Promise<number[]> {
-    const recipes = await this.getAllRecipes();
+  async getRecipeIds(token?: string): Promise<number[]> {
+    const recipes = await this.getAllRecipes(token);
     return recipes.map((r: Recipe) => r.id);
   }
 
   /**
    * Helper method to fetch with timeout
    */
-  private fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+  private fetchWithTimeout(url: string, timeoutMs: number, token?: string): Promise<Response> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
+    const headers: Record<string, string> = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+
     return fetch(url, {
       signal: controller.signal,
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-      },
+      headers,
     })
       .finally(() => clearTimeout(timeoutId));
   }

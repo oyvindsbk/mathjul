@@ -1,10 +1,15 @@
 'use client';
 
-import { useAuth } from '@/components/AuthButton';
+import { useAuth } from '@/lib/context/AuthContext';
 import Link from 'next/link';
 
 export default function AccessDenied() {
-  const { email } = useAuth();
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    window.location.href = '/.auth/logout';
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -32,7 +37,7 @@ export default function AccessDenied() {
         </h1>
 
         <p className="text-gray-600 mb-6">
-          Kontoen din {email && <span className="font-semibold">({email})</span>} har ikke tilgang til denne appen.
+          Kontoen din har ikke tilgang til denne appen.
         </p>
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -42,12 +47,12 @@ export default function AccessDenied() {
         </div>
 
         <div className="flex flex-col gap-3">
-          <a
-            href="/.auth/logout"
+          <button
+            onClick={handleLogout}
             className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
           >
             Logg ut
-          </a>
+          </button>
           <Link
             href="/"
             className="text-sm text-blue-600 hover:text-blue-700"

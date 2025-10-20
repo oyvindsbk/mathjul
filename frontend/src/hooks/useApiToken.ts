@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuth } from '../components/AuthButton';
+import { useAuth } from '@/lib/context/AuthContext';
 
 export function useApiToken() {
   const { isAuthenticated } = useAuth();
@@ -32,13 +32,10 @@ export function useApiToken() {
       }
 
       // Fetch new token from backend
-      // Important: Call the token endpoint on the SAME domain (Static Web App)
-      // so that Static Web Apps authentication headers are included
       try {
         const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
         
-        // First, try to get token from the Container Apps backend directly
-        // This requires the X-MS-CLIENT-PRINCIPAL header which we need to get from /.auth/me
+        // Get auth data from Static Web Apps
         const authResponse = await fetch('/.auth/me');
         if (!authResponse.ok) {
           throw new Error('Not authenticated with Static Web Apps');
