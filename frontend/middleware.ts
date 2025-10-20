@@ -13,8 +13,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // For local development, allow access without token if ALLOW_UNAUTHENTICATED is set
+  const isDevelopment = process.env.NODE_ENV === "development" && 
+                        process.env.NEXT_PUBLIC_ALLOW_UNAUTHENTICATED === "true";
+
   // If no token and trying to access protected route, redirect to login
-  if (!token && !pathname.startsWith("/_next") && !pathname.startsWith("/public")) {
+  if (!token && !isDevelopment && !pathname.startsWith("/_next") && !pathname.startsWith("/public")) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

@@ -40,12 +40,24 @@ public class EmailWhitelistMiddleware
             return;
         }
 
+        // Check if in development mode without auth requirement
+        var isDevelopment = _configuration["ASPNETCORE_ENVIRONMENT"] == "Development" &&
+                           _configuration.GetValue<bool>("AllowUnauthenticated");
+
         // Skip authentication for health checks and auth endpoints only
         var path = context.Request.Path.Value?.ToLower() ?? "";
         if (path.StartsWith("/health") || 
             path.StartsWith("/.auth") ||
             path == "/api/auth/token") // Allow token endpoint for login
         {
+            await _next(context);
+            return;
+        }
+
+        // In development with AllowUnauthenticated, skip auth
+        if (isDevelopment)
+        {
+            _logger.LogInformation("Development mode: skipping authentication for {Path}", path);
             await _next(context);
             return;
         }
