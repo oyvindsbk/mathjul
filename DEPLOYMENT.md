@@ -114,7 +114,7 @@ gh workflow run deploy.yml -f environment=dev
 | Resource | SKU | Monthly Cost | Purpose |
 |----------|-----|--------------|---------|
 | SQL Database | Basic | ~$5 | Recipe data storage |
-| Container Apps | 0.25 vCPU, 0.5GB | ~$0-2 | Backend API (scales to zero!) |
+| Container Apps | 0.25 vCPU, 0.5GB | ~$0-2 | Backend API |
 | Log Analytics | Pay-as-you-go | ~$0-1 | Logging and monitoring |
 | Key Vault | Standard | $0 | Secure secret storage |
 | Static Web App | Free | $0 | Frontend hosting |
