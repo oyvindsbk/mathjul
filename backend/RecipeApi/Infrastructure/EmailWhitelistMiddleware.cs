@@ -47,9 +47,7 @@ public class EmailWhitelistMiddleware
             path == "/" ||
             (path == "/api/recipes" && context.Request.Method == "GET") ||
             (path.StartsWith("/api/recipes/") && context.Request.Method == "GET") || // Allow viewing individual recipes
-            path == "/api/auth/token" || // Allow token endpoint for authenticated users
-            path.StartsWith("/api/recipes/from-image") || // TEMPORARY: Allow image upload for testing
-            path.StartsWith("/api/recipes/save-extracted")) // TEMPORARY: Allow save for testing
+            path == "/api/auth/token") // Allow token endpoint for login
         {
             await _next(context);
             return;
