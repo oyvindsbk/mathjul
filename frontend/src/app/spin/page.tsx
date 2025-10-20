@@ -2,11 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-
-interface Recipe {
-  id: number;
-  title: string;
-}
+import { recipeService } from "@/lib/services/recipe.service";
+import type { Recipe } from "@/lib/mock-data";
 
 export default function SpinPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -19,43 +16,11 @@ export default function SpinPage() {
   useEffect(() => {
     const fetchRecipes = async () => {
       try {
-        // Get token from cookie
-        const cookies = document.cookie.split(';').reduce((acc: Record<string, string>, cookie) => {
-          const [key, value] = cookie.trim().split('=');
-          acc[key] = value;
-          return acc;
-        }, {});
-
-        const token = cookies['auth_token'];
-
-        const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5238';
-        const headers: HeadersInit = {
-          'Content-Type': 'application/json',
-        };
-
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        const response = await fetch(`${apiUrl}/api/recipes`, { headers });
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch recipes: ${response.statusText}`);
-        }
-
-        const data = await response.json();
+        const data = await recipeService.getAllRecipes();
         setRecipes(data);
       } catch (err) {
         console.error('Error fetching recipes:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch recipes');
-
-        // Fallback to mock data
-        setRecipes([
-          { id: 1, title: "Classic Spaghetti Carbonara" },
-          { id: 2, title: "Chicken Tikka Masala" },
-          { id: 3, title: "Chocolate Chip Cookies" },
-          { id: 4, title: "Caesar Salad" },
-        ]);
       } finally {
         setLoading(false);
       }

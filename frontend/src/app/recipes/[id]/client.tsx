@@ -2,21 +2,20 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { recipeService } from "@/lib/services/recipe.service";
+import type { Recipe } from "@/lib/mock-data";
 
-interface RecipeDetail {
-  id: number;
-  title: string;
-  description: string;
-  cookTime: string;
+interface RecipeDetail extends Recipe {
+  cookTime?: string;
   cookTimeMinutes?: number;
   prepTime?: number;
-  difficulty: string;
-  imageUrl: string;
+  difficulty?: string;
+  imageUrl?: string;
   servings?: number;
-  ingredients: string[];
-  instructions: string[];
-  createdAt: string;
-  updatedAt: string;
+  ingredients?: string[];
+  instructions?: string[];
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export default function RecipeDetailClient({ id }: { id: string }) {
@@ -27,32 +26,14 @@ export default function RecipeDetailClient({ id }: { id: string }) {
   useEffect(() => {
     const fetchRecipe = async () => {
       try {
-        // Get token from cookie
-        const cookies = document.cookie.split(';').reduce((acc: Record<string, string>, cookie) => {
-          const [key, value] = cookie.trim().split('=');
-          acc[key] = value;
-          return acc;
-        }, {});
+        const data = await recipeService.getRecipeById(id);
         
-        const token = cookies['auth_token'];
-        
-        const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5238';
-        const headers: HeadersInit = {
-          'Content-Type': 'application/json',
-        };
-        
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
+        if (!data) {
+          setError('Recipe not found');
+          setRecipe(null);
+        } else {
+          setRecipe(data as RecipeDetail);
         }
-        
-        const response = await fetch(`${apiUrl}/api/recipes/${id}`, { headers });
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch recipe: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        setRecipe(data);
       } catch (err) {
         console.error('Error fetching recipe:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch recipe');
@@ -155,7 +136,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
               <div className="text-center">
                 <div className="text-sm text-gray-500">Last Updated</div>
                 <div className="text-sm text-gray-600">
-                  {new Date(recipe.updatedAt).toLocaleDateString()}
+                  {recipe.updatedAt ? new Date(recipe.updatedAt).toLocaleDateString() : 'N/A'}
                 </div>
               </div>
             </div>
@@ -167,16 +148,20 @@ export default function RecipeDetailClient({ id }: { id: string }) {
             <div className="bg-white rounded-lg shadow-md p-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Ingredients</h2>
               <ul className="space-y-3">
-                {recipe.ingredients.map((ingredient: string, index: number) => (
-                  <li key={index} className="flex items-start">
-                    <input 
-                      type="checkbox" 
-                      className="mt-1 mr-3 w-4 h-4 text-blue-600 rounded cursor-pointer"
-                      aria-label={`Ingredient: ${ingredient}`}
-                    />
-                    <span className="text-gray-700">{ingredient}</span>
-                  </li>
-                ))}
+                {recipe.ingredients && recipe.ingredients.length > 0 ? (
+                  recipe.ingredients.map((ingredient: string, index: number) => (
+                    <li key={index} className="flex items-start">
+                      <input 
+                        type="checkbox" 
+                        className="mt-1 mr-3 w-4 h-4 text-blue-600 rounded cursor-pointer"
+                        aria-label={`Ingredient: ${ingredient}`}
+                      />
+                      <span className="text-gray-700">{ingredient}</span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-gray-500">No ingredients available</li>
+                )}
               </ul>
             </div>
           </div>
@@ -185,14 +170,18 @@ export default function RecipeDetailClient({ id }: { id: string }) {
             <div className="bg-white rounded-lg shadow-md p-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">Instructions</h2>
               <ol className="space-y-4">
-                {recipe.instructions.map((instruction: string, index: number) => (
-                  <li key={index} className="flex items-start">
-                    <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-semibold mr-4 flex-shrink-0">
-                      {index + 1}
-                    </span>
-                    <span className="text-gray-700 pt-1">{instruction}</span>
-                  </li>
-                ))}
+                {recipe.instructions && recipe.instructions.length > 0 ? (
+                  recipe.instructions.map((instruction: string, index: number) => (
+                    <li key={index} className="flex items-start">
+                      <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-semibold mr-4 flex-shrink-0">
+                        {index + 1}
+                      </span>
+                      <span className="text-gray-700 pt-1">{instruction}</span>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-gray-500">No instructions available</li>
+                )}
               </ol>
             </div>
           </div>
