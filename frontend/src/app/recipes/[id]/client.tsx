@@ -52,7 +52,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading recipe...</p>
+          <p className="text-gray-600">Laster inn oppskrift...</p>
         </div>
       </div>
     );
@@ -69,7 +69,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to Recipes
+            Tilbake til oppskrifter
           </Link>
           <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-lg">
             <p className="font-semibold">Error</p>
@@ -118,23 +118,23 @@ export default function RecipeDetailClient({ id }: { id: string }) {
               {recipe.prepTime && (
                 <div className="text-center">
                   <div className="text-2xl font-bold text-gray-900">{recipe.prepTime}</div>
-                  <div className="text-sm text-gray-600">Prep Time (min)</div>
+                  <div className="text-sm text-gray-600">Forberedelsestid (min)</div>
                 </div>
               )}
               {recipe.cookTimeMinutes && (
                 <div className="text-center">
                   <div className="text-2xl font-bold text-gray-900">{recipe.cookTimeMinutes}</div>
-                  <div className="text-sm text-gray-600">Cook Time (min)</div>
+                  <div className="text-sm text-gray-600">Stektid (min)</div>
                 </div>
               )}
               {recipe.servings && (
                 <div className="text-center">
                   <div className="text-2xl font-bold text-gray-900">{recipe.servings}</div>
-                  <div className="text-sm text-gray-600">Servings</div>
+                  <div className="text-sm text-gray-600">Porsjoner</div>
                 </div>
               )}
               <div className="text-center">
-                <div className="text-sm text-gray-500">Last Updated</div>
+                <div className="text-sm text-gray-500">Sist oppdatert</div>
                 <div className="text-sm text-gray-600">
                   {recipe.updatedAt ? new Date(recipe.updatedAt).toLocaleDateString() : 'N/A'}
                 </div>
@@ -146,7 +146,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Ingredients</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Ingredienser</h2>
               <ul className="space-y-3">
                 {recipe.ingredients && recipe.ingredients.length > 0 ? (
                   recipe.ingredients.map((ingredient: string, index: number) => (
@@ -160,7 +160,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
                     </li>
                   ))
                 ) : (
-                  <li className="text-gray-500">No ingredients available</li>
+                  <li className="text-gray-500">Ingen ingredienser tilgjengelig</li>
                 )}
               </ul>
             </div>
@@ -168,7 +168,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
 
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-md p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Instructions</h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">Instruksjoner</h2>
               <ol className="space-y-4">
                 {recipe.instructions && recipe.instructions.length > 0 ? (
                   recipe.instructions.map((instruction: string, index: number) => (
@@ -180,7 +180,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
                     </li>
                   ))
                 ) : (
-                  <li className="text-gray-500">No instructions available</li>
+                  <li className="text-gray-500">Ingen instruksjoner tilgjengelig</li>
                 )}
               </ol>
             </div>

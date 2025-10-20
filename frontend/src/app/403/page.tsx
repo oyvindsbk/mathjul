@@ -28,16 +28,16 @@ export default function AccessDenied() {
         </div>
 
         <h1 className="text-2xl font-bold text-gray-900 mb-4">
-          Access Denied
+          Tilgang nektet
         </h1>
 
         <p className="text-gray-600 mb-6">
-          Your account {email && <span className="font-semibold">({email})</span>} is not authorized to access this application.
+          Kontoen din {email && <span className="font-semibold">({email})</span>} har ikke tilgang til denne appen.
         </p>
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
           <p className="text-sm text-blue-800">
-            💡 <strong>Need access?</strong> Please contact an administrator to request access to the application.
+            💡 <strong>Trenger tilgang?</strong> Kontakt en administrator for å anmode om tilgang til appen.
           </p>
         </div>
 
@@ -46,13 +46,13 @@ export default function AccessDenied() {
             href="/.auth/logout"
             className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors"
           >
-            Logout
+            Logg ut
           </a>
           <Link
             href="/"
             className="text-sm text-blue-600 hover:text-blue-700"
           >
-            ← Back to home
+            ← Tilbake til hjem
           </Link>
         </div>
       </div>

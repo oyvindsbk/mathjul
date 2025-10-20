@@ -99,7 +99,7 @@ export default function Home() {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading recipes...</p>
+          <p className="text-gray-600">Laster inn oppskrifter...</p>
         </div>
       </div>
     );
@@ -114,15 +114,15 @@ export default function Home() {
         
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Food Recipes
+            Matoppskrifter
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Discover delicious recipes from around the world. From quick weeknight dinners to special occasion treats.
+            Oppdag deilige oppskrifter fra hele verden. Fra raske hverdagsmiddager til spesielle anledninger.
           </p>
           {error && (
             <div className="mt-4 p-3 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-md">
               <p className="text-sm">
-                API connection failed, showing sample data. {error}
+                API-tilkobling mislyktes, viser eksempeldata. {error}
               </p>
             </div>
           )}
@@ -136,7 +136,7 @@ export default function Home() {
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Upload Recipe from Image
+              Last opp oppskrift fra bilde
             </a>
           </div>
         </div>
@@ -145,7 +145,7 @@ export default function Home() {
           {recipes.map((recipe) => (
             <div key={recipe.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
               <div className="h-48 bg-gray-200 flex items-center justify-center">
-                <span className="text-gray-500">Recipe Image</span>
+                <span className="text-gray-500">Oppskrift bilde</span>
               </div>
               <div className="p-6">
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -175,7 +175,7 @@ export default function Home() {
                   href={`/recipes/${recipe.id}`}
                   className="block w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors duration-200 text-center"
                 >
-                  View Recipe
+                  Vis oppskrift
                 </Link>
               </div>
             </div>

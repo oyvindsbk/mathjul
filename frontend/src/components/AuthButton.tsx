@@ -82,13 +82,13 @@ export function AuthButton() {
     return (
       <div className="flex items-center gap-4">
         <span className="text-sm text-gray-600">
-          👤 {email || 'User'}
+          👤 {email || 'Bruker'}
         </span>
         <button
           onClick={handleLogout}
           className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
         >
-          Logout
+          Logg ut
         </button>
       </div>
     );
@@ -99,7 +99,7 @@ export function AuthButton() {
       href="/.auth/login/google"
       className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
     >
-      Login with Google
+      Logg inn med Google
     </a>
   );
 }

@@ -113,7 +113,7 @@ export default function SpinPage() {
           Snurr mathjulet
         </h1>
         <p className="text-center text-gray-600 mb-12">
-          Spin the wheel and let fate decide your next recipe!
+          Snurr hjulet og la skjebnen bestemme din neste oppskrift!
         </p>
 
         {error && (
@@ -178,7 +178,7 @@ export default function SpinPage() {
               disabled={isSpinning}
               className="px-8 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold text-lg rounded-full shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
             >
-              {isSpinning ? '🎡 Spinning...' : '🎡 Start Spinning!'}
+              {isSpinning ? '🎡 Spinner...' : '🎡 Start snurring!'}
             </button>
           </div>
 
@@ -189,7 +189,7 @@ export default function SpinPage() {
                 <div className="text-center">
                   <div className="text-6xl mb-4">🍽️</div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                    You got:
+                    Du fikk:
                   </h2>
                   <p className="text-3xl font-bold text-blue-600 mb-6">
                     {selectedRecipe.title}
@@ -198,7 +198,7 @@ export default function SpinPage() {
                     href={`/recipes/${selectedRecipe.id}`}
                     className="inline-block px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-200"
                   >
-                    View Recipe →
+                    Vis oppskrift →
                   </Link>
                 </div>
               </div>
@@ -207,7 +207,7 @@ export default function SpinPage() {
                 <div className="text-center py-8">
                   <div className="text-6xl mb-4">❓</div>
                   <p className="text-gray-600 text-lg">
-                    Click the spin button to discover your next recipe!
+                    Klikk spin-knappen for å oppdage din neste oppskrift!
                   </p>
                 </div>
               </div>
@@ -218,7 +218,7 @@ export default function SpinPage() {
         {/* Recipe List */}
         <div className="mt-12">
           <h3 className="text-2xl font-bold text-gray-900 mb-6">
-            Available Recipes ({recipes.length})
+            Tilgjengelige oppskrifter ({recipes.length})
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {recipes.map((recipe: Recipe, index: number) => (

@@ -11,8 +11,8 @@ export function Sidebar() {
   return (
     <aside className="w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white min-h-screen shadow-lg">
       <div className="p-6">
-        <h1 className="text-2xl font-bold mb-2">Food Recipes</h1>
-        <p className="text-sm text-slate-300">Recipe Explorer</p>
+        <h1 className="text-2xl font-bold mb-2">Matoppskrifter</h1>
+        <p className="text-sm text-slate-300">Oppskrift Utforsker</p>
       </div>
 
       <nav className="mt-8 space-y-2 px-4">
@@ -32,7 +32,7 @@ export function Sidebar() {
             >
               <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
             </svg>
-            <span>Home</span>
+            <span>Hjem</span>
           </div>
         </Link>
 
