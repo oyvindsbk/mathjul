@@ -1,44 +1,47 @@
 import RecipeDetailClient from './client';
 
 export async function generateStaticParams() {
-  // Default fallback for static export when API is unavailable
-  const fallbackParams = [
-    { id: '1' },
-    { id: '2' },
-    { id: '3' },
-    { id: '4' },
-  ];
-
-  // Only attempt to fetch recipes in local development
-  if (process.env.NODE_ENV !== 'production') {
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5238';
-      const response = await fetch(`${apiUrl}/api/recipes`, {
-        headers: {
-          'Accept': 'application/json',
-        },
-        signal: AbortSignal.timeout(5000), // 5 second timeout
-      });
-      
-      if (response.ok) {
-        const recipes = await response.json();
-        return recipes.map((recipe: { id: number }) => ({
-          id: recipe.id.toString(),
-        }));
-      }
-    } catch {
-      // Silently fall back to mock data in production build
+  try {
+    const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5238';
+    const response = await fetch(`${apiUrl}/api/recipes`, {
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+    
+    if (!response.ok) {
+      console.error('Failed to fetch recipes for static params');
+      // Fallback to mock IDs for static export
+      return [
+        { id: '1' },
+        { id: '2' },
+        { id: '3' },
+        { id: '4' },
+      ];
     }
+    
+    const recipes = await response.json();
+    return recipes.map((recipe: { id: number }) => ({
+      id: recipe.id.toString(),
+    }));
+  } catch (error) {
+    console.error('Error generating static params:', error);
+    // Fallback to mock IDs for static export when API is unavailable
+    return [
+      { id: '1' },
+      { id: '2' },
+      { id: '3' },
+      { id: '4' },
+    ];
   }
-
-  return fallbackParams;
 }
 
 interface PageParams {
   id: string;
 }
 
-export default function RecipeDetailPage({ params }: { params: PageParams }) {
-  return <RecipeDetailClient id={params.id} />;
+export default async function RecipeDetailPage({ params }: { params: Promise<PageParams> }) {
+  const { id } = await params;
+  return <RecipeDetailClient id={id} />;
 }
 
