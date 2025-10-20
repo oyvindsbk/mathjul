@@ -176,6 +176,7 @@ export default function SpinPage() {
             <button
               onClick={handleSpin}
               disabled={isSpinning}
+              data-testid="spin-button"
               className="px-8 py-4 bg-gradient-to-r from-red-500 to-red-600 text-white font-bold text-lg rounded-full shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 hover:scale-105"
             >
               {isSpinning ? '🎡 Spinner...' : '🎡 Start snurring!'}
@@ -185,17 +186,18 @@ export default function SpinPage() {
           {/* Result Panel */}
           <div className="lg:min-h-80 flex flex-col justify-center gap-6">
             {selectedRecipe ? (
-              <div className="bg-white rounded-lg shadow-xl p-8 max-w-sm">
+              <div className="bg-white rounded-lg shadow-xl p-8 max-w-sm" data-testid="result-panel">
                 <div className="text-center">
                   <div className="text-6xl mb-4">🍽️</div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">
                     Du fikk:
                   </h2>
-                  <p className="text-3xl font-bold text-blue-600 mb-6">
+                  <p className="text-3xl font-bold text-blue-600 mb-6" data-testid="result-recipe-title">
                     {selectedRecipe.title}
                   </p>
                   <Link
                     href={`/recipes/${selectedRecipe.id}`}
+                    data-testid="view-recipe-link"
                     className="inline-block px-6 py-3 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors duration-200"
                   >
                     Vis oppskrift →
@@ -220,11 +222,12 @@ export default function SpinPage() {
           <h3 className="text-2xl font-bold text-gray-900 mb-6">
             Tilgjengelige oppskrifter ({recipes.length})
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" data-testid="recipes-list">
             {recipes.map((recipe: Recipe, index: number) => (
               <Link
                 key={recipe.id}
                 href={`/recipes/${recipe.id}`}
+                data-testid={`recipe-list-item-${recipe.id}`}
                 className="p-4 bg-white rounded-lg shadow hover:shadow-md transition-shadow duration-200 cursor-pointer border-l-4"
                 style={{ borderColor: colors[index % colors.length] }}
               >

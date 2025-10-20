@@ -11,13 +11,14 @@ export function Sidebar() {
   return (
     <aside className="w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white min-h-screen shadow-lg">
       <div className="p-6">
-        <h1 className="text-2xl font-bold mb-2">Matoppskrifter</h1>
-        <p className="text-sm text-slate-300">Oppskrift Utforsker</p>
+        <h1 className="text-2xl font-bold mb-2" data-testid="sidebar-title">Matoppskrifter</h1>
+        <p className="text-sm text-slate-300" data-testid="sidebar-subtitle">Oppskrift Utforsker</p>
       </div>
 
       <nav className="mt-8 space-y-2 px-4">
         <Link
           href="/"
+          data-testid="nav-home"
           className={`block px-4 py-3 rounded-lg transition-colors duration-200 ${
             isActive("/")
               ? "bg-blue-600 text-white"
@@ -38,6 +39,7 @@ export function Sidebar() {
 
         <Link
           href="/spin"
+          data-testid="nav-spin"
           className={`block px-4 py-3 rounded-lg transition-colors duration-200 ${
             isActive("/spin")
               ? "bg-blue-600 text-white"
