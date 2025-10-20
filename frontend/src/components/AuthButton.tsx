@@ -56,12 +56,18 @@ export function useAuth() {
 export function AuthButton() {
   const { user, loading, email } = useAuth();
 
-  const handleLogout = () => {
-    // Clear API token from localStorage
-    localStorage.removeItem('api_token');
-    localStorage.removeItem('api_token_expiry');
-    // Redirect to logout
-    window.location.href = '/.auth/logout';
+  const handleLogout = async () => {
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5238';
+      await fetch(`${apiUrl}/api/auth/logout`, {
+        method: 'POST',
+        credentials: 'include', // Include cookies
+      });
+    } catch (error) {
+      console.error('Failed to logout:', error);
+    }
+    // Redirect to login
+    window.location.href = '/login';
   };
 
   if (loading) {

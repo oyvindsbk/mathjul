@@ -40,13 +40,10 @@ public class EmailWhitelistMiddleware
             return;
         }
 
-        // Skip authentication for health checks and public endpoints
+        // Skip authentication for health checks and auth endpoints only
         var path = context.Request.Path.Value?.ToLower() ?? "";
         if (path.StartsWith("/health") || 
             path.StartsWith("/.auth") ||
-            path == "/" ||
-            (path == "/api/recipes" && context.Request.Method == "GET") ||
-            (path.StartsWith("/api/recipes/") && context.Request.Method == "GET") || // Allow viewing individual recipes
             path == "/api/auth/token") // Allow token endpoint for login
         {
             await _next(context);

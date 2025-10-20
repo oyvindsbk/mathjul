@@ -87,6 +87,15 @@ public class AuthController : ControllerBase
 
             _logger.LogInformation("Generated token for user {Email}", email);
 
+            // Set token as HttpOnly cookie for security
+            Response.Cookies.Append("auth_token", token, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTimeOffset.UtcNow.AddDays(1)
+            });
+
             return Ok(new
             {
                 token,
@@ -104,5 +113,13 @@ public class AuthController : ControllerBase
             _logger.LogError(ex, "Failed to generate token: {Message}", ex.Message);
             return StatusCode(500, new { error = "Failed to generate token", details = ex.Message });
         }
+    }
+
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        // Clear the auth token cookie
+        Response.Cookies.Delete("auth_token");
+        return Ok(new { message = "Logged out successfully" });
     }
 }

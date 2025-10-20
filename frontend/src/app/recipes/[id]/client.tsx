@@ -27,8 +27,25 @@ export default function RecipeDetailClient({ id }: { id: string }) {
   useEffect(() => {
     const fetchRecipe = async () => {
       try {
+        // Get token from cookie
+        const cookies = document.cookie.split(';').reduce((acc: Record<string, string>, cookie) => {
+          const [key, value] = cookie.trim().split('=');
+          acc[key] = value;
+          return acc;
+        }, {});
+        
+        const token = cookies['auth_token'];
+        
         const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5238';
-        const response = await fetch(`${apiUrl}/api/recipes/${id}`);
+        const headers: HeadersInit = {
+          'Content-Type': 'application/json',
+        };
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+        
+        const response = await fetch(`${apiUrl}/api/recipes/${id}`, { headers });
         
         if (!response.ok) {
           throw new Error(`Failed to fetch recipe: ${response.statusText}`);
