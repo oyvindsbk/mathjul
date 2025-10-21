@@ -7,19 +7,31 @@ using Azure.Security.KeyVault.Secrets;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure database context based on build configuration
-#if DEBUG
-// Use Aspire service defaults in development
+// Add service defaults for Aspire telemetry and health checks
 builder.AddServiceDefaults();
-builder.AddSqlServerDbContext<RecipeDbContext>("recipedb");
-#else
-// Production: Configure SQL Server directly
-var connectionString = builder.Configuration.GetConnectionString("RecipeDb")
-    ?? throw new InvalidOperationException("Connection string 'RecipeDb' not found.");
 
-builder.Services.AddDbContext<RecipeDbContext>(options =>
-    options.UseSqlServer(connectionString));
-#endif
+// Configure database context
+// When running via Aspire, the connection string is injected automatically via AddSqlServerDbContext
+// When running standalone, it reads from appsettings.json or environment variables
+var hasAspireConnection = !string.IsNullOrEmpty(builder.Configuration.GetConnectionString("recipedb"));
+
+if (hasAspireConnection)
+{
+    // Running via Aspire - use the injected connection string
+    builder.AddSqlServerDbContext<RecipeDbContext>("recipedb");
+}
+else
+{
+    // Running standalone - read from configuration
+    var connectionString = builder.Configuration.GetConnectionString("RecipeDb")
+        ?? throw new InvalidOperationException(
+            "Connection string 'RecipeDb' not found in configuration. " +
+            "Either run via Aspire (dotnet run --project aspire/FoodRecipesApp/FoodRecipesApp.csproj) " +
+            "or configure ConnectionStrings:RecipeDb in appsettings.json");
+
+    builder.Services.AddDbContext<RecipeDbContext>(options =>
+        options.UseSqlServer(connectionString));
+}
 
 // Add services to the container.
 builder.Services.AddControllers();
