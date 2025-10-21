@@ -7,6 +7,8 @@ WORKDIR /src
 COPY ["RecipeApi.csproj", "./"]
 RUN dotnet restore "RecipeApi.csproj"
 COPY . .
+# Copy appsettings files so configuration can be read during build
+COPY ["appsettings*.json", "./"]
 RUN dotnet build "RecipeApi.csproj" -c Release -o /app/build
 
 FROM build AS publish

@@ -24,7 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\aspire\FoodRecipesApp.ServiceDefaults\FoodRecipesApp.ServiceDefaults.csproj" Condition="'$(Configuration)' == 'Debug'" />
+    <ProjectReference Include="..\..\aspire\FoodRecipesApp.ServiceDefaults\FoodRecipesApp.ServiceDefaults.csproj" />
   </ItemGroup>
 
 </Project>

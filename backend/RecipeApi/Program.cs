@@ -7,12 +7,15 @@ using Azure.Security.KeyVault.Secrets;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add service defaults for Aspire telemetry and health checks
+// Add service defaults for Aspire telemetry and health checks (available in Debug builds)
+#if DEBUG
 builder.AddServiceDefaults();
+#endif
 
 // Configure database context
-// When running via Aspire, the connection string is injected automatically via AddSqlServerDbContext
-// When running standalone, it reads from appsettings.json or environment variables
+// When running via Aspire (Debug), the connection string is injected automatically via AddSqlServerDbContext
+// When running standalone/Docker (Release), it reads from appsettings.json or environment variables
+#if DEBUG
 var hasAspireConnection = !string.IsNullOrEmpty(builder.Configuration.GetConnectionString("recipedb"));
 
 if (hasAspireConnection)
@@ -22,16 +25,29 @@ if (hasAspireConnection)
 }
 else
 {
-    // Running standalone - read from configuration
-    var connectionString = builder.Configuration.GetConnectionString("RecipeDb")
-        ?? throw new InvalidOperationException(
-            "Connection string 'RecipeDb' not found in configuration. " +
-            "Either run via Aspire (dotnet run --project aspire/FoodRecipesApp/FoodRecipesApp.csproj) " +
-            "or configure ConnectionStrings:RecipeDb in appsettings.json");
-
+    // Debug fallback - read from configuration
+    var connectionString = builder.Configuration.GetConnectionString("RecipeDb") 
+        ?? throw new InvalidOperationException("Connection string 'RecipeDb' not found in appsettings.json");
+    
     builder.Services.AddDbContext<RecipeDbContext>(options =>
         options.UseSqlServer(connectionString));
 }
+#else
+// Release/Production - get connection string from config or environment variable
+var connectionString = builder.Configuration.GetConnectionString("RecipeDb") 
+    ?? Environment.GetEnvironmentVariable("CONNECTION_STRING_RECIPEDB");
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new InvalidOperationException(
+        "Connection string 'RecipeDb' not found. " +
+        "Set ConnectionStrings:RecipeDb in appsettings.json " +
+        "or set CONNECTION_STRING_RECIPEDB environment variable.");
+}
+
+builder.Services.AddDbContext<RecipeDbContext>(options =>
+    options.UseSqlServer(connectionString));
+#endif
 
 // Add services to the container.
 builder.Services.AddControllers();
