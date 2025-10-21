@@ -1,0 +1,38 @@
+{
+  "navigationFallback": {
+    "rewrite": "404.html",
+    "exclude": [
+      "*.{css,scss,js,html,woff,woff2,ttf,otf,eot}",
+      "*.svg",
+      "*.png",
+      "*.jpg",
+      "*.jpeg",
+      "*.gif"
+    ]
+  },
+  "missionControl": {
+    "allowedRoles": ["authenticated"]
+  },
+  "routes": [
+    {
+      "route": "/login",
+      "allowedRoles": ["anonymous", "authenticated"]
+    },
+    {
+      "route": "/api/auth/*",
+      "allowedRoles": ["anonymous", "authenticated"]
+    },
+    {
+      "route": "/.auth/*",
+      "allowedRoles": ["anonymous", "authenticated"]
+    },
+    {
+      "route": "/upload",
+      "allowedRoles": ["authenticated"]
+    },
+    {
+      "route": "/*",
+      "allowedRoles": ["authenticated"]
+    }
+  ]
+}

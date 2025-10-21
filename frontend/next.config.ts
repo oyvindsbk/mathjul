@@ -1,9 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Use export for static export to Azure Static Web Apps
-  output: 'export',
-  // Disable image optimization for static export
+  // Use standalone for Azure Static Web Apps with Node.js runtime
+  output: 'standalone',
+  // Disable image optimization for standalone builds
   images: {
     unoptimized: true,
   },

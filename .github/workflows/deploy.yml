@@ -185,7 +185,7 @@ jobs:
         action: "upload"
         app_location: "/frontend"
         api_location: ""
-        output_location: "out"
+        output_location: ".next/standalone"
         skip_app_build: false
         skip_api_build: true
     
