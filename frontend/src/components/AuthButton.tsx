@@ -66,14 +66,16 @@ export function AuthButton() {
         credentials: 'include', // Include cookies
       });
     } catch (error) {
-      console.error('Failed to logout:', error);
+      console.error('Failed to logout from backend:', error);
     }
     
     // Clear the JWT token from context and localStorage
     logout();
     
-    // Redirect to login
-    window.location.href = '/login';
+    // On Azure Static Web Apps, use the built-in logout endpoint
+    // This clears the Static Web Apps session
+    // post_logout_redirect_uri is optional, defaults to home page
+    window.location.href = '/.auth/logout?post_logout_redirect_uri=/login';
   };
 
   if (loading) {
