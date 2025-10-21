@@ -28,6 +28,11 @@ class RecipeService {
 
       return await response.json();
     } catch (error) {
+      // In production, never fallback to mock data - let error propagate
+      if (process.env.NODE_ENV === 'production') {
+        throw error;
+      }
+      
       console.warn('Failed to fetch recipes from API, using mock data:', error);
       return mockRecipes;
     }
@@ -58,6 +63,11 @@ class RecipeService {
 
       return await response.json();
     } catch (error) {
+      // In production, never fallback to mock data - let error propagate
+      if (process.env.NODE_ENV === 'production') {
+        throw error;
+      }
+      
       console.warn(`Failed to fetch recipe ${id} from API, using mock data:`, error);
       const recipe = mockRecipes.find((r: Recipe) => r.id === Number(id));
       return recipe || null;

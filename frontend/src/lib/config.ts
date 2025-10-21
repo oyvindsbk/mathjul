@@ -11,11 +11,11 @@ export const appConfig = {
 
   // Mock Configuration
   mocking: {
-    // Enable mock data fallback when API is unavailable
-    // In production builds, this is always true to ensure static export works
-    enabled: process.env.NODE_ENV === 'production' || process.env.NEXT_PUBLIC_MOCK_DATA === 'true',
+    // Enable mock data by default in development only
+    // In production, no fallback to mocks - API errors will be handled by error boundaries
+    enabled: process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_MOCK_DATA !== 'false',
     
-    // Timeout (ms) before falling back to mock data
+    // Timeout (ms) before considering API unavailable
     fetchTimeout: 5000,
   },
 
