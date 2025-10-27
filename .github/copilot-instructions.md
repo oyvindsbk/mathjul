@@ -57,9 +57,9 @@ dotnet run --project aspire/FoodRecipesApp/FoodRecipesApp.csproj
 cd frontend && npm run dev
 ```
 
-**Feature Branch Workflow** (ALWAYS use feature branches):
+**Feature Branch Workflow** (ALWAYS use feature branches - NO EXCEPTIONS):
 ```bash
-# Create feature branch from main
+# FIRST: Create and switch to feature branch BEFORE making ANY changes
 git checkout main
 git pull origin main
 git checkout -b feature/your-feature-name
@@ -69,10 +69,11 @@ git checkout -b feature/your-feature-name
 git add .
 git commit -m "feat: description of changes"
 
-# Push to remote
+# IMPORTANT: When pushing, always push to feature branch FIRST
 git push origin feature/your-feature-name
 
-# Create pull request on GitHub (do NOT push directly to main)
+# Then create a pull request on GitHub (NEVER push directly to main)
+# Review the changes in the PR before merging
 ```
 
 **Testing Before Push** (REQUIRED):
