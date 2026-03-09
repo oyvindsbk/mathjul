@@ -1,9 +1,10 @@
-using Microsoft.EntityFrameworkCore;
-using RecipeApi.Infrastructure;
-using RecipeApi.Features.Recipes;
-using RecipeApi.Features.Auth;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+using RecipeApi.Features.Auth;
+using RecipeApi.Features.Recipes;
+using RecipeApi.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -75,7 +76,9 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            if (builder.Environment.IsDevelopment())
+            var isDev = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("LocalDevelopment");
+
+            if (isDev)
             {
                 policy.SetIsOriginAllowed(origin => 
                     {

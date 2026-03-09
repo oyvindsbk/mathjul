@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
 export function middleware(request: NextRequest) {
-  // In development, bypass auth entirely when NEXT_PUBLIC_ALLOW_UNAUTHENTICATED is set
-  if (process.env.NEXT_PUBLIC_ALLOW_UNAUTHENTICATED === "true") {
+  // Skip all auth checks if NEXT_PUBLIC_ALLOW_UNAUTHENTICATED is true
+  const allowUnauthenticated = process.env.NEXT_PUBLIC_ALLOW_UNAUTHENTICATED === "true";
+  if (allowUnauthenticated) {
     return NextResponse.next();
   }
 

@@ -17,7 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\FoodRecipesApp.ServiceDefaults\FoodRecipesApp.ServiceDefaults.csproj" IsAspireProjectResource="false" />
+    <ProjectReference Include="..\FoodRecipesApp.ServiceDefaults\FoodRecipesApp.ServiceDefaults.csproj" />
     <ProjectReference Include="..\..\backend\RecipeApi\RecipeApi.csproj" />
   </ItemGroup>
 

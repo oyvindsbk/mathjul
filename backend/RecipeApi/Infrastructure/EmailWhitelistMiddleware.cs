@@ -41,7 +41,8 @@ public class EmailWhitelistMiddleware
         }
 
         // Check if in development mode without auth requirement
-        var isDevelopment = _configuration["ASPNETCORE_ENVIRONMENT"] == "Development" &&
+        var environment = _configuration["ASPNETCORE_ENVIRONMENT"] ?? "";
+        var isDevelopment = (environment == "Development" || environment.StartsWith("Local", StringComparison.OrdinalIgnoreCase)) &&
                            _configuration.GetValue<bool>("AllowUnauthenticated");
 
         // Skip authentication for health checks and auth endpoints only
@@ -57,7 +58,7 @@ public class EmailWhitelistMiddleware
         // In development with AllowUnauthenticated, skip auth
         if (isDevelopment)
         {
-            _logger.LogInformation("Development mode: skipping authentication for {Path}", path);
+            _logger.LogInformation("Development mode (AllowUnauthenticated=true): skipping authentication for {Path}", path);
             await _next(context);
             return;
         }
