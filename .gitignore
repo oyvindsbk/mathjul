@@ -66,3 +66,6 @@ Desktop.ini
 **/*.tmp
 **/*.temp
 **/.cache/
+
+# Claude loop template (keep the template folder ignored if desired)
+claude-loop-template/**
