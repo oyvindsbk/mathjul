@@ -11,7 +11,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow these routes without authentication
-  const publicRoutes = ["/login", "/api/auth/callback", "/.auth", "/api/auth/token", "/api/auth/fake-callback"];
+  const publicRoutes = ["/login", "/api/auth/callback", "/api/auth/google", "/.auth", "/api/auth/token", "/api/auth/fake-callback"];
   const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
 
   if (isPublicRoute) {

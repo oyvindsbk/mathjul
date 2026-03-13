@@ -35,7 +35,7 @@ export default function LoginPage() {
                 </p>
                 <button
                   onClick={() => {
-                    window.location.href = "/.auth/login/google?post_login_redirect_uri=/api/auth/callback";
+                    window.location.href = "/api/auth/google";
                   }}
                   className="flex w-full items-center justify-center gap-3 rounded-lg bg-blue-600 px-4 py-3 font-medium text-white transition hover:bg-blue-700"
                 >
@@ -58,7 +58,7 @@ export default function LoginPage() {
               {/* Production: Show real Google login */}
               <button
                 onClick={() => {
-                  window.location.href = "/.auth/login/google?post_login_redirect_uri=/api/auth/callback";
+                  window.location.href = "/api/auth/google";
                 }}
                 className="flex w-full items-center justify-center gap-3 rounded-lg bg-blue-600 px-4 py-3 font-medium text-white transition hover:bg-blue-700"
               >

@@ -49,7 +49,8 @@ public class EmailWhitelistMiddleware
         var path = context.Request.Path.Value?.ToLower() ?? "";
         if (path.StartsWith("/health") || 
             path.StartsWith("/.auth") ||
-            path == "/api/auth/token") // Allow token endpoint for login
+            path == "/api/auth/token" ||        // dev fake login
+            path == "/api/auth/google-token")   // Google OAuth callback (no SWA)
         {
             await _next(context);
             return;

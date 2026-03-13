@@ -53,6 +53,7 @@ builder.Services.AddDbContext<RecipeDbContext>(options =>
 // Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
+builder.Services.AddHttpClient(); // Needed for Google OAuth token verification
 
 // Register services
 // Feature flag: Enable or disable the RecipeImageProcessor implementation.

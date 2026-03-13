@@ -1,9 +1,10 @@
 const { spawnSync } = require('child_process');
-const { readFileSync } = require('fs');
 const path = require('path');
 
-function run(cmd, args, opts = {}) {
-  const res = spawnSync(cmd, args, Object.assign({ stdio: 'inherit', shell: false }, opts));
+function run(cmd, opts = {}) {
+  // shell:true lets npm/npx resolve correctly on Windows without .cmd suffix.
+  // Pass the full command as a single string to avoid the args-concatenation warning.
+  const res = spawnSync(cmd, { stdio: 'inherit', shell: true, ...opts });
   if (res.status !== 0) process.exit(res.status || 1);
 }
 
@@ -22,19 +23,19 @@ function main() {
   if (frontendChanged) {
     console.log('\x1b[33m📝 Frontend files changed, running checks...\x1b[0m');
 
-    // Run ESLint (via npm script to keep behavior consistent)
+    // Run ESLint via npm script to use the project's own next/eslint versions
     console.log('\x1b[33m🔧 Running ESLint...\x1b[0m');
-    run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['next', 'lint'], { cwd: path.join(process.cwd(), 'frontend') });
+    run('npm run lint', { cwd: path.join(process.cwd(), 'frontend') });
     console.log('\x1b[32m✅ ESLint passed\x1b[0m');
 
     // Type check
     console.log('\x1b[33m📘 Running TypeScript type check...\x1b[0m');
-    run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['tsc', '--noEmit'], { cwd: path.join(process.cwd(), 'frontend') });
+    run('npx tsc --noEmit', { cwd: path.join(process.cwd(), 'frontend') });
     console.log('\x1b[32m✅ TypeScript check passed\x1b[0m');
 
     // lint-staged (auto fixes)
     console.log('\x1b[33m🎨 Running lint-staged...\x1b[0m');
-    run(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['lint-staged'], { cwd: path.join(process.cwd(), 'frontend') });
+    run('npx lint-staged', { cwd: path.join(process.cwd(), 'frontend') });
     console.log('\x1b[32m✅ lint-staged passed\x1b[0m');
   }
 

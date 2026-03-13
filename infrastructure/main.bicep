@@ -43,7 +43,7 @@ var uniqueSuffix = uniqueString(resourceGroup().id)
 var sqlServerName = 'sql-recipe-${environment}-${uniqueSuffix}'
 var sqlDatabaseName = 'RecipeDb'
 var containerAppName = 'ca-recipe-api-${environment}-${uniqueSuffix}'
-var staticWebAppName = 'stapp-recipe-${environment}-${uniqueSuffix}'
+var frontendContainerAppName = 'ca-recipe-web-${environment}-${uniqueSuffix}'
 var keyVaultName = 'kv-recipe-${environment}-${take(uniqueSuffix, 8)}'
 
 // Tags
@@ -103,13 +103,13 @@ module keyVaultAccess 'modules/key-vault-access.bicep' = {
   }
 }
 
-// Static Web App (Frontend)
-module staticWebApp 'modules/static-web-app.bicep' = {
-  name: 'staticWebAppDeployment'
+// Frontend Container App
+module frontendContainerApp 'modules/frontend-container-app.bicep' = {
+  name: 'frontendContainerAppDeployment'
   params: {
-    staticWebAppName: staticWebAppName
-    location: 'westeurope' // Static Web Apps not available in northeurope
-    apiUrl: containerApp.outputs.containerAppUrl
+    containerAppName: frontendContainerAppName
+    location: location
+    backendApiUrl: containerApp.outputs.containerAppUrl
     googleClientId: googleClientId
     googleClientSecret: googleClientSecret
     tags: commonTags
@@ -120,5 +120,5 @@ module staticWebApp 'modules/static-web-app.bicep' = {
 output keyVaultName string = keyVault.outputs.keyVaultName
 output sqlServerFqdn string = sqlServer.outputs.sqlServerFqdn
 output containerAppUrl string = containerApp.outputs.containerAppUrl
-output staticWebAppUrl string = staticWebApp.outputs.staticWebAppUrl
-output staticWebAppDeploymentToken string = staticWebApp.outputs.deploymentToken
+output frontendUrl string = frontendContainerApp.outputs.containerAppUrl
+output frontendContainerAppName string = frontendContainerApp.outputs.containerAppName

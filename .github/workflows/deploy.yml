@@ -24,7 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       container-app-name: ${{ steps.get-names.outputs.container-app-name }}
-      static-web-app-name: ${{ steps.get-names.outputs.static-web-app-name }}
+      frontend-container-app-name: ${{ steps.get-names.outputs.frontend-container-app-name }}
+      backend-url: ${{ steps.get-names.outputs.backend-url }}
     
     steps:
     - name: Azure Login
@@ -37,12 +38,17 @@ jobs:
       run: |
         CONTAINER_APP_NAME=$(az containerapp list \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --query "[0].name" -o tsv)
-        STATIC_WEB_APP_NAME=$(az staticwebapp list \
+          --query "[?contains(name, 'recipe-api')].name | [0]" -o tsv)
+        FRONTEND_APP_NAME=$(az containerapp list \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --query "[0].name" -o tsv)
+          --query "[?contains(name, 'recipe-web')].name | [0]" -o tsv)
+        BACKEND_FQDN=$(az containerapp show \
+          --name "$CONTAINER_APP_NAME" \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --query "properties.configuration.ingress.fqdn" -o tsv 2>/dev/null || echo "")
         echo "container-app-name=$CONTAINER_APP_NAME" >> $GITHUB_OUTPUT
-        echo "static-web-app-name=$STATIC_WEB_APP_NAME" >> $GITHUB_OUTPUT
+        echo "frontend-container-app-name=$FRONTEND_APP_NAME" >> $GITHUB_OUTPUT
+        echo "backend-url=https://${BACKEND_FQDN}" >> $GITHUB_OUTPUT
 
   build-and-push-image:
     runs-on: ubuntu-latest
@@ -80,6 +86,48 @@ jobs:
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  build-and-push-frontend-image:
+    runs-on: ubuntu-latest
+    needs: get-resources
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ github.repository }}/recipe-frontend
+        tags: |
+          type=sha,prefix={{branch}}-
+          type=ref,event=branch
+          type=raw,value=latest,enable={{is_default_branch}}
+    
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          NEXT_PUBLIC_API_BASE_URL=${{ needs.get-resources.outputs.backend-url }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
@@ -146,79 +194,43 @@ jobs:
 
   deploy-frontend:
     runs-on: ubuntu-latest
-    needs: [get-resources, migrate-database]
+    needs: [get-resources, build-and-push-frontend-image, migrate-database]
     
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        submodules: true
-    
     - name: Azure Login
       uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     
-    - name: Get backend URL
-      id: get-backend-url
+    - name: Update Frontend Container App
       run: |
-        BACKEND_URL=$(az containerapp show \
-          --name ${{ needs.get-resources.outputs.container-app-name }} \
+        IMAGE_TAG=$(echo "${{ needs.build-and-push-frontend-image.outputs.image-tag }}" | head -n1)
+        
+        az containerapp update \
+          --name ${{ needs.get-resources.outputs.frontend-container-app-name }} \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --query "properties.configuration.ingress.fqdn" -o tsv)
-        echo "backend-url=https://$BACKEND_URL" >> $GITHUB_OUTPUT
-        echo "🔗 Backend URL: https://$BACKEND_URL"
-    
-    - name: Get Static Web App token
-      id: get-token
-      run: |
-        TOKEN=$(az staticwebapp secrets list \
-          --name ${{ needs.get-resources.outputs.static-web-app-name }} \
-          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --query "properties.apiKey" -o tsv)
-        echo "::add-mask::$TOKEN"
-        echo "token=$TOKEN" >> $GITHUB_OUTPUT
-    
-    - name: Build and Deploy Static Web App
-      uses: Azure/static-web-apps-deploy@v1
-      env:
-        NEXT_PUBLIC_API_BASE_URL: ${{ steps.get-backend-url.outputs.backend-url }}
-      with:
-        azure_static_web_apps_api_token: ${{ steps.get-token.outputs.token }}
-        repo_token: ${{ secrets.GITHUB_TOKEN }}
-        action: "upload"
-        app_location: "/frontend"
-        api_location: ""
-        output_location: ".next/standalone"
-        skip_app_build: false
-        skip_api_build: true
-    
-    - name: Wait for frontend health
-      env:
-        FRONTEND_URL: ${{ steps.frontend-url.outputs.url }}
-      run: |
-        echo "Waiting for frontend to become healthy at https://${FRONTEND_URL}/health"
-        for i in {1..30}; do
-          status=$(curl -s -o /dev/null -w "%{http_code}" https://${FRONTEND_URL}/health || true)
-          if [ "$status" = "200" ]; then
-            echo "Frontend healthy"
-            exit 0
-          fi
-          echo "Not healthy yet (status=$status). Retrying..."
-          sleep 10
-        done
-        echo "Frontend did not become healthy in time"
-        exit 1
+          --image "$IMAGE_TAG"
     
     - name: Display frontend URL
       id: frontend-url
       run: |
-        URL=$(az staticwebapp show \
-          --name ${{ needs.get-resources.outputs.static-web-app-name }} \
+        URL=$(az containerapp show \
+          --name ${{ needs.get-resources.outputs.frontend-container-app-name }} \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --query "defaultHostname" -o tsv)
+          --query "properties.configuration.ingress.fqdn" -o tsv)
         echo "url=https://$URL" >> $GITHUB_OUTPUT
         echo "✅ Frontend deployed to: https://$URL"
+    
+    - name: Set NEXTAUTH_URL on frontend
+      # NEXTAUTH_URL must equal the app's own public URL so Google OAuth redirect URIs resolve correctly.
+      # This is a runtime env var (not baked into the image), so we set it after the URL is known.
+      run: |
+        FRONTEND_URL="${{ steps.frontend-url.outputs.url }}"
+        az containerapp update \
+          --name ${{ needs.get-resources.outputs.frontend-container-app-name }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --set-env-vars "NEXTAUTH_URL=${FRONTEND_URL}"
+        echo "🔑 NEXTAUTH_URL set to: ${FRONTEND_URL}"
     
     outputs:
       frontend-url: ${{ steps.frontend-url.outputs.url }}
