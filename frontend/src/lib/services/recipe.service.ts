@@ -1,6 +1,8 @@
 /**
  * Recipe Service
- * Handles all recipe-related API calls with fallback to mock data
+ * Handles all recipe-related API calls. Uses mock data only when explicitly enabled
+ * via `appConfig.mocking.enabled`. There is no automatic fallback to mock data
+ * on network or API errors.
  */
 
 import { appConfig } from '../config';
@@ -28,13 +30,8 @@ class RecipeService {
 
       return await response.json();
     } catch (error) {
-      // In production, never fallback to mock data - let error propagate
-      if (process.env.NODE_ENV === 'production') {
-        throw error;
-      }
-      
-      console.warn('Failed to fetch recipes from API, using mock data:', error);
-      return mockRecipes;
+      // Propagate error to caller. Do not silently fallback to mock data.
+      throw error;
     }
   }
 
@@ -63,14 +60,8 @@ class RecipeService {
 
       return await response.json();
     } catch (error) {
-      // In production, never fallback to mock data - let error propagate
-      if (process.env.NODE_ENV === 'production') {
-        throw error;
-      }
-      
-      console.warn(`Failed to fetch recipe ${id} from API, using mock data:`, error);
-      const recipe = mockRecipes.find((r: Recipe) => r.id === Number(id));
-      return recipe || null;
+      // Propagate error to caller. Do not silently fallback to mock data.
+      throw error;
     }
   }
 

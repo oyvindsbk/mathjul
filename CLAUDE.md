@@ -1,18 +1,21 @@
-<!-- SETUP GATE: If any {{PLACEHOLDER}} values remain in this file, do NOT start
-     implementing tasks. Instead, ask the user to provide values for each unfilled
-     placeholder. Once all placeholders are resolved, proceed normally. -->
-
 # mathjul -- Food Recipes Application
 
 Full-stack recipe management app with AI-powered recipe extraction. ASP.NET Core 9 backend, Next.js 15 frontend, Azure deployment with Bicep IaC.
 
 ## Spec & Plan
 
-- **Spec:** `spec/spec.md` -- full technical specification for the current feature
-- **Tasks:** `spec/tasks.md` -- implementation tasks, one per iteration
+- **Spec:** `specs/[feature-branch]/spec.md` -- full technical specification for the current feature
+- **Tasks:** `specs/[feature-branch]/tasks.md` -- implementation tasks, one per iteration
+- **Plan:** `specs/[feature-branch]/plan.md` -- technical implementation plan
 - **Build prompt:** `PROMPT.md` -- drives the autonomous loop
 
 Read the spec before starting any task. Don't guess -- read the spec.
+
+### Conventions
+
+- **Branch naming:** `###-feature-name` (e.g., `001-user-auth`)
+- **Feature directory:** `specs/[branch-name]/` containing `spec.md`, `plan.md`, `tasks.md`
+- **Optional docs:** `research.md`, `data-model.md`, `quickstart.md`, `contracts/`
 
 ## Commands
 
@@ -96,6 +99,9 @@ infrastructure/                  # Azure Bicep IaC
   main.bicep                     # Orchestration
   modules/                       # Key Vault, SQL, Container Apps, Static Web Apps
 
+specs/                           # Per-feature specs
+  001-initial-setup/             # Feature: spec.md, plan.md, tasks.md
+
 aspire/                          # .NET Aspire (local dev orchestration)
 scripts/                         # Azure deployment scripts
 .github/workflows/               # CI/CD pipelines
@@ -124,7 +130,7 @@ scripts/                         # Azure deployment scripts
 
 ## DO
 
-- Read `spec/spec.md` before starting any task
+- Read the feature spec (`specs/[branch]/spec.md`) before starting any task
 - Use strict TypeScript in frontend (`strict: true` in tsconfig)
 - Follow existing patterns and conventions in the codebase
 - Keep the inner loop -- every task must leave checks green

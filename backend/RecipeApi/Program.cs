@@ -55,7 +55,23 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
 // Register services
-builder.Services.AddScoped<IRecipeImageProcessor, RecipeImageProcessor>();
+// Feature flag: Enable or disable the RecipeImageProcessor implementation.
+// When disabled, we register a disabled/no-op implementation so DI still resolves.
+var enableRecipeImageProcessor = builder.Configuration.GetValue<bool?>("Features:EnableRecipeImageProcessor");
+if (!enableRecipeImageProcessor.HasValue)
+{
+    // Default: enabled in non-development, disabled in development
+    enableRecipeImageProcessor = !builder.Environment.IsDevelopment();
+}
+
+if (enableRecipeImageProcessor.Value)
+{
+    builder.Services.AddScoped<IRecipeImageProcessor, RecipeImageProcessor>();
+}
+else
+{
+    builder.Services.AddScoped<IRecipeImageProcessor, DisabledRecipeImageProcessor>();
+}
 builder.Services.AddSingleton<ITokenService, TokenService>();
 
 // Configure Key Vault client for email whitelist

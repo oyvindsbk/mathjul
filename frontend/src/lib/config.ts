@@ -11,10 +11,10 @@ export const appConfig = {
 
   // Mock Configuration
   mocking: {
-    // Enable mock data by default in development only
-    // In production, no fallback to mocks - API errors will be handled by error boundaries
-    enabled: process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_MOCK_DATA !== 'false',
-    
+    // Enable mock data only when explicitly requested via NEXT_PUBLIC_MOCK_DATA=true.
+    // This prevents silently defaulting to mock data during development.
+    enabled: process.env.NEXT_PUBLIC_MOCK_DATA === 'true',
+
     // Timeout (ms) before considering API unavailable
     fetchTimeout: 5000,
   },
