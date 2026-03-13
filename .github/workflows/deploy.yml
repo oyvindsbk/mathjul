@@ -193,6 +193,23 @@ jobs:
         skip_app_build: false
         skip_api_build: true
     
+    - name: Wait for frontend health
+      env:
+        FRONTEND_URL: ${{ steps.frontend-url.outputs.url }}
+      run: |
+        echo "Waiting for frontend to become healthy at https://${FRONTEND_URL}/health"
+        for i in {1..30}; do
+          status=$(curl -s -o /dev/null -w "%{http_code}" https://${FRONTEND_URL}/health || true)
+          if [ "$status" = "200" ]; then
+            echo "Frontend healthy"
+            exit 0
+          fi
+          echo "Not healthy yet (status=$status). Retrying..."
+          sleep 10
+        done
+        echo "Frontend did not become healthy in time"
+        exit 1
+    
     - name: Display frontend URL
       id: frontend-url
       run: |

@@ -33,7 +33,8 @@ resource staticWebApp 'Microsoft.Web/staticSites@2023-01-01' = {
     buildProperties: {
       appLocation: '/frontend'
       apiLocation: ''
-      outputLocation: '.next'
+      // When deploying Next.js standalone, the output directory is .next/standalone
+      outputLocation: '.next/standalone'
     }
   }
 }
@@ -46,6 +47,9 @@ resource staticWebAppSettings 'Microsoft.Web/staticSites/config@2023-01-01' = {
     NEXT_PUBLIC_API_BASE_URL: apiUrl
     GOOGLE_CLIENT_ID: googleClientId
     GOOGLE_CLIENT_SECRET: googleClientSecret
+    ,
+    // Ensure Node version is set for the Static Web App runtime
+    WEBSITE_NODE_DEFAULT_VERSION: '18'
   }
 }
 
