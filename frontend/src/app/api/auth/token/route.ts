@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 const FAKE_DEV_TOKEN =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXYtdXNlciIsImVtYWlsIjoiZGV2QGV4YW1wbGUuY29tIiwibmFtZSI6IkRldmVsb3BlciJ9.fake-signature";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     // In development with NEXT_PUBLIC_ALLOW_UNAUTHENTICATED, return a fake token
     if (

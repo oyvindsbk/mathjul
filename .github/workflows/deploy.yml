@@ -124,6 +124,10 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
     
+    - name: Restore NuGet packages
+      run: |
+        dotnet restore ./backend/RecipeApi/RecipeApi.csproj
+
     - name: Install EF Core tools
       run: dotnet tool install --global dotnet-ef
     
