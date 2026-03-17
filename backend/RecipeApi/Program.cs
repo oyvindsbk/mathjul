@@ -145,18 +145,6 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-app.MapOpenApi();
-app.MapScalarApiReference(options =>
-{
-    options.Title = "Recipe API";
-    options.WithDefaultHttpClient(ScalarTarget.JavaScript, ScalarClient.Fetch);
-    options.Authentication = new ScalarAuthenticationOptions
-    {
-        PreferredSecurityScheme = "Bearer"
-    };
-});
-
 // Global exception handler — always returns JSON so clients can parse the response
 app.UseExceptionHandler(errorApp =>
 {
@@ -172,12 +160,6 @@ app.UseExceptionHandler(errorApp =>
     });
 });
 
-// Only use HTTPS redirection in production
-if (!app.Environment.IsDevelopment())
-{
-    app.UseHttpsRedirection();
-}
-
 // IMPORTANT: CORS must come before authentication/authorization middleware
 // to handle preflight OPTIONS requests correctly
 app.UseCors("AllowFrontend");
@@ -186,6 +168,18 @@ app.UseCors("AllowFrontend");
 app.UseMiddleware<EmailWhitelistMiddleware>();
 
 app.MapControllers();
+
+// OpenAPI + Scalar — registered after middleware so auth applies correctly
+app.MapOpenApi();
+app.MapScalarApiReference(options =>
+{
+    options.Title = "Recipe API";
+    options.WithDefaultHttpClient(ScalarTarget.JavaScript, ScalarClient.Fetch);
+    options.Authentication = new ScalarAuthenticationOptions
+    {
+        PreferredSecurityScheme = "Bearer"
+    };
+});
 
 // Ensure database is created with retry logic for container startup
 using (var scope = app.Services.CreateScope())
