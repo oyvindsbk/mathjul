@@ -47,11 +47,37 @@ public class EmailWhitelistMiddleware
 
         // Skip authentication for health checks and auth endpoints only
         var path = context.Request.Path.Value?.ToLower() ?? "";
-        if (path.StartsWith("/health") || 
+        if (path.StartsWith("/health") ||
             path.StartsWith("/.auth") ||
             path == "/api/auth/token" ||        // dev fake login
             path == "/api/auth/google-token")   // Google OAuth callback (no SWA)
         {
+            await _next(context);
+            return;
+        }
+
+        // Protect Scalar / OpenAPI docs with a dedicated API key
+        if (path.StartsWith("/scalar") || path.StartsWith("/openapi"))
+        {
+            var docsApiKey = _configuration["Scalar:ApiKey"];
+            if (!string.IsNullOrWhiteSpace(docsApiKey))
+            {
+                var providedKey =
+                    context.Request.Query["api-key"].FirstOrDefault() ??
+                    context.Request.Headers.Authorization.FirstOrDefault()
+                        ?.Replace("Bearer ", "", StringComparison.OrdinalIgnoreCase);
+
+                if (providedKey != docsApiKey)
+                {
+                    context.Response.StatusCode = 401;
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        error = "Unauthorized",
+                        message = "A valid api-key is required to access the API documentation."
+                    });
+                    return;
+                }
+            }
             await _next(context);
             return;
         }

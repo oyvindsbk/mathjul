@@ -1,4 +1,5 @@
 using Azure.Extensions.AspNetCore.Configuration.Secrets;
+using Scalar.AspNetCore;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.EntityFrameworkCore;
@@ -145,10 +146,16 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+app.MapOpenApi();
+app.MapScalarApiReference(options =>
 {
-    app.MapOpenApi();
-}
+    options.Title = "Recipe API";
+    options.WithDefaultHttpClient(ScalarTarget.JavaScript, ScalarClient.Fetch);
+    options.Authentication = new ScalarAuthenticationOptions
+    {
+        PreferredSecurityScheme = "Bearer"
+    };
+});
 
 // Global exception handler — always returns JSON so clients can parse the response
 app.UseExceptionHandler(errorApp =>
