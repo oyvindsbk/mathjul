@@ -43,7 +43,7 @@ public class RecipesController : ControllerBase
         return Ok(recipes);
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{id:int}")]
     public async Task<ActionResult<RecipeDetailDto>> GetRecipeById(int id)
     {
         var recipe = await _context.Recipes.FindAsync(id);
