@@ -7,9 +7,14 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const error = searchParams.get("error");
 
+  // Derive base URL early — needed for all redirects so we never redirect to 0.0.0.0
+  const baseUrl =
+    process.env.NEXTAUTH_URL ??
+    `${request.nextUrl.protocol}//${request.nextUrl.host}`;
+
   if (error || !code) {
     console.error("Google OAuth error:", error);
-    return NextResponse.redirect(new URL("/login?error=oauth_denied", request.url));
+    return NextResponse.redirect(new URL("/login?error=oauth_denied", baseUrl));
   }
 
   try {
@@ -19,11 +24,6 @@ export async function GET(request: NextRequest) {
     if (!clientId || !clientSecret) {
       throw new Error("Google OAuth credentials not configured");
     }
-
-    // Derive base URL so it works on any host (dev or prod)
-    const baseUrl =
-      process.env.NEXTAUTH_URL ??
-      `${request.nextUrl.protocol}//${request.nextUrl.host}`;
     const redirectUri = `${baseUrl}/api/auth/google/callback`;
 
     // Exchange authorisation code for tokens (server-side — client_secret stays secret)
@@ -77,7 +77,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Set auth_token cookie and redirect to home page
-    const response = NextResponse.redirect(new URL("/", request.url));
+    const response = NextResponse.redirect(new URL("/", baseUrl));
     response.cookies.set("auth_token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -89,6 +89,6 @@ export async function GET(request: NextRequest) {
     return response;
   } catch (err) {
     console.error("Google OAuth callback error:", err);
-    return NextResponse.redirect(new URL("/login?error=auth_failed", request.url));
+    return NextResponse.redirect(new URL("/login?error=auth_failed", baseUrl));
   }
 }
