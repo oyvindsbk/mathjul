@@ -1,3 +1,4 @@
+using Azure.Extensions.AspNetCore.Configuration.Secrets;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,20 @@ var builder = WebApplication.CreateBuilder(args);
 #if DEBUG
 builder.AddServiceDefaults();
 #endif
+
+// Load secrets from Azure Key Vault (production only).
+// Key Vault secret names use '--' as a separator, which maps to ':' in configuration.
+// Example: 'ConnectionStrings--RecipeDb' -> ConnectionStrings:RecipeDb
+if (!builder.Environment.IsDevelopment())
+{
+    var keyVaultUri = builder.Configuration["KeyVault__VaultUri"];
+    if (!string.IsNullOrEmpty(keyVaultUri))
+    {
+        builder.Configuration.AddAzureKeyVault(
+            new Uri(keyVaultUri),
+            new DefaultAzureCredential());
+    }
+}
 
 // Configure database context
 // When running via Aspire (Debug), the connection string is injected automatically via AddSqlServerDbContext
@@ -75,15 +90,13 @@ else
 }
 builder.Services.AddSingleton<ITokenService, TokenService>();
 
-// Configure Key Vault client for email whitelist
-SecretClient? secretClient = null;
+// Configure Key Vault client for email whitelist (cached, refreshable reads)
 if (!builder.Environment.IsDevelopment())
 {
     var keyVaultUri = builder.Configuration["KeyVault__VaultUri"];
     if (!string.IsNullOrEmpty(keyVaultUri))
     {
-        secretClient = new SecretClient(new Uri(keyVaultUri), new DefaultAzureCredential());
-        builder.Services.AddSingleton(secretClient);
+        builder.Services.AddSingleton(new SecretClient(new Uri(keyVaultUri), new DefaultAzureCredential()));
     }
 }
 

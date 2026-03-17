@@ -65,7 +65,8 @@ resource sqlDatabase 'Microsoft.Sql/servers/databases@2023-05-01-preview' = {
   }
 }
 
-// Store connection string in Key Vault
+// Store connection string in Key Vault.
+// Name uses '--' separator so AddAzureKeyVault maps it to ConnectionStrings:RecipeDb in ASP.NET Core config.
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: keyVaultName
 }
@@ -74,7 +75,7 @@ var sqlConnectionString = 'Server=tcp:${sqlServer.properties.fullyQualifiedDomai
 
 resource sqlConnectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   parent: keyVault
-  name: 'sql-connection-string'
+  name: 'ConnectionStrings--RecipeDb'
   properties: {
     value: sqlConnectionString
   }

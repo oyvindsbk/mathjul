@@ -79,13 +79,14 @@ module sqlServer 'modules/sql-server.bicep' = {
 }
 
 // Container App (Backend API)
+// sqlConnectionString is no longer passed here — it's stored in Key Vault by sql-server.bicep
+// and loaded by the backend via AddAzureKeyVault at startup.
 module containerApp 'modules/container-app.bicep' = {
   name: 'containerAppDeployment'
   params: {
     containerAppName: containerAppName
     location: location
     keyVaultName: keyVault.outputs.keyVaultName
-    sqlConnectionString: sqlServer.outputs.connectionString
     azureOpenAIEndpoint: azureOpenAIEndpoint
     azureOpenAIKey: azureOpenAIKey
     azureOpenAIDeploymentName: azureOpenAIDeploymentName

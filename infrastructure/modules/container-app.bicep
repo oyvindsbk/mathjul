@@ -7,10 +7,6 @@ param location string
 @description('Key Vault name')
 param keyVaultName string
 
-@description('SQL connection string (for initial setup)')
-@secure()
-param sqlConnectionString string
-
 @description('Azure OpenAI endpoint')
 param azureOpenAIEndpoint string
 
@@ -63,14 +59,23 @@ resource containerAppEnvironment 'Microsoft.App/managedEnvironments@2023-05-01' 
   }
 }
 
-// Store OpenAI key in Key Vault
 resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
   name: keyVaultName
 }
 
+// Store sensitive secrets in Key Vault (loaded by backend via AddAzureKeyVault at startup).
+// Secret names use '--' as separator which maps to ':' in ASP.NET Core configuration.
+resource jwtSecretKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'Jwt--SecretKey'
+  properties: {
+    value: jwtSecretKey
+  }
+}
+
 resource openAIKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   parent: keyVault
-  name: 'openai-api-key'
+  name: 'AzureOpenAI--Key'
   properties: {
     value: azureOpenAIKey
   }
@@ -93,16 +98,6 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
         transport: 'auto'
         allowInsecure: false
       }
-      secrets: [
-        {
-          name: 'sql-connection-string'
-          value: sqlConnectionString
-        }
-        {
-          name: 'openai-key'
-          value: azureOpenAIKey
-        }
-      ]
     }
     template: {
       containers: [
@@ -134,26 +129,16 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
               name: 'ASPNETCORE_URLS'
               value: 'http://+:8080'
             }
-            // Use Key Vault references (better approach)
+            // Key Vault URI — used to bootstrap AddAzureKeyVault at startup.
+            // All other secrets (Jwt:SecretKey, AzureOpenAI:Key, ConnectionStrings:RecipeDb)
+            // are loaded from Key Vault automatically at startup.
             {
               name: 'KeyVault__VaultUri'
               value: keyVault.properties.vaultUri
             }
             {
-              name: 'ConnectionStrings__RecipeDb'
-              secretRef: 'sql-connection-string'
-            }
-            {
               name: 'AzureOpenAI__Endpoint'
               value: azureOpenAIEndpoint
-            }
-            {
-              name: 'AzureOpenAI__Key'
-              secretRef: 'openai-key'
-            }
-            {
-              name: 'AzureOpenAI__ApiKey'
-              secretRef: 'openai-key'
             }
             {
               name: 'AzureOpenAI__DeploymentName'
@@ -162,10 +147,6 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
             {
               name: 'Cors__AllowedOrigins__0'
               value: frontendUrl != '' ? frontendUrl : 'https://placeholder-update-after-deployment.com'
-            }
-            {
-              name: 'Jwt__SecretKey'
-              value: jwtSecretKey
             }
             {
               name: 'Jwt__Issuer'
