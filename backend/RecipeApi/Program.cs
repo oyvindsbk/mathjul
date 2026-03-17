@@ -83,10 +83,12 @@ if (!enableRecipeImageProcessor.HasValue)
 if (enableRecipeImageProcessor.Value)
 {
     builder.Services.AddScoped<IRecipeImageProcessor, RecipeImageProcessor>();
+    builder.Services.AddScoped<IRecipeUrlProcessor, RecipeUrlProcessor>();
 }
 else
 {
     builder.Services.AddScoped<IRecipeImageProcessor, DisabledRecipeImageProcessor>();
+    builder.Services.AddScoped<IRecipeUrlProcessor, DisabledRecipeUrlProcessor>();
 }
 builder.Services.AddSingleton<ITokenService, TokenService>();
 

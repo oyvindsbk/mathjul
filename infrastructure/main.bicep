@@ -13,15 +13,15 @@ param sqlAdminUsername string
 @secure()
 param sqlAdminPassword string
 
-@description('Azure OpenAI endpoint')
-param azureOpenAIEndpoint string
+@description('Azure AI Foundry serverless endpoint URL')
+param aiFoundryEndpoint string
 
-@description('Azure OpenAI API key')
+@description('Azure AI Foundry API key')
 @secure()
-param azureOpenAIKey string
+param aiFoundryKey string
 
-@description('Azure OpenAI deployment name')
-param azureOpenAIDeploymentName string = 'gpt-4.1-nano'
+@description('Azure AI Foundry model name')
+param aiFoundryModelName string = 'Phi-4-multimodal-instruct'
 
 @description('Initial approved email addresses for access control (comma-separated)')
 param approvedEmails string = ''
@@ -87,9 +87,9 @@ module containerApp 'modules/container-app.bicep' = {
     containerAppName: containerAppName
     location: location
     keyVaultName: keyVault.outputs.keyVaultName
-    azureOpenAIEndpoint: azureOpenAIEndpoint
-    azureOpenAIKey: azureOpenAIKey
-    azureOpenAIDeploymentName: azureOpenAIDeploymentName
+    aiFoundryEndpoint: aiFoundryEndpoint
+    aiFoundryKey: aiFoundryKey
+    aiFoundryModelName: aiFoundryModelName
     jwtSecretKey: jwtSecretKey
     tags: commonTags
   }

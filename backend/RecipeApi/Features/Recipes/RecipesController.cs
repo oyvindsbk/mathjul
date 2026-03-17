@@ -10,15 +10,18 @@ public class RecipesController : ControllerBase
 {
     private readonly RecipeDbContext _context;
     private readonly IRecipeImageProcessor _imageProcessor;
+    private readonly IRecipeUrlProcessor _urlProcessor;
     private readonly ILogger<RecipesController> _logger;
 
     public RecipesController(
-        RecipeDbContext context, 
+        RecipeDbContext context,
         IRecipeImageProcessor imageProcessor,
+        IRecipeUrlProcessor urlProcessor,
         ILogger<RecipesController> logger)
     {
         _context = context;
         _imageProcessor = imageProcessor;
+        _urlProcessor = urlProcessor;
         _logger = logger;
     }
 
@@ -115,6 +118,47 @@ public class RecipesController : ControllerBase
         return Ok(response);
     }
 
+    [HttpPost("from-url")]
+    public async Task<ActionResult<RecipeExtractionResponse>> ExtractRecipeFromUrl([FromBody] ExtractFromUrlRequest request)
+    {
+        _logger.LogInformation("Received URL extraction request: {Url}", request.Url);
+
+        if (string.IsNullOrWhiteSpace(request.Url))
+        {
+            return BadRequest(new RecipeExtractionResponse
+            {
+                Success = false,
+                ErrorMessage = "No URL provided"
+            });
+        }
+
+        var result = await _urlProcessor.ExtractRecipeFromUrlAsync(request.Url);
+
+        if (!result.IsSuccess)
+        {
+            return BadRequest(new RecipeExtractionResponse
+            {
+                Success = false,
+                ErrorMessage = result.ErrorMessage
+            });
+        }
+
+        return Ok(new RecipeExtractionResponse
+        {
+            Success = true,
+            ExtractedRecipe = new ExtractedRecipeResponse
+            {
+                Title = result.Recipe!.Title,
+                Description = result.Recipe.Description,
+                Ingredients = result.Recipe.Ingredients,
+                Instructions = result.Recipe.Instructions,
+                PrepTime = result.Recipe.PrepTime,
+                CookTime = result.Recipe.CookTime,
+                Servings = result.Recipe.Servings
+            }
+        });
+    }
+
     [HttpPost("save-extracted")]
     public async Task<ActionResult<RecipeDto>> SaveExtractedRecipe([FromBody] SaveExtractedRecipeRequest request)
     {
@@ -196,6 +240,11 @@ public class ExtractedRecipeResponse
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
     public int? Servings { get; set; }
+}
+
+public class ExtractFromUrlRequest
+{
+    public string Url { get; set; } = string.Empty;
 }
 
 public class SaveExtractedRecipeRequest

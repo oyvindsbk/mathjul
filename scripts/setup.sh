@@ -44,12 +44,12 @@ SQL_ADMIN_USERNAME=${SQL_ADMIN_USERNAME:-sqladmin}
 read -sp "Enter SQL admin password (min 12 chars, must include uppercase, lowercase, numbers, special chars): " SQL_ADMIN_PASSWORD
 echo ""
 
-read -p "Enter Azure OpenAI endpoint: " AZURE_OPENAI_ENDPOINT
-read -sp "Enter Azure OpenAI API key: " AZURE_OPENAI_KEY
+read -p "Enter Azure AI Foundry endpoint (e.g. https://<name>.services.ai.azure.com/models): " AI_FOUNDRY_ENDPOINT
+read -sp "Enter Azure AI Foundry API key: " AI_FOUNDRY_KEY
 echo ""
 
-read -p "Enter Azure OpenAI deployment name (default: gpt-4.1-nano): " AZURE_OPENAI_DEPLOYMENT_NAME
-AZURE_OPENAI_DEPLOYMENT_NAME=${AZURE_OPENAI_DEPLOYMENT_NAME:-gpt-4.1-nano}
+read -p "Enter AI Foundry model name (default: Phi-4-multimodal-instruct): " AI_FOUNDRY_MODEL_NAME
+AI_FOUNDRY_MODEL_NAME=${AI_FOUNDRY_MODEL_NAME:-Phi-4-multimodal-instruct}
 
 # Display GitHub Secrets to add
 echo -e "\n${GREEN}=== GitHub Secrets Configuration ===${NC}"
@@ -63,14 +63,14 @@ echo ""
 echo "SQL_ADMIN_PASSWORD:"
 echo "$SQL_ADMIN_PASSWORD"
 echo ""
-echo "AZURE_OPENAI_ENDPOINT:"
-echo "$AZURE_OPENAI_ENDPOINT"
+echo "AI_FOUNDRY_ENDPOINT:"
+echo "$AI_FOUNDRY_ENDPOINT"
 echo ""
-echo "AZURE_OPENAI_KEY:"
-echo "$AZURE_OPENAI_KEY"
+echo "AI_FOUNDRY_KEY:"
+echo "$AI_FOUNDRY_KEY"
 echo ""
-echo "AZURE_OPENAI_DEPLOYMENT_NAME:"
-echo "$AZURE_OPENAI_DEPLOYMENT_NAME"
+echo "AI_FOUNDRY_MODEL_NAME:"
+echo "$AI_FOUNDRY_MODEL_NAME"
 echo ""
 
 echo -e "${GREEN}✅ Setup complete!${NC}"

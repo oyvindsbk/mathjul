@@ -7,15 +7,15 @@ param location string
 @description('Key Vault name')
 param keyVaultName string
 
-@description('Azure OpenAI endpoint')
-param azureOpenAIEndpoint string
+@description('Azure AI Foundry serverless endpoint URL')
+param aiFoundryEndpoint string
 
-@description('Azure OpenAI API key')
+@description('Azure AI Foundry API key')
 @secure()
-param azureOpenAIKey string
+param aiFoundryKey string
 
-@description('Azure OpenAI deployment name')
-param azureOpenAIDeploymentName string
+@description('Azure AI Foundry model name')
+param aiFoundryModelName string
 
 @description('Frontend URL for CORS (optional)')
 param frontendUrl string = ''
@@ -73,11 +73,11 @@ resource jwtSecretKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   }
 }
 
-resource openAIKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+resource aiFoundryKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   parent: keyVault
-  name: 'AzureOpenAI--Key'
+  name: 'AiFoundry--Key'
   properties: {
-    value: azureOpenAIKey
+    value: aiFoundryKey
   }
 }
 
@@ -130,19 +130,19 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
               value: 'http://+:8080'
             }
             // Key Vault URI — used to bootstrap AddAzureKeyVault at startup.
-            // All other secrets (Jwt:SecretKey, AzureOpenAI:Key, ConnectionStrings:RecipeDb)
+            // All other secrets (Jwt:SecretKey, AiFoundry:Key, ConnectionStrings:RecipeDb)
             // are loaded from Key Vault automatically at startup.
             {
               name: 'KeyVault__VaultUri'
               value: keyVault.properties.vaultUri
             }
             {
-              name: 'AzureOpenAI__Endpoint'
-              value: azureOpenAIEndpoint
+              name: 'AiFoundry__Endpoint'
+              value: aiFoundryEndpoint
             }
             {
-              name: 'AzureOpenAI__DeploymentName'
-              value: azureOpenAIDeploymentName
+              name: 'AiFoundry__ModelName'
+              value: aiFoundryModelName
             }
             {
               name: 'Cors__AllowedOrigins__0'

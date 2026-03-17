@@ -1,4 +1,4 @@
-using Azure.AI.OpenAI;
+using OpenAI;
 using OpenAI.Chat;
 using System.ClientModel;
 using System.Text.Json;
@@ -19,23 +19,24 @@ public class RecipeImageProcessor : IRecipeImageProcessor
 
     public RecipeImageProcessor(IConfiguration configuration, ILogger<RecipeImageProcessor> logger)
     {
-        var azureEndpoint = configuration["AzureOpenAI:Endpoint"] 
-            ?? throw new InvalidOperationException("A required configuration value is missing.");
-        var apiKey = configuration["AzureOpenAI:ApiKey"] 
-            ?? throw new InvalidOperationException("A required configuration value is missing.");
-        var deploymentName = configuration["AzureOpenAI:DeploymentName"] 
-            ?? throw new InvalidOperationException("A required configuration value is missing.");
-        
-        var client = new AzureOpenAIClient(new Uri(azureEndpoint), new ApiKeyCredential(apiKey));
-        _chatClient = client.GetChatClient(deploymentName);
+        var endpoint = configuration["AiFoundry:Endpoint"]
+            ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:Endpoint");
+        var apiKey = configuration["AiFoundry:ApiKey"]
+            ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:ApiKey");
+        var modelName = configuration["AiFoundry:ModelName"]
+            ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:ModelName");
+
+        var client = new OpenAIClient(
+            new ApiKeyCredential(apiKey),
+            new OpenAIClientOptions { Endpoint = new Uri(endpoint) });
+        _chatClient = client.GetChatClient(modelName);
         _logger = logger;
     }
 
     public async Task<RecipeExtractionResult> ExtractRecipeFromImageAsync(
-        IFormFile imageFile, 
+        IFormFile imageFile,
         CancellationToken cancellationToken = default)
     {
-        // Validate file
         if (imageFile == null || imageFile.Length == 0)
         {
             return RecipeExtractionResult.Failure("No image file provided");
@@ -53,7 +54,6 @@ public class RecipeImageProcessor : IRecipeImageProcessor
 
         try
         {
-            // Convert image to BinaryData
             byte[] imageBytes;
             using (var memoryStream = new MemoryStream())
             {
@@ -61,34 +61,11 @@ public class RecipeImageProcessor : IRecipeImageProcessor
                 imageBytes = memoryStream.ToArray();
             }
 
-            // Call OpenAI Vision API
-            _logger.LogInformation("Extracting recipe from image using OpenAI Vision API. Image size: {Size} bytes", imageBytes.Length);
+            _logger.LogInformation("Extracting recipe from image. Image size: {Size} bytes", imageBytes.Length);
 
             var messages = new List<ChatMessage>
             {
-                new SystemChatMessage(@"You are a recipe extraction expert. Analyze the provided recipe image and extract all information into a structured JSON format.
-
-Extract the following fields:
-- title: The recipe name
-- description: A brief description or subtitle if available
-- ingredients: Array of ingredient strings (e.g., ""2 cups flour"", ""1 tsp salt"")
-- instructions: Array of instruction steps as separate strings
-- prepTime: Preparation time in minutes (extract from text like ""Prep: 15 min"")
-- cookTime: Cooking time in minutes (extract from text like ""Cook: 30 min"")
-- servings: Number of servings (extract from text like ""Serves 4"")
-
-If any field is not clearly visible or mentioned in the image, use null for that field.
-
-Respond with ONLY valid JSON in this exact format:
-{
-  ""title"": ""Recipe Name"",
-  ""description"": ""Brief description"",
-  ""ingredients"": [""ingredient 1"", ""ingredient 2""],
-  ""instructions"": [""step 1"", ""step 2""],
-  ""prepTime"": 15,
-  ""cookTime"": 30,
-  ""servings"": 4
-}"),
+                new SystemChatMessage(RecipeExtractionPrompt.SystemPrompt),
                 new UserChatMessage(
                     ChatMessageContentPart.CreateTextPart("Please extract the recipe information from this image:"),
                     ChatMessageContentPart.CreateImagePart(BinaryData.FromBytes(imageBytes), imageFile.ContentType)
@@ -99,37 +76,13 @@ Respond with ONLY valid JSON in this exact format:
                 messages,
                 new ChatCompletionOptions
                 {
-                    Temperature = 0.2f, // Low temperature for more consistent extraction
+                    Temperature = 0.2f,
                     MaxOutputTokenCount = 2000
                 },
                 cancellationToken
             );
 
-            if (chatCompletion.Value.Content == null || chatCompletion.Value.Content.Count == 0)
-            {
-                _logger.LogError("OpenAI response contained no content.");
-                return RecipeExtractionResult.Failure("OpenAI response contained no content.");
-            }
-            var responseContent = chatCompletion.Value.Content[0].Text;
-            if (string.IsNullOrWhiteSpace(responseContent))
-            {
-                _logger.LogError("OpenAI response content text was null or empty.");
-                return RecipeExtractionResult.Failure("OpenAI response content text was null or empty.");
-            }
-            _logger.LogInformation("Received response from OpenAI: {Response}", responseContent);
-
-            // Parse the JSON response
-            var extractedRecipe = JsonSerializer.Deserialize<ExtractedRecipeDto>(
-                responseContent, 
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            );
-
-            if (extractedRecipe == null || string.IsNullOrWhiteSpace(extractedRecipe.Title))
-            {
-                return RecipeExtractionResult.Failure("Failed to extract recipe information from image");
-            }
-
-            return RecipeExtractionResult.Success(extractedRecipe);
+            return RecipeExtractionPrompt.ParseResponse(chatCompletion.Value, _logger);
         }
         catch (Exception ex)
         {
@@ -145,10 +98,10 @@ public class RecipeExtractionResult
     public string? ErrorMessage { get; init; }
     public ExtractedRecipeDto? Recipe { get; init; }
 
-    public static RecipeExtractionResult Success(ExtractedRecipeDto recipe) => 
+    public static RecipeExtractionResult Success(ExtractedRecipeDto recipe) =>
         new() { IsSuccess = true, Recipe = recipe };
 
-    public static RecipeExtractionResult Failure(string errorMessage) => 
+    public static RecipeExtractionResult Failure(string errorMessage) =>
         new() { IsSuccess = false, ErrorMessage = errorMessage };
 }
 
@@ -161,4 +114,71 @@ public class ExtractedRecipeDto
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
     public int? Servings { get; set; }
+}
+
+internal static class RecipeExtractionPrompt
+{
+    internal const string SystemPrompt = @"You are a recipe extraction expert. Analyze the provided recipe content and extract all information into a structured JSON format.
+
+Extract the following fields:
+- title: The recipe name
+- description: A brief description or subtitle if available
+- ingredients: Array of ingredient strings (e.g., ""2 cups flour"", ""1 tsp salt"")
+- instructions: Array of instruction steps as separate strings
+- prepTime: Preparation time in minutes (extract from text like ""Prep: 15 min"")
+- cookTime: Cooking time in minutes (extract from text like ""Cook: 30 min"")
+- servings: Number of servings (extract from text like ""Serves 4"")
+
+If any field is not clearly visible or mentioned, use null for that field.
+
+Respond with ONLY valid JSON in this exact format:
+{
+  ""title"": ""Recipe Name"",
+  ""description"": ""Brief description"",
+  ""ingredients"": [""ingredient 1"", ""ingredient 2""],
+  ""instructions"": [""step 1"", ""step 2""],
+  ""prepTime"": 15,
+  ""cookTime"": 30,
+  ""servings"": 4
+}";
+
+    internal static RecipeExtractionResult ParseResponse(ChatCompletion chatCompletion, ILogger logger)
+    {
+        if (chatCompletion.Content == null || chatCompletion.Content.Count == 0)
+        {
+            logger.LogError("AI response contained no content.");
+            return RecipeExtractionResult.Failure("AI response contained no content.");
+        }
+
+        var responseContent = chatCompletion.Content[0].Text;
+        if (string.IsNullOrWhiteSpace(responseContent))
+        {
+            logger.LogError("AI response content text was null or empty.");
+            return RecipeExtractionResult.Failure("AI response content text was null or empty.");
+        }
+
+        logger.LogInformation("Received response from AI: {Response}", responseContent);
+
+        // Strip markdown code fences if present
+        var json = responseContent.Trim();
+        if (json.StartsWith("```"))
+        {
+            var firstNewline = json.IndexOf('\n');
+            var lastFence = json.LastIndexOf("```");
+            if (firstNewline >= 0 && lastFence > firstNewline)
+                json = json[(firstNewline + 1)..lastFence].Trim();
+        }
+
+        var extractedRecipe = JsonSerializer.Deserialize<ExtractedRecipeDto>(
+            json,
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+        );
+
+        if (extractedRecipe == null || string.IsNullOrWhiteSpace(extractedRecipe.Title))
+        {
+            return RecipeExtractionResult.Failure("Failed to extract recipe information");
+        }
+
+        return RecipeExtractionResult.Success(extractedRecipe);
+    }
 }
