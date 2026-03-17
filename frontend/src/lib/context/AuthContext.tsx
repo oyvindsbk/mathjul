@@ -16,13 +16,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setTokenState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load token from localStorage and cookie on mount
+  // Load token from localStorage on mount; fall back to server session cookie (set by Google OAuth)
   useEffect(() => {
-    const storedToken = localStorage.getItem("jwt_token");
-    if (storedToken) {
-      setTokenState(storedToken);
-    }
-    setIsLoading(false);
+    const init = async () => {
+      const stored = localStorage.getItem("jwt_token");
+      if (stored) {
+        setTokenState(stored);
+        setIsLoading(false);
+        return;
+      }
+
+      // Check for a server-side httpOnly cookie set by the Google OAuth callback
+      try {
+        const res = await fetch("/api/auth/session");
+        if (res.ok) {
+          const data = (await res.json()) as { token: string | null };
+          if (data.token) {
+            setTokenState(data.token);
+            localStorage.setItem("jwt_token", data.token);
+          }
+        }
+      } catch {
+        // Ignore — server may be unavailable
+      }
+
+      setIsLoading(false);
+    };
+
+    init();
   }, []);
 
   const setToken = (newToken: string) => {
