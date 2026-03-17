@@ -7,5 +7,6 @@ namespace RecipeApi.Features.Health;
 public class HealthController : ControllerBase
 {
     [HttpGet]
-    public IActionResult Get() => Ok(new { status = "Healthy" });
+    public IActionResult Get([FromServices] IWebHostEnvironment env) =>
+        Ok(new { status = "Healthy", environment = env.EnvironmentName });
 }

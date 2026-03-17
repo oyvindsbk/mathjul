@@ -13,7 +13,7 @@ export const appConfig = {
   mocking: {
     // Enable mock data only when explicitly requested via NEXT_PUBLIC_MOCK_DATA=true.
     // This prevents silently defaulting to mock data during development.
-    enabled: process.env.NEXT_PUBLIC_MOCK_DATA === 'true',
+    enabled: process.env.NODE_ENV !== 'production' && process.env.NEXT_PUBLIC_MOCK_DATA === 'true',
 
     // Timeout (ms) before considering API unavailable
     fetchTimeout: 5000,

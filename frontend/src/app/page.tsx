@@ -5,29 +5,48 @@ import Link from "next/link";
 import { AuthButton } from "@/components/AuthButton";
 import { useAuth } from "@/lib/context/AuthContext";
 import { recipeService } from "@/lib/services/recipe.service";
+import { appConfig } from "@/lib/config";
 import type { Recipe } from "@/lib/mock-data";
 
 export default function Home() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { token } = useAuth();
+  const [backendEnv, setBackendEnv] = useState<string | null>(null);
+  const { token, isLoading: authLoading } = useAuth();
 
+  // Best-effort: fetch backend environment for dev banner only
   useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    fetch(`${appConfig.api.baseUrl}/health`)
+      .then((r) => r.json())
+      .then((data) => setBackendEnv(data.environment ?? null))
+      .catch(() => {});
+  }, []);
+
+  // Wait for auth to resolve before fetching — avoids a spurious 401 on first render
+  useEffect(() => {
+    if (authLoading) return;
+
     const fetchRecipes = async () => {
       try {
         const data = await recipeService.getAllRecipes(token || undefined);
         setRecipes(data);
+        setError(null);
       } catch (err) {
-        console.error('Error fetching recipes:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch recipes');
+        console.error("Error fetching recipes:", err);
+        setError(err instanceof Error ? err.message : "Failed to fetch recipes");
       } finally {
         setLoading(false);
       }
     };
 
     fetchRecipes();
-  }, [token]);
+  }, [token, authLoading]);
+
+  const showDevBanner =
+    process.env.NODE_ENV !== "production" &&
+    (appConfig.mocking.enabled || backendEnv === "Development");
 
   if (loading) {
     return (
@@ -43,10 +62,22 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
+        {showDevBanner && (
+          <div className="mb-4 p-3 bg-amber-100 border border-amber-400 text-amber-800 rounded-md text-sm flex gap-4">
+            <span className="font-semibold">DEV</span>
+            {appConfig.mocking.enabled && (
+              <span>Frontend mock aktiv (NEXT_PUBLIC_MOCK_DATA=true)</span>
+            )}
+            {backendEnv === "Development" && (
+              <span>Backend: Development (seed-data)</span>
+            )}
+          </div>
+        )}
+
         <div className="flex justify-end mb-8">
           <AuthButton />
         </div>
-        
+
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             Matoppskrifter
@@ -55,16 +86,13 @@ export default function Home() {
             Oppdag deilige oppskrifter fra hele verden. Fra raske hverdagsmiddager til spesielle anledninger.
           </p>
           {error && (
-            <div className="mt-4 p-3 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded-md">
-              <p className="text-sm">
-                API-tilkobling mislyktes, viser eksempeldata. {error}
-              </p>
+            <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+              <p className="text-sm">Kunne ikke laste oppskrifter: {error}</p>
             </div>
           )}
-          
-          {/* Add Upload Button */}
+
           <div className="mt-6">
-            <a 
+            <a
               href="/upload"
               className="inline-flex items-center px-6 py-3 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors duration-200 shadow-md hover:shadow-lg"
             >
@@ -76,9 +104,9 @@ export default function Home() {
           </div>
         </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" data-testid="recipe-grid">
-            {recipes.map((recipe) => (
-              <div key={recipe.id} data-testid={`recipe-card-${recipe.id}`} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" data-testid="recipe-grid">
+          {recipes.map((recipe) => (
+            <div key={recipe.id} data-testid={`recipe-card-${recipe.id}`} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
               <div className="h-48 bg-gray-200 flex items-center justify-center">
                 <span className="text-gray-500">Oppskrift bilde</span>
               </div>
@@ -87,9 +115,9 @@ export default function Home() {
                   {recipe.title}
                 </h3>
                 <p className="text-gray-600 text-sm mb-4">
-                  {recipe.description || 'Ingen beskrivelse'}
+                  {recipe.description || "Ingen beskrivelse"}
                 </p>
-                <Link 
+                <Link
                   href={`/recipes/${recipe.id}`}
                   className="block w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors duration-200 text-center"
                 >
