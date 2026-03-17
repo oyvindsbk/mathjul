@@ -103,7 +103,9 @@ export default function UploadRecipe() {
         headers: { 'Authorization': `Bearer ${token}` },
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      if (!text) throw new Error('No response from server. The request may have timed out.');
+      const data = JSON.parse(text);
 
       if (!response.ok || !data.success) {
         if (response.status === 403) {
@@ -152,7 +154,9 @@ export default function UploadRecipe() {
         body: JSON.stringify({ url: recipeUrl.trim() }),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      if (!text) throw new Error('No response from server. The request may have timed out.');
+      const data = JSON.parse(text);
 
       if (!response.ok || !data.success) {
         if (response.status === 403) {

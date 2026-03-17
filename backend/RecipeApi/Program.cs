@@ -150,6 +150,21 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+// Global exception handler — always returns JSON so clients can parse the response
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        await context.Response.WriteAsJsonAsync(new
+        {
+            success = false,
+            errorMessage = "An unexpected server error occurred."
+        });
+    });
+});
+
 // Only use HTTPS redirection in production
 if (!app.Environment.IsDevelopment())
 {
