@@ -52,8 +52,9 @@ else
 #else
 // Release/Production - connection string stored in Key Vault as 'ConnectionStrings--RecipeDb'
 // Uses managed identity authentication (no passwords)
-var connectionString = builder.Configuration.GetConnectionString("RecipeDb")
-    ?? throw new InvalidOperationException(
+var connectionString = builder.Configuration.GetConnectionString("RecipeDb");
+if (string.IsNullOrEmpty(connectionString))
+    throw new InvalidOperationException(
         "Connection string 'RecipeDb' not found. Ensure Key Vault secret 'ConnectionStrings--RecipeDb' exists.");
 
 builder.Services.AddDbContext<RecipeDbContext>(options =>
