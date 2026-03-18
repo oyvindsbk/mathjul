@@ -50,11 +50,11 @@ else
         options.UseSqlServer(connectionString));
 }
 #else
-// Release/Production - use Service Connector managed identity connection string
-var connectionString = Environment.GetEnvironmentVariable("AZURE_SQL_CONNECTIONSTRING")
+// Release/Production - connection string stored in Key Vault as 'ConnectionStrings--RecipeDb'
+// Uses managed identity authentication (no passwords)
+var connectionString = builder.Configuration.GetConnectionString("RecipeDb")
     ?? throw new InvalidOperationException(
-        "AZURE_SQL_CONNECTIONSTRING environment variable not found. " +
-        "Configure Service Connector with managed identity in Azure.");
+        "Connection string 'RecipeDb' not found. Ensure Key Vault secret 'ConnectionStrings--RecipeDb' exists.");
 
 builder.Services.AddDbContext<RecipeDbContext>(options =>
     options.UseSqlServer(connectionString));

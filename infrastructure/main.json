@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "12414380076516442038"
+      "templateHash": "4276805868835628517"
     }
   },
   "parameters": {
@@ -232,6 +232,9 @@
           "administratorLoginPassword": {
             "value": "[parameters('sqlAdminPassword')]"
           },
+          "keyVaultName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyVaultDeployment'), '2025-04-01').outputs.keyVaultName.value]"
+          },
           "tags": {
             "value": "[variables('commonTags')]"
           }
@@ -243,7 +246,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "8050428005521770691"
+              "templateHash": "18391125402084808373"
             }
           },
           "parameters": {
@@ -275,6 +278,12 @@
               "type": "securestring",
               "metadata": {
                 "description": "The administrator password"
+              }
+            },
+            "keyVaultName": {
+              "type": "string",
+              "metadata": {
+                "description": "Key Vault name for storing the connection string secret"
               }
             },
             "tags": {
@@ -334,6 +343,17 @@
               "dependsOn": [
                 "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
               ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2023-07-01",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'ConnectionStrings--RecipeDb')]",
+              "properties": {
+                "value": "[format('Server=tcp:{0},1433;Initial Catalog={1};Encrypt=True;TrustServerCertificate=False;Authentication=Active Directory Managed Identity;', reference(resourceId('Microsoft.Sql/servers', parameters('sqlServerName')), '2023-05-01-preview').fullyQualifiedDomainName, parameters('sqlDatabaseName'))]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
+              ]
             }
           ],
           "outputs": {
@@ -347,7 +367,10 @@
             }
           }
         }
-      }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'keyVaultDeployment')]"
+      ]
     },
     {
       "type": "Microsoft.Resources/deployments",
