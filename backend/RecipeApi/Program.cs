@@ -50,18 +50,11 @@ else
         options.UseSqlServer(connectionString));
 }
 #else
-// Release/Production - get connection string from config or environment variable
-var connectionString = builder.Configuration.GetConnectionString("RecipeDb")
-    ?? Environment.GetEnvironmentVariable("CONNECTION_STRING_RECIPEDB")
-    ?? Environment.GetEnvironmentVariable("AZURE_SQL_CONNECTIONSTRING");
-
-if (string.IsNullOrEmpty(connectionString))
-{
-    throw new InvalidOperationException(
-        "Connection string 'RecipeDb' not found. " +
-        "Set ConnectionStrings:RecipeDb in appsettings.json " +
-        "or set CONNECTION_STRING_RECIPEDB environment variable.");
-}
+// Release/Production - use Service Connector managed identity connection string
+var connectionString = Environment.GetEnvironmentVariable("AZURE_SQL_CONNECTIONSTRING")
+    ?? throw new InvalidOperationException(
+        "AZURE_SQL_CONNECTIONSTRING environment variable not found. " +
+        "Configure Service Connector with managed identity in Azure.");
 
 builder.Services.AddDbContext<RecipeDbContext>(options =>
     options.UseSqlServer(connectionString));

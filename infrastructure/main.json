@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "6561516743564463315"
+      "templateHash": "12414380076516442038"
     }
   },
   "parameters": {
@@ -232,9 +232,6 @@
           "administratorLoginPassword": {
             "value": "[parameters('sqlAdminPassword')]"
           },
-          "keyVaultName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyVaultDeployment'), '2025-04-01').outputs.keyVaultName.value]"
-          },
           "tags": {
             "value": "[variables('commonTags')]"
           }
@@ -246,7 +243,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "12205845544045844486"
+              "templateHash": "8050428005521770691"
             }
           },
           "parameters": {
@@ -278,12 +275,6 @@
               "type": "securestring",
               "metadata": {
                 "description": "The administrator password"
-              }
-            },
-            "keyVaultName": {
-              "type": "string",
-              "metadata": {
-                "description": "Key Vault name for storing secrets"
               }
             },
             "tags": {
@@ -343,17 +334,6 @@
               "dependsOn": [
                 "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
               ]
-            },
-            {
-              "type": "Microsoft.KeyVault/vaults/secrets",
-              "apiVersion": "2023-07-01",
-              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'ConnectionStrings--RecipeDb')]",
-              "properties": {
-                "value": "[format('Server=tcp:{0},1433;Initial Catalog={1};Persist Security Info=False;User ID={2};Password={3};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;', reference(resourceId('Microsoft.Sql/servers', parameters('sqlServerName')), '2023-05-01-preview').fullyQualifiedDomainName, parameters('sqlDatabaseName'), parameters('administratorLogin'), parameters('administratorLoginPassword'))]"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"
-              ]
             }
           ],
           "outputs": {
@@ -364,17 +344,10 @@
             "sqlDatabaseName": {
               "type": "string",
               "value": "[parameters('sqlDatabaseName')]"
-            },
-            "connectionString": {
-              "type": "string",
-              "value": "[format('Server=tcp:{0},1433;Initial Catalog={1};Persist Security Info=False;User ID={2};Password={3};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;', reference(resourceId('Microsoft.Sql/servers', parameters('sqlServerName')), '2023-05-01-preview').fullyQualifiedDomainName, parameters('sqlDatabaseName'), parameters('administratorLogin'), parameters('administratorLoginPassword'))]"
             }
           }
         }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'keyVaultDeployment')]"
-      ]
+      }
     },
     {
       "type": "Microsoft.Resources/deployments",

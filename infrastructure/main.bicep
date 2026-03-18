@@ -73,7 +73,6 @@ module sqlServer 'modules/sql-server.bicep' = {
     location: location
     administratorLogin: sqlAdminUsername
     administratorLoginPassword: sqlAdminPassword
-    keyVaultName: keyVault.outputs.keyVaultName
     tags: commonTags
   }
 }

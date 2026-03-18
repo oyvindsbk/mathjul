@@ -14,8 +14,6 @@ param administratorLogin string
 @secure()
 param administratorLoginPassword string
 
-@description('Key Vault name for storing secrets')
-param keyVaultName string
 
 @description('Tags to apply to resources')
 param tags object = {}
@@ -65,23 +63,7 @@ resource sqlDatabase 'Microsoft.Sql/servers/databases@2023-05-01-preview' = {
   }
 }
 
-// Store connection string in Key Vault.
-// Name uses '--' separator so AddAzureKeyVault maps it to ConnectionStrings:RecipeDb in ASP.NET Core config.
-resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' existing = {
-  name: keyVaultName
-}
-
-var sqlConnectionString = 'Server=tcp:${sqlServer.properties.fullyQualifiedDomainName},1433;Initial Catalog=${sqlDatabaseName};Persist Security Info=False;User ID=${administratorLogin};Password=${administratorLoginPassword};MultipleActiveResultSets=False;Encrypt=True;TrustServerCertificate=False;Connection Timeout=30;'
-
-resource sqlConnectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
-  parent: keyVault
-  name: 'ConnectionStrings--RecipeDb'
-  properties: {
-    value: sqlConnectionString
-  }
-}
 
 // Outputs
 output sqlServerFqdn string = sqlServer.properties.fullyQualifiedDomainName
 output sqlDatabaseName string = sqlDatabase.name
-output connectionString string = sqlConnectionString
