@@ -20,8 +20,8 @@ builder.AddServiceDefaults();
 // Example: 'ConnectionStrings--RecipeDb' -> ConnectionStrings:RecipeDb
 if (!builder.Environment.IsDevelopment())
 {
-    var keyVaultUri = builder.Configuration["KeyVault__VaultUri"];
-    Console.WriteLine($"[KV] KeyVault__VaultUri = '{keyVaultUri}'");
+    var keyVaultUri = builder.Configuration["KeyVault:VaultUri"];
+    Console.WriteLine($"[KV] KeyVault:VaultUri = '{keyVaultUri}'");
     if (!string.IsNullOrEmpty(keyVaultUri))
     {
         Console.WriteLine("[KV] Calling AddAzureKeyVault...");
@@ -101,7 +101,7 @@ builder.Services.AddSingleton<ITokenService, TokenService>();
 // Configure Key Vault client for email whitelist (cached, refreshable reads)
 if (!builder.Environment.IsDevelopment())
 {
-    var keyVaultUri = builder.Configuration["KeyVault__VaultUri"];
+    var keyVaultUri = builder.Configuration["KeyVault:VaultUri"];
     if (!string.IsNullOrEmpty(keyVaultUri))
     {
         builder.Services.AddSingleton(new SecretClient(new Uri(keyVaultUri), new DefaultAzureCredential()));
