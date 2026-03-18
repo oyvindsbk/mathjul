@@ -40,7 +40,7 @@ param jwtSecretKey string
 
 // Generate unique names
 var uniqueSuffix = uniqueString(resourceGroup().id)
-var sqlServerName = 'sql-recipe-${environment}-${uniqueSuffix}'
+var sqlServerName = 'sql-recipe-${environment}-${uniqueSuffix
 var sqlDatabaseName = 'RecipeDb'
 var containerAppName = 'ca-recipe-api-${environment}-${uniqueSuffix}'
 var frontendContainerAppName = 'ca-recipe-web-${environment}-${uniqueSuffix}'

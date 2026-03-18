@@ -51,8 +51,9 @@ else
 }
 #else
 // Release/Production - get connection string from config or environment variable
-var connectionString = builder.Configuration.GetConnectionString("RecipeDb") 
-    ?? Environment.GetEnvironmentVariable("CONNECTION_STRING_RECIPEDB");
+var connectionString = builder.Configuration.GetConnectionString("RecipeDb")
+    ?? Environment.GetEnvironmentVariable("CONNECTION_STRING_RECIPEDB")
+    ?? Environment.GetEnvironmentVariable("AZURE_SQL_CONNECTIONSTRING");
 
 if (string.IsNullOrEmpty(connectionString))
 {
