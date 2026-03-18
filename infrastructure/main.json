@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "4276805868835628517"
+      "templateHash": "14624357799806612865"
     }
   },
   "parameters": {
@@ -246,7 +246,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "18391125402084808373"
+              "templateHash": "3517455283088533969"
             }
           },
           "parameters": {
@@ -349,7 +349,7 @@
               "apiVersion": "2023-07-01",
               "name": "[format('{0}/{1}', parameters('keyVaultName'), 'ConnectionStrings--RecipeDb')]",
               "properties": {
-                "value": "[format('Server=tcp:{0},1433;Initial Catalog={1};Encrypt=True;TrustServerCertificate=False;Authentication=Active Directory Managed Identity;', reference(resourceId('Microsoft.Sql/servers', parameters('sqlServerName')), '2023-05-01-preview').fullyQualifiedDomainName, parameters('sqlDatabaseName'))]"
+                "value": "[format('Server=tcp:{0},1433;Initial Catalog={1};Encrypt=True;TrustServerCertificate=False;', reference(resourceId('Microsoft.Sql/servers', parameters('sqlServerName')), '2023-05-01-preview').fullyQualifiedDomainName, parameters('sqlDatabaseName'))]"
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Sql/servers', parameters('sqlServerName'))]"

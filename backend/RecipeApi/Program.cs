@@ -57,7 +57,8 @@ var connectionString = builder.Configuration.GetConnectionString("RecipeDb")
         "Connection string 'RecipeDb' not found. Ensure Key Vault secret 'ConnectionStrings--RecipeDb' exists.");
 
 builder.Services.AddDbContext<RecipeDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseSqlServer(connectionString)
+           .AddInterceptors(new AzureAdTokenInterceptor()));
 #endif
 
 // Add services to the container.
