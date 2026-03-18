@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "14624357799806612865"
+      "templateHash": "13935547742127570878"
     }
   },
   "parameters": {
@@ -414,7 +414,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "10823533446864625120"
+              "templateHash": "18030054177602161971"
             }
           },
           "parameters": {
@@ -526,7 +526,7 @@
             {
               "type": "Microsoft.KeyVault/vaults/secrets",
               "apiVersion": "2023-07-01",
-              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'AiFoundry--Key')]",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'AiFoundry--ApiKey')]",
               "properties": {
                 "value": "[parameters('aiFoundryKey')]"
               }

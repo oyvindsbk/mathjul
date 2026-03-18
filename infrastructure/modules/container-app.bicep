@@ -75,7 +75,7 @@ resource jwtSecretKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
 
 resource aiFoundryKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   parent: keyVault
-  name: 'AiFoundry--Key'
+  name: 'AiFoundry--ApiKey'
   properties: {
     value: aiFoundryKey
   }
