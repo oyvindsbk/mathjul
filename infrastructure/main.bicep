@@ -95,14 +95,8 @@ module containerApp 'modules/container-app.bicep' = {
   }
 }
 
-// Grant Container App access to Key Vault
-module keyVaultAccess 'modules/key-vault-access.bicep' = {
-  name: 'keyVaultAccessDeployment'
-  params: {
-    keyVaultName: keyVault.outputs.keyVaultName
-    principalId: containerApp.outputs.principalId
-  }
-}
+// Note: Key Vault role assignment (Key Vault Secrets User) is a one-time setup.
+// Run modules/key-vault-access.bicep manually if the Container App managed identity changes.
 
 // Frontend Container App
 module frontendContainerApp 'modules/frontend-container-app.bicep' = {
