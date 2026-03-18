@@ -71,6 +71,7 @@ builder.Services.AddDbContext<RecipeDbContext>(options =>
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddHttpClient(); // Needed for Google OAuth token verification
+builder.Services.AddHealthChecks();
 
 // Register services
 // Feature flag: Enable or disable the RecipeImageProcessor implementation.
@@ -168,6 +169,7 @@ app.UseCors("AllowFrontend");
 // Add email whitelist middleware after CORS
 app.UseMiddleware<EmailWhitelistMiddleware>();
 
+app.MapHealthChecks("/health");
 app.MapControllers();
 
 // OpenAPI + Scalar — registered after middleware so auth applies correctly
