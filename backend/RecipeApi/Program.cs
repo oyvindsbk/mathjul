@@ -21,11 +21,18 @@ builder.AddServiceDefaults();
 if (!builder.Environment.IsDevelopment())
 {
     var keyVaultUri = builder.Configuration["KeyVault__VaultUri"];
+    Console.WriteLine($"[KV] KeyVault__VaultUri = '{keyVaultUri}'");
     if (!string.IsNullOrEmpty(keyVaultUri))
     {
+        Console.WriteLine("[KV] Calling AddAzureKeyVault...");
         builder.Configuration.AddAzureKeyVault(
             new Uri(keyVaultUri),
             new DefaultAzureCredential());
+        Console.WriteLine("[KV] AddAzureKeyVault completed.");
+    }
+    else
+    {
+        Console.WriteLine("[KV] KeyVault__VaultUri is empty, skipping Key Vault.");
     }
 }
 
@@ -53,6 +60,7 @@ else
 // Release/Production - connection string stored in Key Vault as 'ConnectionStrings--RecipeDb'
 // Uses managed identity authentication (no passwords)
 var connectionString = builder.Configuration.GetConnectionString("RecipeDb");
+Console.WriteLine($"[KV] ConnectionStrings:RecipeDb = '{(string.IsNullOrEmpty(connectionString) ? "(empty)" : "(set)")}' ");
 if (string.IsNullOrEmpty(connectionString))
     throw new InvalidOperationException(
         "Connection string 'RecipeDb' not found. Ensure Key Vault secret 'ConnectionStrings--RecipeDb' exists.");
