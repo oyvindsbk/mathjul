@@ -1,8 +1,8 @@
+using Azure;
+using Azure.AI.Inference;
 using HtmlAgilityPack;
-using OpenAI;
-using OpenAI.Chat;
-using System.ClientModel;
 using System.Text;
+using System.Text.Json;
 
 namespace RecipeApi.Features.Recipes;
 
@@ -13,7 +13,8 @@ public interface IRecipeUrlProcessor
 
 public class RecipeUrlProcessor : IRecipeUrlProcessor
 {
-    private readonly ChatClient _chatClient;
+    private readonly ChatCompletionsClient _chatClient;
+    private readonly string _modelName;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<RecipeUrlProcessor> _logger;
     private const int MaxTextLength = 8000;
@@ -27,13 +28,12 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
             ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:Endpoint");
         var apiKey = configuration["AiFoundry:ApiKey"]
             ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:ApiKey");
-        var modelName = configuration["AiFoundry:ModelName"]
+        _modelName = configuration["AiFoundry:ModelName"]
             ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:ModelName");
 
-        var client = new OpenAIClient(
-            new ApiKeyCredential(apiKey),
-            new OpenAIClientOptions { Endpoint = new Uri(endpoint) });
-        _chatClient = client.GetChatClient(modelName);
+        _chatClient = new ChatCompletionsClient(
+            new Uri(endpoint),
+            new AzureKeyCredential(apiKey));
         _httpClientFactory = httpClientFactory;
         _logger = logger;
     }
@@ -68,23 +68,21 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
 
             _logger.LogInformation("Extracted {Length} chars of text from URL, sending to AI", pageText.Length);
 
-            var messages = new List<ChatMessage>
+            var options = new ChatCompletionsOptions
             {
-                new SystemChatMessage(RecipeExtractionPrompt.SystemPrompt),
-                new UserChatMessage($"Please extract the recipe information from the following webpage content:\n\n{pageText}")
+                Model = _modelName,
+                Temperature = 0.2f,
+                MaxTokens = 2000,
+                Messages =
+                {
+                    new ChatRequestSystemMessage(RecipeExtractionPrompt.SystemPrompt),
+                    new ChatRequestUserMessage($"Please extract the recipe information from the following webpage content:\n\n{pageText}")
+                }
             };
 
-            var chatCompletion = await _chatClient.CompleteChatAsync(
-                messages,
-                new ChatCompletionOptions
-                {
-                    Temperature = 0.2f,
-                    MaxOutputTokenCount = 2000
-                },
-                cancellationToken
-            );
+            var response = await _chatClient.CompleteAsync(options, cancellationToken);
 
-            return RecipeExtractionPrompt.ParseResponse(chatCompletion.Value, _logger);
+            return RecipeExtractionPrompt.ParseResponse(response.Value, _logger);
         }
         catch (HttpRequestException ex)
         {

@@ -1,6 +1,5 @@
-using OpenAI;
-using OpenAI.Chat;
-using System.ClientModel;
+using Azure;
+using Azure.AI.Inference;
 using System.Text.Json;
 
 namespace RecipeApi.Features.Recipes;
@@ -12,7 +11,8 @@ public interface IRecipeImageProcessor
 
 public class RecipeImageProcessor : IRecipeImageProcessor
 {
-    private readonly ChatClient _chatClient;
+    private readonly ChatCompletionsClient _chatClient;
+    private readonly string _modelName;
     private readonly ILogger<RecipeImageProcessor> _logger;
     private const long MaxFileSizeBytes = 10 * 1024 * 1024; // 10MB
     private static readonly string[] AllowedContentTypes = { "image/jpeg", "image/jpg", "image/png", "image/webp" };
@@ -23,13 +23,12 @@ public class RecipeImageProcessor : IRecipeImageProcessor
             ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:Endpoint");
         var apiKey = configuration["AiFoundry:ApiKey"]
             ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:ApiKey");
-        var modelName = configuration["AiFoundry:ModelName"]
+        _modelName = configuration["AiFoundry:ModelName"]
             ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:ModelName");
 
-        var client = new OpenAIClient(
-            new ApiKeyCredential(apiKey),
-            new OpenAIClientOptions { Endpoint = new Uri(endpoint) });
-        _chatClient = client.GetChatClient(modelName);
+        _chatClient = new ChatCompletionsClient(
+            new Uri(endpoint),
+            new AzureKeyCredential(apiKey));
         _logger = logger;
     }
 
@@ -63,26 +62,28 @@ public class RecipeImageProcessor : IRecipeImageProcessor
 
             _logger.LogInformation("Extracting recipe from image. Image size: {Size} bytes", imageBytes.Length);
 
-            var messages = new List<ChatMessage>
+            var base64 = Convert.ToBase64String(imageBytes);
+            var dataUri = new Uri($"data:{imageFile.ContentType};base64,{base64}");
+
+            var options = new ChatCompletionsOptions
             {
-                new SystemChatMessage(RecipeExtractionPrompt.SystemPrompt),
-                new UserChatMessage(
-                    ChatMessageContentPart.CreateTextPart("Please extract the recipe information from this image:"),
-                    ChatMessageContentPart.CreateImagePart(BinaryData.FromBytes(imageBytes), imageFile.ContentType)
-                )
+                Model = _modelName,
+                Temperature = 0.2f,
+                MaxTokens = 2000,
+                Messages =
+                {
+                    new ChatRequestSystemMessage(RecipeExtractionPrompt.SystemPrompt),
+                    new ChatRequestUserMessage(new ChatMessageContentItem[]
+                    {
+                        new ChatMessageTextContentItem("Please extract the recipe information from this image:"),
+                        new ChatMessageImageContentItem(dataUri)
+                    })
+                }
             };
 
-            var chatCompletion = await _chatClient.CompleteChatAsync(
-                messages,
-                new ChatCompletionOptions
-                {
-                    Temperature = 0.2f,
-                    MaxOutputTokenCount = 2000
-                },
-                cancellationToken
-            );
+            var response = await _chatClient.CompleteAsync(options, cancellationToken);
 
-            return RecipeExtractionPrompt.ParseResponse(chatCompletion.Value, _logger);
+            return RecipeExtractionPrompt.ParseResponse(response.Value, _logger);
         }
         catch (Exception ex)
         {
@@ -142,15 +143,9 @@ Respond with ONLY valid JSON in this exact format:
   ""servings"": 4
 }";
 
-    internal static RecipeExtractionResult ParseResponse(ChatCompletion chatCompletion, ILogger logger)
+    internal static RecipeExtractionResult ParseResponse(ChatCompletions chatCompletions, ILogger logger)
     {
-        if (chatCompletion.Content == null || chatCompletion.Content.Count == 0)
-        {
-            logger.LogError("AI response contained no content.");
-            return RecipeExtractionResult.Failure("AI response contained no content.");
-        }
-
-        var responseContent = chatCompletion.Content[0].Text;
+        var responseContent = chatCompletions.Content;
         if (string.IsNullOrWhiteSpace(responseContent))
         {
             logger.LogError("AI response content text was null or empty.");

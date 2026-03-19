@@ -65,6 +65,7 @@ jobs:
           googleClientId=${{ secrets.GOOGLE_CLIENT_ID }}
           googleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}
           jwtSecretKey=${{ secrets.JWT_SECRET_KEY }}
+          frontendUrl=${{ vars.FRONTEND_URL }}
         failOnStdErr: false
     
     - name: Display deployment info

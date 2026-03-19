@@ -38,6 +38,9 @@ param googleClientSecret string = ''
 @secure()
 param jwtSecretKey string
 
+@description('Frontend URL for CORS (leave empty on first deploy, then set after frontend is deployed)')
+param frontendUrl string = ''
+
 // Generate unique names
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var sqlServerName = 'sql-recipe-${environment}-${uniqueSuffix}'
@@ -91,6 +94,7 @@ module containerApp 'modules/container-app.bicep' = {
     aiFoundryKey: aiFoundryKey
     aiFoundryModelName: aiFoundryModelName
     jwtSecretKey: jwtSecretKey
+    frontendUrl: frontendUrl
     tags: commonTags
   }
 }
