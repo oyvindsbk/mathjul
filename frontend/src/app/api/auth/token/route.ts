@@ -31,13 +31,9 @@ export async function POST() {
       );
     }
 
-    // In production, this endpoint would interact with Azure Static Web Apps
-    // For now, return an error since we're not handling production flow
+    // In production, authentication uses Google OAuth via /api/auth/google-token
     return NextResponse.json(
-      {
-        error:
-          "Authentication token endpoint - requires Azure Static Web Apps in production",
-      },
+      { error: "Fake login only available in development" },
       { status: 401 }
     );
   } catch (error) {

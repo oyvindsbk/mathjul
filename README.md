@@ -12,12 +12,12 @@ A full-stack recipe management application with AI-powered recipe extraction fro
 
 ## Architecture
 
-- **Frontend**: Next.js 15 with TypeScript, deployed to Azure Static Web Apps
+- **Frontend**: Next.js 15 with TypeScript, deployed to Azure Container Apps
 - **Backend**: ASP.NET Core 9.0 Web API with vertical slice architecture, deployed to Azure Container Apps
 - **Database**: Azure SQL Database with Entity Framework Core
 - **AI**: Azure OpenAI GPT-4 for recipe extraction
 - **Security**: Azure Key Vault for secrets management
-- **Authentication**: Azure Static Web Apps built-in auth with Google provider
+- **Authentication**: Google OAuth with JWT tokens and email whitelist
 - **Local Dev**: .NET Aspire for orchestration with Docker SQL Server
 
 ## Project Structure
@@ -130,7 +130,6 @@ See [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md) for detailed authentication
 
 4. **Set up Google OAuth**
    - Create OAuth credentials in Google Cloud Console
-   - Configure in Azure Static Web App > Configuration > Identity providers
    - See [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md) for details
 
 5. **Deploy application**
@@ -141,7 +140,7 @@ See [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md) for detailed authentication
 
 This application uses a **Google login with email whitelist** approach:
 
-- ✅ Users log in with Google via Azure Static Web Apps
+- ✅ Users log in with Google OAuth
 - ✅ Backend validates email against Key Vault whitelist
 - ✅ Only approved users can upload recipes
 - ✅ Anyone can view recipes (public access)
@@ -214,7 +213,7 @@ Set in Container App configuration:
 
 ### Frontend (Build Time)
 
-Set in Static Web App or GitHub Actions:
+Set in Container App or GitHub Actions:
 
 - `NEXT_PUBLIC_API_BASE_URL` - Backend API URL
 
@@ -240,7 +239,6 @@ Monthly costs (approximate):
 
 - **Azure SQL Database** (Basic tier): ~$5
 - **Container Apps**: ~$0-2 (scale to zero when idle)
-- **Static Web Apps**: Free tier
 - **Key Vault**: ~$0.03
 - **Azure OpenAI**: Pay per token usage
 

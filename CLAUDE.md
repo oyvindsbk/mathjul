@@ -1,4 +1,4 @@
-# mathjul -- Food Recipes Application
+clear# mathjul -- Food Recipes Application
 
 Full-stack recipe management app with AI-powered recipe extraction. ASP.NET Core 9 backend, Next.js 15 frontend, Azure deployment with Bicep IaC.
 
@@ -97,7 +97,7 @@ backend/RecipeApi/               # ASP.NET Core 9 Web API
 
 infrastructure/                  # Azure Bicep IaC
   main.bicep                     # Orchestration
-  modules/                       # Key Vault, SQL, Container Apps, Static Web Apps
+  modules/                       # Key Vault, SQL, Container Apps
 
 specs/                           # Per-feature specs
   001-initial-setup/             # Feature: spec.md, plan.md, tasks.md
@@ -111,7 +111,7 @@ scripts/                         # Azure deployment scripts
 
 ### Authentication Flow
 1. Dev: Fake login button -> `/api/auth/token` -> JWT in cookie + localStorage
-2. Prod: Google OAuth via `/.auth/login/google` -> Azure Static Web Apps -> `/api/auth/callback` -> JWT
+2. Prod: Google OAuth -> `/api/auth/callback` -> `/api/auth/google-token` -> JWT
 3. `EmailWhitelistMiddleware` checks approved emails (Key Vault in prod, config in dev)
 4. Frontend `middleware.ts` validates `auth_token` cookie server-side before rendering
 

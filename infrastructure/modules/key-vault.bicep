@@ -4,9 +4,6 @@ param keyVaultName string
 @description('The location for Key Vault')
 param location string
 
-@description('Initial approved email addresses (JSON array as string)')
-param approvedEmails string = '[]'
-
 @description('Tags to apply to resources')
 param tags object = {}
 
@@ -35,14 +32,8 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
   }
 }
 
-// Create initial approved users secret
-resource approvedUsersSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
-  parent: keyVault
-  name: 'approved-users'
-  properties: {
-    value: approvedEmails
-  }
-}
+// NOTE: The 'approved-users' secret is managed outside of Bicep (via Azure CLI / portal)
+// to prevent it from being overwritten on every infrastructure deployment.
 
 output keyVaultName string = keyVault.name
 output keyVaultUri string = keyVault.properties.vaultUri

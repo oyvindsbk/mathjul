@@ -108,7 +108,6 @@ Running these scripts creates the following Azure resources:
 | Container Apps | 0.25 vCPU, 0.5GB | ~$0-2 |
 | Log Analytics | Pay-as-you-go | ~$0-1 |
 | Key Vault | Standard | $0 (free tier) |
-| Static Web App | Free | $0 |
 | **Total** | | **~$5-8/month** |
 
 ---

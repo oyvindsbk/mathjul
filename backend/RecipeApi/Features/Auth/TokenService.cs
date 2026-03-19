@@ -33,7 +33,7 @@ public class TokenService : ITokenService
         var claims = new[]
         {
             new Claim(ClaimTypes.Email, email),
-            new Claim("emails", email), // Match Static Web Apps claim type
+            new Claim("emails", email),
             new Claim(JwtRegisteredClaimNames.Sub, email),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
         };

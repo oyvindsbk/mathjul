@@ -11,8 +11,7 @@ infrastructure/
     ├── key-vault.bicep            # Azure Key Vault for secrets
     ├── key-vault-access.bicep     # RBAC permissions for Key Vault
     ├── sql-server.bicep           # SQL Server and Database
-    ├── container-app.bicep        # Azure Container Apps (Backend API)
-    └── static-web-app.bicep       # Static Web Apps (Frontend)
+    └── container-app.bicep        # Azure Container Apps (Backend API + Frontend)
 ```
 
 ## Resources Created
@@ -37,11 +36,6 @@ infrastructure/
 ### 4. **Log Analytics Workspace**
 - **Retention:** 30 days
 - **Cost:** ~$0-1/month (pay-as-you-go)
-
-### 5. **Azure Static Web Apps**
-- **SKU:** Free
-- **Cost:** $0
-- **Features:** Global CDN, automatic HTTPS
 
 ## Deployment
 
@@ -100,8 +94,7 @@ Use the workflows in `.github/workflows/`:
 | `keyVaultName` | Name of the Key Vault |
 | `sqlServerFqdn` | Fully qualified domain name of SQL Server |
 | `containerAppUrl` | URL of the backend API |
-| `staticWebAppUrl` | URL of the frontend |
-| `staticWebAppDeploymentToken` | Deployment token for Static Web App |
+| `frontendUrl` | URL of the frontend |
 
 ## Security Features
 
@@ -126,7 +119,6 @@ Use the workflows in `.github/workflows/`:
 Container Apps automatically scale to zero when not in use, minimizing costs.
 
 ### Free Tiers Used
-- Static Web Apps: Free tier
 - Key Vault: First 10k operations free
 - Log Analytics: First 5GB/month free
 
@@ -203,4 +195,4 @@ Container App needs "Key Vault Secrets User" role. This is automatically granted
 - [Azure Bicep Documentation](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/)
 - [Azure Container Apps](https://learn.microsoft.com/en-us/azure/container-apps/)
 - [Azure Key Vault](https://learn.microsoft.com/en-us/azure/key-vault/)
-- [Azure Static Web Apps](https://learn.microsoft.com/en-us/azure/static-web-apps/)
+

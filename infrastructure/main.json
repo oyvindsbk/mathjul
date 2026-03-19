@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "2881603409314512446"
+      "templateHash": "13056588213449486714"
     }
   },
   "parameters": {
@@ -52,13 +52,6 @@
       "defaultValue": "Phi-4-multimodal-instruct",
       "metadata": {
         "description": "Azure AI Foundry model name"
-      }
-    },
-    "approvedEmails": {
-      "type": "string",
-      "defaultValue": "",
-      "metadata": {
-        "description": "Initial approved email addresses for access control (comma-separated)"
       }
     },
     "googleClientId": {
@@ -119,7 +112,6 @@
           "location": {
             "value": "[parameters('location')]"
           },
-          "approvedEmails": "[if(empty(parameters('approvedEmails')), createObject('value', '[]'), createObject('value', format('[\"{0}\"]', replace(parameters('approvedEmails'), ',', '\",\"'))))]",
           "tags": {
             "value": "[variables('commonTags')]"
           }
@@ -131,7 +123,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "12472259711507145454"
+              "templateHash": "15997677630759792047"
             }
           },
           "parameters": {
@@ -145,13 +137,6 @@
               "type": "string",
               "metadata": {
                 "description": "The location for Key Vault"
-              }
-            },
-            "approvedEmails": {
-              "type": "string",
-              "defaultValue": "[[]",
-              "metadata": {
-                "description": "Initial approved email addresses (JSON array as string)"
               }
             },
             "tags": {
@@ -188,17 +173,6 @@
                   "bypass": "AzureServices"
                 }
               }
-            },
-            {
-              "type": "Microsoft.KeyVault/vaults/secrets",
-              "apiVersion": "2023-07-01",
-              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'approved-users')]",
-              "properties": {
-                "value": "[parameters('approvedEmails')]"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
-              ]
             }
           ],
           "outputs": {

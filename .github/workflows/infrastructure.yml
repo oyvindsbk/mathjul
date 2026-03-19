@@ -13,7 +13,6 @@ jobs:
     environment: prod
     outputs:
       container-app-url: ${{ steps.bicep-deploy.outputs.containerAppUrl }}
-      static-web-app-url: ${{ steps.bicep-deploy.outputs.staticWebAppUrl }}
       key-vault-name: ${{ steps.bicep-deploy.outputs.keyVaultName }}
     
     steps:
@@ -68,9 +67,21 @@ jobs:
           frontendUrl=${{ vars.FRONTEND_URL }}
         failOnStdErr: false
     
+    - name: Update backend CORS with frontend URL
+      run: |
+        FRONTEND_URL="${{ steps.bicep-deploy.outputs.frontendUrl }}"
+        BACKEND_NAME=$(az containerapp list \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --query "[?contains(name, 'recipe-api')].name | [0]" -o tsv)
+        az containerapp update \
+          --name "$BACKEND_NAME" \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --set-env-vars "Cors__AllowedOrigins__0=${FRONTEND_URL}"
+        echo "CORS set to: ${FRONTEND_URL}"
+
     - name: Display deployment info
       run: |
         echo "✅ Infrastructure deployed successfully!"
         echo "🔐 Key Vault: ${{ steps.bicep-deploy.outputs.keyVaultName }}"
         echo "🔗 Backend API: ${{ steps.bicep-deploy.outputs.containerAppUrl }}"
-        echo "🔗 Frontend: ${{ steps.bicep-deploy.outputs.staticWebAppUrl }}"
+        echo "🔗 Frontend: ${{ steps.bicep-deploy.outputs.frontendUrl }}"

@@ -12,7 +12,6 @@
         <File Path="../infrastructure/modules/key-vault-access.bicep" />
         <File Path="../infrastructure/modules/sql-server.bicep" />
         <File Path="../infrastructure/modules/container-app.bicep" />
-        <File Path="../infrastructure/modules/static-web-app.bicep" />
       </Folder>
     </Folder>
     <Folder Name="/.github/">

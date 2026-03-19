@@ -48,9 +48,7 @@ public class EmailWhitelistMiddleware
         // Skip authentication for health checks and auth endpoints only
         var path = context.Request.Path.Value?.ToLower() ?? "";
         if (path.StartsWith("/health") ||
-            path.StartsWith("/.auth") ||
-            path == "/api/auth/token" ||        // dev fake login
-            path == "/api/auth/google-token")   // Google OAuth callback (no SWA)
+            path == "/api/auth/google-token")   // Google OAuth callback
         {
             await _next(context);
             return;
@@ -90,8 +88,8 @@ public class EmailWhitelistMiddleware
             return;
         }
 
-        // Get user email from either JWT token or Static Web Apps authentication
-        var email = GetUserEmailFromToken(context) ?? GetUserEmailFromStaticWebApps(context);
+        // Get user email from JWT token
+        var email = GetUserEmailFromToken(context);
 
         if (string.IsNullOrEmpty(email))
         {
@@ -147,60 +145,6 @@ public class EmailWhitelistMiddleware
         var emailClaim = principal.Claims.FirstOrDefault(c => 
             c.Type == ClaimTypes.Email || 
             c.Type == "emails");
-
-        return emailClaim?.Value;
-    }
-
-    private string? GetUserEmailFromStaticWebApps(HttpContext context)
-    {
-        // Static Web Apps passes user info in X-MS-CLIENT-PRINCIPAL header
-        var principalHeader = context.Request.Headers["X-MS-CLIENT-PRINCIPAL"].FirstOrDefault();
-        
-        if (!string.IsNullOrEmpty(principalHeader))
-        {
-            try
-            {
-                var decodedBytes = Convert.FromBase64String(principalHeader);
-                var decodedJson = System.Text.Encoding.UTF8.GetString(decodedBytes);
-                var principal = JsonDocument.Parse(decodedJson);
-                
-                // Try to get email from claims
-                if (principal.RootElement.TryGetProperty("claims", out var claims))
-                {
-                    foreach (var claim in claims.EnumerateArray())
-                    {
-                        if (claim.TryGetProperty("typ", out var type) && 
-                            (type.GetString() == "emails" || type.GetString() == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress"))
-                        {
-                            if (claim.TryGetProperty("val", out var value))
-                            {
-                                return value.GetString();
-                            }
-                        }
-                    }
-                }
-
-                // Fallback: try userId field which might be the email
-                if (principal.RootElement.TryGetProperty("userId", out var userId))
-                {
-                    var userIdValue = userId.GetString();
-                    if (!string.IsNullOrEmpty(userIdValue) && userIdValue.Contains("@"))
-                    {
-                        return userIdValue;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to parse X-MS-CLIENT-PRINCIPAL header");
-            }
-        }
-
-        // Fallback for local development - check standard claims
-        var emailClaim = context.User.Claims.FirstOrDefault(c => 
-            c.Type == ClaimTypes.Email || 
-            c.Type == "emails" ||
-            c.Type == "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress");
 
         return emailClaim?.Value;
     }

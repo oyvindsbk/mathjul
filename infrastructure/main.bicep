@@ -23,8 +23,6 @@ param aiFoundryKey string
 @description('Azure AI Foundry model name')
 param aiFoundryModelName string = 'Phi-4-multimodal-instruct'
 
-@description('Initial approved email addresses for access control (comma-separated)')
-param approvedEmails string = ''
 
 @description('Google OAuth Client ID')
 @secure()
@@ -62,7 +60,6 @@ module keyVault 'modules/key-vault.bicep' = {
   params: {
     keyVaultName: keyVaultName
     location: location
-    approvedEmails: empty(approvedEmails) ? '[]' : '["${replace(approvedEmails, ',', '","')}"]'
     tags: commonTags
   }
 }

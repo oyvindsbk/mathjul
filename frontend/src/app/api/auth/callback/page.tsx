@@ -11,7 +11,7 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const handleAuth = async () => {
       try {
-        // Get the token from Static Web Apps
+        // Exchange auth state for JWT token
         const response = await fetch("/.auth/me");
         const authData = await response.json();
 
