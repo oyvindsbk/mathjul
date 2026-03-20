@@ -62,8 +62,7 @@ public class RecipeImageProcessor : IRecipeImageProcessor
 
             _logger.LogInformation("Extracting recipe from image. Image size: {Size} bytes", imageBytes.Length);
 
-            var base64 = Convert.ToBase64String(imageBytes);
-            var dataUri = new Uri($"data:{imageFile.ContentType};base64,{base64}");
+            var imageData = new BinaryData(imageBytes);
 
             var options = new ChatCompletionsOptions
             {
@@ -76,7 +75,7 @@ public class RecipeImageProcessor : IRecipeImageProcessor
                     new ChatRequestUserMessage(new ChatMessageContentItem[]
                     {
                         new ChatMessageTextContentItem("Please extract the recipe information from this image:"),
-                        new ChatMessageImageContentItem(dataUri)
+                        new ChatMessageImageContentItem(imageData, imageFile.ContentType)
                     })
                 }
             };
