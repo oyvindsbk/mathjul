@@ -15,7 +15,8 @@ var recipeDb = sqlServer.AddDatabase("recipedb");
 
 // Add the backend API project with database reference
 var recipeApi = builder.AddProject<Projects.RecipeApi>("recipeapi")
-    .WithReference(recipeDb);
+    .WithReference(recipeDb)
+    .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
 
 // Add the frontend project in development mode
 var frontend = builder.AddNpmApp("frontend", "../../frontend", "dev")

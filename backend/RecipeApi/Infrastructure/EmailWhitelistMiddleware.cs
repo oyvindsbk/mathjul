@@ -12,22 +12,25 @@ public class EmailWhitelistMiddleware
     private readonly SecretClient? _secretClient;
     private readonly IConfiguration _configuration;
     private readonly ITokenService _tokenService;
+    private readonly IHostEnvironment _hostEnvironment;
     private List<string> _approvedEmails = new();
     private DateTime _lastRefresh = DateTime.MinValue;
     private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(5);
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
 
     public EmailWhitelistMiddleware(
-        RequestDelegate next, 
+        RequestDelegate next,
         ILogger<EmailWhitelistMiddleware> logger,
         IConfiguration configuration,
         ITokenService tokenService,
+        IHostEnvironment hostEnvironment,
         SecretClient? secretClient = null)
     {
         _next = next;
         _logger = logger;
         _configuration = configuration;
         _tokenService = tokenService;
+        _hostEnvironment = hostEnvironment;
         _secretClient = secretClient;
     }
 
@@ -40,10 +43,9 @@ public class EmailWhitelistMiddleware
             return;
         }
 
-        // Check if in development mode without auth requirement
-        var environment = _configuration["ASPNETCORE_ENVIRONMENT"] ?? "";
-        var isDevelopment = (environment == "Development" || environment.StartsWith("Local", StringComparison.OrdinalIgnoreCase)) &&
-                           _configuration.GetValue<bool>("AllowUnauthenticated");
+        // Check if in development mode — skip auth unless explicitly disabled
+        var isLocalDev = _hostEnvironment.IsDevelopment() || _hostEnvironment.IsEnvironment("LocalDevelopment");
+        var isDevelopment = isLocalDev && _configuration.GetValue("AllowUnauthenticated", defaultValue: true);
 
         // Skip authentication for health checks and auth endpoints only
         var path = context.Request.Path.Value?.ToLower() ?? "";

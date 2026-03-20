@@ -7,16 +7,6 @@ param location string
 @description('Key Vault name')
 param keyVaultName string
 
-@description('Azure AI Foundry serverless endpoint URL')
-param aiFoundryEndpoint string
-
-@description('Azure AI Foundry API key')
-@secure()
-param aiFoundryKey string
-
-@description('Azure AI Foundry model name')
-param aiFoundryModelName string
-
 @description('Frontend URL for CORS (optional)')
 param frontendUrl string = ''
 
@@ -70,14 +60,6 @@ resource jwtSecretKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
   name: 'Jwt--SecretKey'
   properties: {
     value: jwtSecretKey
-  }
-}
-
-resource aiFoundryKeySecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
-  parent: keyVault
-  name: 'AiFoundry--ApiKey'
-  properties: {
-    value: aiFoundryKey
   }
 }
 
@@ -136,15 +118,7 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
               name: 'KeyVault__VaultUri'
               value: keyVault.properties.vaultUri
             }
-            {
-              name: 'AiFoundry__Endpoint'
-              value: aiFoundryEndpoint
-            }
-            {
-              name: 'AiFoundry__ModelName'
-              value: aiFoundryModelName
-            }
-            {
+{
               name: 'Cors__AllowedOrigins__0'
               value: frontendUrl != '' ? frontendUrl : 'https://placeholder-update-after-deployment.com'
             }

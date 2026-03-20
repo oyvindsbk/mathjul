@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "13056588213449486714"
+      "templateHash": "15646767145995462972"
     }
   },
   "parameters": {
@@ -33,25 +33,6 @@
       "type": "securestring",
       "metadata": {
         "description": "The SQL Server administrator password"
-      }
-    },
-    "aiFoundryEndpoint": {
-      "type": "string",
-      "metadata": {
-        "description": "Azure AI Foundry serverless endpoint URL"
-      }
-    },
-    "aiFoundryKey": {
-      "type": "securestring",
-      "metadata": {
-        "description": "Azure AI Foundry API key"
-      }
-    },
-    "aiFoundryModelName": {
-      "type": "string",
-      "defaultValue": "Phi-4-multimodal-instruct",
-      "metadata": {
-        "description": "Azure AI Foundry model name"
       }
     },
     "googleClientId": {
@@ -372,15 +353,6 @@
           "keyVaultName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyVaultDeployment'), '2025-04-01').outputs.keyVaultName.value]"
           },
-          "aiFoundryEndpoint": {
-            "value": "[parameters('aiFoundryEndpoint')]"
-          },
-          "aiFoundryKey": {
-            "value": "[parameters('aiFoundryKey')]"
-          },
-          "aiFoundryModelName": {
-            "value": "[parameters('aiFoundryModelName')]"
-          },
           "jwtSecretKey": {
             "value": "[parameters('jwtSecretKey')]"
           },
@@ -398,7 +370,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "18030054177602161971"
+              "templateHash": "11145301583417882004"
             }
           },
           "parameters": {
@@ -418,24 +390,6 @@
               "type": "string",
               "metadata": {
                 "description": "Key Vault name"
-              }
-            },
-            "aiFoundryEndpoint": {
-              "type": "string",
-              "metadata": {
-                "description": "Azure AI Foundry serverless endpoint URL"
-              }
-            },
-            "aiFoundryKey": {
-              "type": "securestring",
-              "metadata": {
-                "description": "Azure AI Foundry API key"
-              }
-            },
-            "aiFoundryModelName": {
-              "type": "string",
-              "metadata": {
-                "description": "Azure AI Foundry model name"
               }
             },
             "frontendUrl": {
@@ -508,14 +462,6 @@
               }
             },
             {
-              "type": "Microsoft.KeyVault/vaults/secrets",
-              "apiVersion": "2023-07-01",
-              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'AiFoundry--ApiKey')]",
-              "properties": {
-                "value": "[parameters('aiFoundryKey')]"
-              }
-            },
-            {
               "type": "Microsoft.App/containerApps",
               "apiVersion": "2023-05-01",
               "name": "[parameters('containerAppName')]",
@@ -567,14 +513,6 @@
                         {
                           "name": "KeyVault__VaultUri",
                           "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri]"
-                        },
-                        {
-                          "name": "AiFoundry__Endpoint",
-                          "value": "[parameters('aiFoundryEndpoint')]"
-                        },
-                        {
-                          "name": "AiFoundry__ModelName",
-                          "value": "[parameters('aiFoundryModelName')]"
                         },
                         {
                           "name": "Cors__AllowedOrigins__0",

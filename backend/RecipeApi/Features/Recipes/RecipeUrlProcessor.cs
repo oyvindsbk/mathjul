@@ -29,7 +29,7 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
         var apiKey = configuration["AiFoundry:ApiKey"]
             ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:ApiKey");
         _modelName = configuration["AiFoundry:ModelName"]
-            ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:ModelName");
+            ?? "Phi-4-multimodal-instruct";
 
         _chatClient = new ChatCompletionsClient(
             new Uri(endpoint),

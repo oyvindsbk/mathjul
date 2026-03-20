@@ -159,6 +159,7 @@ scripts/                         # Azure deployment scripts
 ### Backend
 - Build verification (no unit test framework set up yet)
 - Manual testing via Aspire dashboard at `http://localhost:15112`
+- Locally ASPNETCORE_ENVIRONMENT is LocalDevelopment
 
 ## Anti-Patterns
 

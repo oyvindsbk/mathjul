@@ -1,5 +1,8 @@
 using Azure;
-using Azure.AI.Inference;
+using Azure.AI.OpenAI;
+using OpenAI.Chat;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Processing;
 using System.Text.Json;
 
 namespace RecipeApi.Features.Recipes;
@@ -11,24 +14,26 @@ public interface IRecipeImageProcessor
 
 public class RecipeImageProcessor : IRecipeImageProcessor
 {
-    private readonly ChatCompletionsClient _chatClient;
-    private readonly string _modelName;
+    private readonly ChatClient _chatClient;
     private readonly ILogger<RecipeImageProcessor> _logger;
     private const long MaxFileSizeBytes = 10 * 1024 * 1024; // 10MB
+    private const int MaxImageDimension = 2048;
     private static readonly string[] AllowedContentTypes = { "image/jpeg", "image/jpg", "image/png", "image/webp" };
 
     public RecipeImageProcessor(IConfiguration configuration, ILogger<RecipeImageProcessor> logger)
     {
-        var endpoint = configuration["AiFoundry:Endpoint"]
-            ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:Endpoint");
-        var apiKey = configuration["AiFoundry:ApiKey"]
-            ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:ApiKey");
-        _modelName = configuration["AiFoundry:ModelName"]
-            ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:ModelName");
+        var endpoint = configuration["AiFoundry:ImageEndpoint"]
+            ?? configuration["AiFoundry:Endpoint"]
+            ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:ImageEndpoint or AiFoundry:Endpoint");
+        var apiKey = configuration["AiFoundry:ImageApiKey"]
+            ?? configuration["AiFoundry:ApiKey"]
+            ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:ImageApiKey or AiFoundry:ApiKey");
+        var deploymentName = configuration["AiFoundry:ImageModelName"] ?? "gpt-4o-mini";
 
-        _chatClient = new ChatCompletionsClient(
+        var azureClient = new AzureOpenAIClient(
             new Uri(endpoint),
             new AzureKeyCredential(apiKey));
+        _chatClient = azureClient.GetChatClient(deploymentName);
         _logger = logger;
     }
 
@@ -60,41 +65,78 @@ public class RecipeImageProcessor : IRecipeImageProcessor
                 imageBytes = memoryStream.ToArray();
             }
 
-            _logger.LogInformation("Extracting recipe from image. Image size: {Size} bytes", imageBytes.Length);
+            _logger.LogInformation("Extracting recipe from image. Original size: {Size} bytes", imageBytes.Length);
 
-            var imageData = new BinaryData(imageBytes);
+            imageBytes = ResizeImageIfNeeded(imageBytes);
 
-            var options = new ChatCompletionsOptions
+            _logger.LogInformation("Image size after resize: {Size} bytes", imageBytes.Length);
+
+            var imageData = BinaryData.FromBytes(imageBytes);
+
+            var messages = new List<ChatMessage>
             {
-                Model = _modelName,
-                Temperature = 0.2f,
-                MaxTokens = 4096,
-                Messages =
-                {
-                    new ChatRequestSystemMessage(RecipeExtractionPrompt.SystemPrompt),
-                    new ChatRequestUserMessage(new ChatMessageContentItem[]
-                    {
-                        new ChatMessageTextContentItem("Please extract the recipe information from this image:"),
-                        new ChatMessageImageContentItem(imageData, imageFile.ContentType)
-                    })
-                }
+                new SystemChatMessage(RecipeExtractionPrompt.SystemPrompt),
+                new UserChatMessage(
+                    ChatMessageContentPart.CreateTextPart("Please extract the recipe information from this image:"),
+                    ChatMessageContentPart.CreateImagePart(imageData, "image/jpeg"))
             };
 
-            var response = await _chatClient.CompleteAsync(options, cancellationToken);
+            var options = new ChatCompletionOptions
+            {
+                Temperature = 0.2f,
+                MaxOutputTokenCount = 4096
+            };
 
-            if (response.Value.FinishReason == CompletionsFinishReason.TokenLimitReached)
+            var response = await _chatClient.CompleteChatAsync(messages, options, cancellationToken);
+
+            var finishReason = response.Value.FinishReason;
+            _logger.LogInformation("AI finish reason: {FinishReason}", finishReason);
+
+            if (finishReason == ChatFinishReason.Length)
             {
                 _logger.LogWarning("AI response was truncated due to token limit");
                 return RecipeExtractionResult.Failure("The recipe was too complex to extract. Please try a simpler image.");
             }
 
-            return RecipeExtractionPrompt.ParseResponse(response.Value, _logger);
+            if (finishReason == ChatFinishReason.ContentFilter)
+            {
+                _logger.LogWarning("AI response was blocked by content filter");
+                return RecipeExtractionResult.Failure("The image was blocked by the content filter. Please try a different image.");
+            }
+
+            var content = response.Value.Content[0].Text;
+            return RecipeExtractionPrompt.ParseResponseContent(content, _logger);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error extracting recipe from image");
             return RecipeExtractionResult.Failure($"Error processing image: {ex.Message}");
         }
+    }
+
+    private byte[] ResizeImageIfNeeded(byte[] imageBytes)
+    {
+        using var image = Image.Load(imageBytes);
+
+        if (image.Width <= MaxImageDimension && image.Height <= MaxImageDimension)
+        {
+            using var output = new MemoryStream();
+            image.SaveAsJpeg(output, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder { Quality = 85 });
+            return output.ToArray();
+        }
+
+        _logger.LogInformation("Resizing image from {Width}x{Height} to fit within {Max}px",
+            image.Width, image.Height, MaxImageDimension);
+
+        image.Mutate(x => x.Resize(new ResizeOptions
+        {
+            Mode = ResizeMode.Max,
+            Size = new Size(MaxImageDimension, MaxImageDimension)
+        }));
+
+        using var resizedOutput = new MemoryStream();
+        image.SaveAsJpeg(resizedOutput, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder { Quality = 85 });
+        return resizedOutput.ToArray();
     }
 }
 
@@ -148,16 +190,26 @@ Respond with ONLY valid JSON in this exact format:
   ""servings"": 4
 }";
 
-    internal static RecipeExtractionResult ParseResponse(ChatCompletions chatCompletions, ILogger logger)
+    internal static RecipeExtractionResult ParseResponse(Azure.AI.Inference.ChatCompletions chatCompletions, ILogger logger)
     {
-        var responseContent = chatCompletions.Content;
+        return ParseResponseContent(chatCompletions.Content, logger);
+    }
+
+    internal static RecipeExtractionResult ParseResponseContent(string? responseContent, ILogger logger)
+    {
         if (string.IsNullOrWhiteSpace(responseContent))
         {
             logger.LogError("AI response content text was null or empty.");
             return RecipeExtractionResult.Failure("AI response content text was null or empty.");
         }
 
-        logger.LogInformation("Received response from AI: {Response}", responseContent);
+        logger.LogInformation("Received response from AI ({Length} chars): {Response}", responseContent.Length, responseContent);
+
+        if (responseContent.Trim().Length < 20)
+        {
+            logger.LogError("AI response too short to be valid JSON: {Content}", responseContent);
+            return RecipeExtractionResult.Failure("The AI returned an incomplete response. Please try again with a clearer image.");
+        }
 
         // Strip markdown code fences if present
         var json = responseContent.Trim();
@@ -169,16 +221,24 @@ Respond with ONLY valid JSON in this exact format:
                 json = json[(firstNewline + 1)..lastFence].Trim();
         }
 
-        var extractedRecipe = JsonSerializer.Deserialize<ExtractedRecipeDto>(
-            json,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-        );
-
-        if (extractedRecipe == null || string.IsNullOrWhiteSpace(extractedRecipe.Title))
+        try
         {
-            return RecipeExtractionResult.Failure("Failed to extract recipe information");
-        }
+            var extractedRecipe = JsonSerializer.Deserialize<ExtractedRecipeDto>(
+                json,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+            );
 
-        return RecipeExtractionResult.Success(extractedRecipe);
+            if (extractedRecipe == null || string.IsNullOrWhiteSpace(extractedRecipe.Title))
+            {
+                return RecipeExtractionResult.Failure("Failed to extract recipe information");
+            }
+
+            return RecipeExtractionResult.Success(extractedRecipe);
+        }
+        catch (JsonException ex)
+        {
+            logger.LogError(ex, "Failed to parse AI response as JSON. Raw content: {Content}", json);
+            return RecipeExtractionResult.Failure("Failed to parse the AI response. The AI did not return valid recipe data. Please try again.");
+        }
     }
 }

@@ -10,6 +10,15 @@ using RecipeApi.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
+bool IsLocalDev(IHostEnvironment? env = null) =>
+    (env ?? builder.Environment).IsDevelopment() || (env ?? builder.Environment).IsEnvironment("LocalDevelopment");
+
+// Ensure user secrets are loaded in all local environments (not just "Development")
+if (IsLocalDev())
+{
+    builder.Configuration.AddUserSecrets<Program>();
+}
+
 // Add service defaults for Aspire telemetry and health checks (available in Debug builds)
 #if DEBUG
 builder.AddServiceDefaults();
@@ -18,7 +27,7 @@ builder.AddServiceDefaults();
 // Load secrets from Azure Key Vault (production only).
 // Key Vault secret names use '--' as a separator, which maps to ':' in configuration.
 // Example: 'ConnectionStrings--RecipeDb' -> ConnectionStrings:RecipeDb
-if (!builder.Environment.IsDevelopment())
+if (!IsLocalDev())
 {
     var keyVaultUri = builder.Configuration["KeyVault:VaultUri"];
     Console.WriteLine($"[KV] KeyVault:VaultUri = '{keyVaultUri}'");
@@ -57,17 +66,26 @@ else
         options.UseSqlServer(connectionString));
 }
 #else
-// Release/Production - connection string stored in Key Vault as 'ConnectionStrings--RecipeDb'
-// Uses managed identity authentication (no passwords)
+// Release build - connection string from config/Key Vault
 var connectionString = builder.Configuration.GetConnectionString("RecipeDb");
 Console.WriteLine($"[KV] ConnectionStrings:RecipeDb = '{(string.IsNullOrEmpty(connectionString) ? "(empty)" : "(set)")}' ");
 if (string.IsNullOrEmpty(connectionString))
     throw new InvalidOperationException(
         "Connection string 'RecipeDb' not found. Ensure Key Vault secret 'ConnectionStrings--RecipeDb' exists.");
 
-builder.Services.AddDbContext<RecipeDbContext>(options =>
-    options.UseSqlServer(connectionString)
-           .AddInterceptors(new AzureAdTokenInterceptor()));
+if (IsLocalDev())
+{
+    // Release build running locally (e.g. via Aspire) - plain SQL auth
+    builder.Services.AddDbContext<RecipeDbContext>(options =>
+        options.UseSqlServer(connectionString));
+}
+else
+{
+    // Production - uses managed identity authentication (no passwords)
+    builder.Services.AddDbContext<RecipeDbContext>(options =>
+        options.UseSqlServer(connectionString)
+               .AddInterceptors(new AzureAdTokenInterceptor()));
+}
 #endif
 
 // Add services to the container.
@@ -76,30 +94,25 @@ builder.Services.AddOpenApi();
 builder.Services.AddHttpClient(); // Needed for Google OAuth token verification
 builder.Services.AddHealthChecks();
 
-// Register services
-// Feature flag: Enable or disable the RecipeImageProcessor implementation.
-// When disabled, we register a disabled/no-op implementation so DI still resolves.
-var enableRecipeImageProcessor = builder.Configuration.GetValue<bool?>("Features:EnableRecipeImageProcessor");
-if (!enableRecipeImageProcessor.HasValue)
-{
-    // Default: enabled in non-development, disabled in development
-    enableRecipeImageProcessor = !builder.Environment.IsDevelopment();
-}
+// Register AI recipe processors: enabled when AiFoundry config is present, disabled otherwise.
+var aiEndpoint = builder.Configuration["AiFoundry:Endpoint"];
+var aiApiKey = builder.Configuration["AiFoundry:ApiKey"];
+var imageEndpoint = builder.Configuration["AiFoundry:ImageEndpoint"];
+var imageApiKey = builder.Configuration["AiFoundry:ImageApiKey"] ?? aiApiKey;
 
-if (enableRecipeImageProcessor.Value)
-{
+if (!string.IsNullOrEmpty(imageEndpoint) && !string.IsNullOrEmpty(imageApiKey))
     builder.Services.AddScoped<IRecipeImageProcessor, RecipeImageProcessor>();
-    builder.Services.AddScoped<IRecipeUrlProcessor, RecipeUrlProcessor>();
-}
 else
-{
     builder.Services.AddScoped<IRecipeImageProcessor, DisabledRecipeImageProcessor>();
+
+if (!string.IsNullOrEmpty(aiEndpoint) && !string.IsNullOrEmpty(aiApiKey))
+    builder.Services.AddScoped<IRecipeUrlProcessor, RecipeUrlProcessor>();
+else
     builder.Services.AddScoped<IRecipeUrlProcessor, DisabledRecipeUrlProcessor>();
-}
 builder.Services.AddSingleton<ITokenService, TokenService>();
 
 // Configure Key Vault client for email whitelist (cached, refreshable reads)
-if (!builder.Environment.IsDevelopment())
+if (!IsLocalDev())
 {
     var keyVaultUri = builder.Configuration["KeyVault:VaultUri"];
     if (!string.IsNullOrEmpty(keyVaultUri))
@@ -114,9 +127,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend",
         policy =>
         {
-            var isDev = builder.Environment.IsDevelopment() || builder.Environment.IsEnvironment("LocalDevelopment");
-
-            if (isDev)
+            if (IsLocalDev())
             {
                 policy.SetIsOriginAllowed(origin => 
                     {
@@ -204,7 +215,7 @@ using (var scope = app.Services.CreateScope())
             logger.LogInformation("Attempting to connect to database (attempt {Count}/{Max})...", retryCount + 1, maxRetries);
             
             // In development, drop and recreate the database to apply schema changes
-            if (app.Environment.IsDevelopment())
+            if (IsLocalDev(app.Environment))
             {
                 logger.LogInformation("Development mode: Dropping and recreating database...");
                 await context.Database.EnsureDeletedAsync();

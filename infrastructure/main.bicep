@@ -13,17 +13,6 @@ param sqlAdminUsername string
 @secure()
 param sqlAdminPassword string
 
-@description('Azure AI Foundry serverless endpoint URL')
-param aiFoundryEndpoint string
-
-@description('Azure AI Foundry API key')
-@secure()
-param aiFoundryKey string
-
-@description('Azure AI Foundry model name')
-param aiFoundryModelName string = 'Phi-4-multimodal-instruct'
-
-
 @description('Google OAuth Client ID')
 @secure()
 param googleClientId string = ''
@@ -87,9 +76,6 @@ module containerApp 'modules/container-app.bicep' = {
     containerAppName: containerAppName
     location: location
     keyVaultName: keyVault.outputs.keyVaultName
-    aiFoundryEndpoint: aiFoundryEndpoint
-    aiFoundryKey: aiFoundryKey
-    aiFoundryModelName: aiFoundryModelName
     jwtSecretKey: jwtSecretKey
     frontendUrl: frontendUrl
     tags: commonTags
