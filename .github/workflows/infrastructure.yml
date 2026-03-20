@@ -58,9 +58,6 @@ jobs:
           environment=prod
           sqlAdminUsername=${{ secrets.SQL_ADMIN_USERNAME }}
           sqlAdminPassword=${{ secrets.SQL_ADMIN_PASSWORD }}
-          aiFoundryEndpoint=${{ secrets.AI_FOUNDRY_ENDPOINT }}
-          aiFoundryKey=${{ secrets.AI_FOUNDRY_KEY }}
-          aiFoundryModelName=${{ secrets.AI_FOUNDRY_MODEL_NAME }}
           googleClientId=${{ secrets.GOOGLE_CLIENT_ID }}
           googleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}
           jwtSecretKey=${{ secrets.JWT_SECRET_KEY }}
