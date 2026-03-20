@@ -68,7 +68,7 @@ public class RecipeImageProcessor : IRecipeImageProcessor
             {
                 Model = _modelName,
                 Temperature = 0.2f,
-                MaxTokens = 2000,
+                MaxTokens = 4096,
                 Messages =
                 {
                     new ChatRequestSystemMessage(RecipeExtractionPrompt.SystemPrompt),
@@ -81,6 +81,12 @@ public class RecipeImageProcessor : IRecipeImageProcessor
             };
 
             var response = await _chatClient.CompleteAsync(options, cancellationToken);
+
+            if (response.Value.FinishReason == CompletionsFinishReason.TokenLimitReached)
+            {
+                _logger.LogWarning("AI response was truncated due to token limit");
+                return RecipeExtractionResult.Failure("The recipe was too complex to extract. Please try a simpler image.");
+            }
 
             return RecipeExtractionPrompt.ParseResponse(response.Value, _logger);
         }
