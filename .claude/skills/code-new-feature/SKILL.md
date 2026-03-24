@@ -1,0 +1,164 @@
+---
+name: code-new-feature
+description: "Scaffolds and drives a new feature from idea to implementation. Creates a feature branch, writes a spec, plan, and task list in specs/[branch]/, then iterates through tasks using the inner loop. Use when starting a new feature, adding functionality, building a new capability, or beginning feature development."
+compatibility: Requires git, file system write access, and project build tools.
+metadata:
+  author: mimir
+  version: "1.0"
+---
+
+## Instructions
+
+When the user asks to add a new feature, follow these steps:
+
+### 1. Understand the feature
+
+Gather from the user's request (ask if unclear):
+
+- **What** the feature does — clear description of the desired behavior
+- **Why** it's needed — the user problem or motivation
+- **Scope** — which stacks are affected (frontend, backend, infrastructure)
+- **Any constraints** — compatibility, performance, UX requirements
+
+### 2. Assign a feature number and create the branch
+
+1. Check existing branches and `specs/` directories to find the next available feature number (three-digit, zero-padded: `001`, `002`, etc.).
+2. Pick a short kebab-case name describing the feature.
+3. Create and checkout the feature branch:
+
+```bash
+git checkout -b <NNN>-<feature-name>
+```
+
+### 3. Create the spec directory
+
+Create `specs/<branch-name>/` with three files:
+
+#### `spec.md` — Technical specification
+
+```markdown
+# Feature: <Title>
+
+## Summary
+<1-2 sentence overview>
+
+## Motivation
+<Why this feature is needed>
+
+## Requirements
+- <Functional requirement 1>
+- <Functional requirement 2>
+- ...
+
+## Design
+
+### Data Model
+<New or modified entities, fields, relationships — if applicable>
+
+### API Changes
+<New or modified endpoints — if applicable>
+
+### UI Changes
+<New pages, components, or UX flows — if applicable>
+
+## Out of Scope
+- <Things explicitly not included>
+
+## Open Questions
+- <Unresolved decisions — resolve before implementation>
+```
+
+#### `plan.md` — Implementation plan
+
+```markdown
+# Implementation Plan: <Title>
+
+## Approach
+<High-level technical approach>
+
+## Stacks Affected
+- [ ] Frontend
+- [ ] Backend
+- [ ] Infrastructure
+
+## Key Decisions
+- <Decision 1: rationale>
+- <Decision 2: rationale>
+
+## Risks
+- <Risk 1: mitigation>
+```
+
+#### `tasks.md` — Task list
+
+```markdown
+# Tasks: <Title>
+
+## Tasks
+
+- [ ] Task 1: <description>
+- [ ] Task 2: <description>
+- [ ] Task 3: <description>
+...
+```
+
+**Task rules:**
+- Each task should be a single, focused unit of work
+- Tasks are ordered by dependency — earlier tasks unblock later ones
+- Each task must leave all relevant checks green (see inner loop)
+- Include verification steps for each stack affected
+
+### 4. Review with the user
+
+Present the spec, plan, and tasks to the user for review before starting implementation. Adjust based on feedback.
+
+### 5. Implement tasks one at a time
+
+For each task in `tasks.md`:
+
+1. Read the spec (`specs/<branch>/spec.md`) to stay aligned
+2. Implement the changes for that single task
+3. Run the inner loop for every affected stack:
+
+**Frontend changes:**
+```bash
+cd frontend && npm run lint
+cd frontend && npx tsc --noEmit
+cd frontend && npm run build
+```
+
+**Backend changes:**
+```bash
+cd backend/RecipeApi && dotnet build
+```
+
+**Infrastructure changes:**
+```bash
+az bicep build --file infrastructure/main.bicep
+```
+
+4. Fix any failures before moving on
+5. Mark the task complete in `tasks.md` by changing `- [ ]` to `- [x]`
+6. Commit the changes with a descriptive message
+
+### 6. Repeat until done
+
+Continue implementing tasks one at a time until all tasks in `tasks.md` are marked complete.
+
+### 7. Final verification
+
+After all tasks are done:
+
+1. Run the full inner loop for all affected stacks
+2. Verify all checks pass
+3. Inform the user the feature is complete and ready for PR
+
+## Validation
+
+- [ ] Feature branch exists with correct naming (`NNN-feature-name`)
+- [ ] `specs/<branch>/spec.md` exists and describes the feature
+- [ ] `specs/<branch>/plan.md` exists with implementation approach
+- [ ] `specs/<branch>/tasks.md` exists with all tasks checked off
+- [ ] All inner loop checks pass for affected stacks
+- [ ] Each task has its own commit on the feature branch
+- [ ] No changes on `main` — all work is on the feature branch
