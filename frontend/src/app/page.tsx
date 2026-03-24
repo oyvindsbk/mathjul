@@ -106,11 +106,11 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" data-testid="recipe-grid">
           {recipes.map((recipe) => (
-            <div key={recipe.id} data-testid={`recipe-card-${recipe.id}`} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+            <div key={recipe.id} data-testid={`recipe-card-${recipe.id}`} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col">
               <div className="h-48 bg-gray-200 flex items-center justify-center">
                 <span className="text-gray-500">Oppskrift bilde</span>
               </div>
-              <div className="p-6">
+              <div className="p-6 flex flex-col flex-1">
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
                   {recipe.title}
                 </h3>
@@ -119,7 +119,7 @@ export default function Home() {
                 </p>
                 <Link
                   href={`/recipes/${recipe.id}`}
-                  className="block w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors duration-200 text-center"
+                  className="block w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors duration-200 text-center mt-auto"
                 >
                   Vis oppskrift
                 </Link>
