@@ -158,11 +158,19 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     
-    - name: Update Container App
+    - name: Configure GHCR registry and update image
       run: |
         # Extract first tag from the list
         IMAGE_TAG=$(echo "${{ needs.build-and-push-image.outputs.image-tag }}" | head -n1)
-        
+        echo "Deploying image: $IMAGE_TAG"
+
+        az containerapp registry set \
+          --name "${{ needs.get-resources.outputs.container-app-name }}" \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --server ghcr.io \
+          --username ${{ github.actor }} \
+          --password ${{ secrets.GITHUB_TOKEN }}
+
         az containerapp update \
           --name "${{ needs.get-resources.outputs.container-app-name }}" \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
@@ -219,10 +227,18 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     
-    - name: Update Frontend Container App
+    - name: Configure GHCR registry and update image
       run: |
         IMAGE_TAG=$(echo "${{ needs.build-and-push-frontend-image.outputs.image-tag }}" | head -n1)
-        
+        echo "Deploying image: $IMAGE_TAG"
+
+        az containerapp registry set \
+          --name "${{ needs.get-resources.outputs.frontend-container-app-name }}" \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --server ghcr.io \
+          --username ${{ github.actor }} \
+          --password ${{ secrets.GITHUB_TOKEN }}
+
         az containerapp update \
           --name "${{ needs.get-resources.outputs.frontend-container-app-name }}" \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
