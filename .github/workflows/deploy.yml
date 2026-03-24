@@ -169,7 +169,7 @@ jobs:
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --server ghcr.io \
           --username ${{ github.actor }} \
-          --password ${{ secrets.GITHUB_TOKEN }}
+          --password ${{ secrets.GHCR_TOKEN }}
 
         az containerapp update \
           --name "${{ needs.get-resources.outputs.container-app-name }}" \
@@ -237,7 +237,7 @@ jobs:
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --server ghcr.io \
           --username ${{ github.actor }} \
-          --password ${{ secrets.GITHUB_TOKEN }}
+          --password ${{ secrets.GHCR_TOKEN }}
 
         az containerapp update \
           --name "${{ needs.get-resources.outputs.frontend-container-app-name }}" \
