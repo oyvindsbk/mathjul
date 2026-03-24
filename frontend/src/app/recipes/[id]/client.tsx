@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { recipeService } from "@/lib/services/recipe.service";
 import { useAuth } from "@/lib/context/AuthContext";
-import type { Recipe } from "@/lib/mock-data";
+import type { Recipe, StructuredIngredient } from "@/lib/mock-data";
 
 interface RecipeDetail extends Recipe {
   cookTime?: string;
@@ -13,16 +13,45 @@ interface RecipeDetail extends Recipe {
   difficulty?: string;
   imageUrl?: string;
   servings?: number;
-  ingredients?: string[];
+  ingredients?: StructuredIngredient[];
   instructions?: string[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+function formatQuantity(quantity: number): string {
+  if (quantity % 1 === 0) return quantity.toString();
+  // Show up to 2 decimal places, trim trailing zeros
+  return parseFloat(quantity.toFixed(2)).toString();
+}
+
+function formatIngredient(
+  ingredient: StructuredIngredient,
+  baseServings: number | null | undefined,
+  desiredServings: number
+): string {
+  let qtyStr = "";
+  if (ingredient.quantity != null) {
+    if (baseServings && baseServings > 0) {
+      const scaled = (ingredient.quantity * desiredServings) / baseServings;
+      qtyStr = formatQuantity(scaled);
+    } else {
+      qtyStr = formatQuantity(ingredient.quantity);
+    }
+  }
+
+  const parts: string[] = [];
+  if (qtyStr) parts.push(qtyStr);
+  if (ingredient.unit) parts.push(ingredient.unit);
+  parts.push(ingredient.name);
+  return parts.join(" ");
 }
 
 export default function RecipeDetailClient({ id }: { id: string }) {
   const [recipe, setRecipe] = useState<RecipeDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [desiredServings, setDesiredServings] = useState<number>(0);
   const { token } = useAuth();
 
   useEffect(() => {
@@ -34,6 +63,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
           setRecipe(null);
         } else {
           setRecipe(data as RecipeDetail);
+          setDesiredServings((data as RecipeDetail).servings ?? 0);
         }
       } catch (err) {
         console.error('Error fetching recipe:', err);
@@ -63,7 +93,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
     return (
       <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
-          <Link 
+          <Link
             href="/"
             data-testid="back-link"
             className="inline-flex items-center px-4 py-2 text-blue-600 hover:text-blue-800 mb-6"
@@ -85,7 +115,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
-        <Link 
+        <Link
           href="/"
           data-testid="back-link"
           className="inline-flex items-center px-4 py-2 text-blue-600 hover:text-blue-800 mb-8"
@@ -100,13 +130,13 @@ export default function RecipeDetailClient({ id }: { id: string }) {
           <div className="h-96 bg-gray-200 flex items-center justify-center">
             <span className="text-gray-500">Recipe Image</span>
           </div>
-          
+
           <div className="p-8">
             <div className="flex items-start justify-between mb-4">
               <h1 className="text-4xl font-bold text-gray-900">{recipe.title}</h1>
               <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                recipe.difficulty === 'Easy' 
-                  ? 'bg-green-100 text-green-800' 
+                recipe.difficulty === 'Easy'
+                  ? 'bg-green-100 text-green-800'
                   : recipe.difficulty === 'Medium'
                   ? 'bg-yellow-100 text-yellow-800'
                   : 'bg-red-100 text-red-800'
@@ -116,7 +146,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
             </div>
 
             <p className="text-lg text-gray-600 mb-6">{recipe.description}</p>
-            
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-y border-gray-200">
               {recipe.prepTime && (
                 <div className="text-center">
@@ -130,12 +160,28 @@ export default function RecipeDetailClient({ id }: { id: string }) {
                   <div className="text-sm text-gray-600">Stektid (min)</div>
                 </div>
               )}
-              {recipe.servings && (
+              {recipe.servings ? (
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">{recipe.servings}</div>
+                  <div className="flex items-center justify-center gap-2">
+                    <button
+                      onClick={() => setDesiredServings(Math.max(1, desiredServings - 1))}
+                      className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold text-lg flex items-center justify-center"
+                      aria-label="Fewer portions"
+                    >
+                      -
+                    </button>
+                    <span className="text-2xl font-bold text-gray-900 min-w-[2ch] text-center">{desiredServings}</span>
+                    <button
+                      onClick={() => setDesiredServings(desiredServings + 1)}
+                      className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold text-lg flex items-center justify-center"
+                      aria-label="More portions"
+                    >
+                      +
+                    </button>
+                  </div>
                   <div className="text-sm text-gray-600">Porsjoner</div>
                 </div>
-              )}
+              ) : null}
               <div className="text-center">
                 <div className="text-sm text-gray-500">Sist oppdatert</div>
                 <div className="text-sm text-gray-600">
@@ -152,16 +198,19 @@ export default function RecipeDetailClient({ id }: { id: string }) {
               <h2 className="text-2xl font-bold text-gray-900 mb-6" data-testid="ingredients-heading">Ingredienser</h2>
               <ul className="space-y-3">
                 {recipe.ingredients && recipe.ingredients.length > 0 ? (
-                  recipe.ingredients.map((ingredient: string, index: number) => (
-                    <li key={index} className="flex items-start">
-                      <input 
-                        type="checkbox" 
-                        className="mt-1 mr-3 w-4 h-4 text-blue-600 rounded cursor-pointer"
-                        aria-label={`Ingredient: ${ingredient}`}
-                      />
-                      <span className="text-gray-700">{ingredient}</span>
-                    </li>
-                  ))
+                  recipe.ingredients.map((ingredient, index) => {
+                    const display = formatIngredient(ingredient, recipe.servings, desiredServings);
+                    return (
+                      <li key={index} className="flex items-start">
+                        <input
+                          type="checkbox"
+                          className="mt-1 mr-3 w-4 h-4 text-blue-600 rounded cursor-pointer"
+                          aria-label={`Ingredient: ${display}`}
+                        />
+                        <span className="text-gray-700">{display}</span>
+                      </li>
+                    );
+                  })
                 ) : (
                   <li className="text-gray-500">Ingen ingredienser tilgjengelig</li>
                 )}

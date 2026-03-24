@@ -4,11 +4,12 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthButton } from '@/components/AuthButton';
 import { useApiToken } from '@/hooks/useApiToken';
+import type { StructuredIngredient } from '@/lib/mock-data';
 
 interface ExtractedRecipe {
   title: string;
   description?: string;
-  ingredients: string[];
+  ingredients: StructuredIngredient[];
   instructions: string[];
   prepTime?: number;
   cookTime?: number;
@@ -446,19 +447,43 @@ export default function UploadRecipe() {
                   {extractedRecipe.ingredients.map((ingredient, index) => (
                     <div key={index} className="flex gap-2">
                       <input
-                        type="text"
-                        value={ingredient}
+                        type="number"
+                        step="any"
+                        value={ingredient.quantity ?? ''}
                         onChange={(e) => {
                           const newIngredients = [...extractedRecipe.ingredients];
-                          newIngredients[index] = e.target.value;
-                          handleEditField('ingredients', newIngredients);
+                          newIngredients[index] = { ...ingredient, quantity: e.target.value ? parseFloat(e.target.value) : null };
+                          setExtractedRecipe({ ...extractedRecipe, ingredients: newIngredients });
                         }}
+                        placeholder="Qty"
+                        className="w-20 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
+                      />
+                      <input
+                        type="text"
+                        value={ingredient.unit ?? ''}
+                        onChange={(e) => {
+                          const newIngredients = [...extractedRecipe.ingredients];
+                          newIngredients[index] = { ...ingredient, unit: e.target.value || null };
+                          setExtractedRecipe({ ...extractedRecipe, ingredients: newIngredients });
+                        }}
+                        placeholder="Unit"
+                        className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
+                      />
+                      <input
+                        type="text"
+                        value={ingredient.name}
+                        onChange={(e) => {
+                          const newIngredients = [...extractedRecipe.ingredients];
+                          newIngredients[index] = { ...ingredient, name: e.target.value };
+                          setExtractedRecipe({ ...extractedRecipe, ingredients: newIngredients });
+                        }}
+                        placeholder="Ingredient name"
                         className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
                       />
                       <button
                         onClick={() => {
                           const newIngredients = extractedRecipe.ingredients.filter((_, i) => i !== index);
-                          handleEditField('ingredients', newIngredients);
+                          setExtractedRecipe({ ...extractedRecipe, ingredients: newIngredients });
                         }}
                         className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
                       >
@@ -467,7 +492,10 @@ export default function UploadRecipe() {
                     </div>
                   ))}
                   <button
-                    onClick={() => handleEditField('ingredients', [...extractedRecipe.ingredients, ''])}
+                    onClick={() => setExtractedRecipe({
+                      ...extractedRecipe,
+                      ingredients: [...extractedRecipe.ingredients, { quantity: null, unit: null, name: '' }]
+                    })}
                     className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
                   >
                     + Add Ingredient

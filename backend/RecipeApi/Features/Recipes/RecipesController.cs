@@ -64,7 +64,12 @@ public class RecipesController : ControllerBase
             Difficulty = recipe.Difficulty,
             ImageUrl = recipe.ImageUrl,
             Servings = recipe.Servings,
-            Ingredients = recipe.Ingredients.Split(new[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries).ToList(),
+            Ingredients = recipe.Ingredients.Select(i => new StructuredIngredientDto
+            {
+                Quantity = i.Quantity,
+                Unit = i.Unit,
+                Name = i.Name
+            }).ToList(),
             Instructions = recipe.Instructions.Split(new[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries).ToList(),
             CreatedAt = recipe.CreatedAt,
             UpdatedAt = recipe.UpdatedAt
@@ -103,16 +108,7 @@ public class RecipesController : ControllerBase
         var response = new RecipeExtractionResponse
         {
             Success = true,
-            ExtractedRecipe = new ExtractedRecipeResponse
-            {
-                Title = result.Recipe!.Title,
-                Description = result.Recipe.Description,
-                Ingredients = result.Recipe.Ingredients,
-                Instructions = result.Recipe.Instructions,
-                PrepTime = result.Recipe.PrepTime,
-                CookTime = result.Recipe.CookTime,
-                Servings = result.Recipe.Servings
-            }
+            ExtractedRecipe = MapToExtractedResponse(result.Recipe!)
         };
 
         return Ok(response);
@@ -146,16 +142,7 @@ public class RecipesController : ControllerBase
         return Ok(new RecipeExtractionResponse
         {
             Success = true,
-            ExtractedRecipe = new ExtractedRecipeResponse
-            {
-                Title = result.Recipe!.Title,
-                Description = result.Recipe.Description,
-                Ingredients = result.Recipe.Ingredients,
-                Instructions = result.Recipe.Instructions,
-                PrepTime = result.Recipe.PrepTime,
-                CookTime = result.Recipe.CookTime,
-                Servings = result.Recipe.Servings
-            }
+            ExtractedRecipe = MapToExtractedResponse(result.Recipe!)
         });
     }
 
@@ -168,7 +155,13 @@ public class RecipesController : ControllerBase
         {
             Title = request.Title,
             Description = request.Description ?? string.Empty,
-            Ingredients = string.Join("\n", request.Ingredients ?? new List<string>()),
+            Ingredients = (request.Ingredients ?? new List<StructuredIngredientDto>())
+                .Select(i => new StructuredIngredient
+                {
+                    Quantity = i.Quantity,
+                    Unit = i.Unit,
+                    Name = i.Name
+                }).ToList(),
             Instructions = string.Join("\n", request.Instructions ?? new List<string>()),
             PrepTime = request.PrepTime,
             CookTimeMinutes = request.CookTime,
@@ -195,6 +188,22 @@ public class RecipesController : ControllerBase
 
         return CreatedAtAction(nameof(GetAllRecipes), new { id = recipe.Id }, recipeDto);
     }
+
+    private static ExtractedRecipeResponse MapToExtractedResponse(ExtractedRecipeDto dto) => new()
+    {
+        Title = dto.Title,
+        Description = dto.Description,
+        Ingredients = dto.Ingredients.Select(i => new StructuredIngredientDto
+        {
+            Quantity = i.Quantity,
+            Unit = i.Unit,
+            Name = i.Name
+        }).ToList(),
+        Instructions = dto.Instructions,
+        PrepTime = dto.PrepTime,
+        CookTime = dto.CookTime,
+        Servings = dto.Servings
+    };
 }
 
 public class RecipeDto
@@ -218,10 +227,17 @@ public class RecipeDetailDto
     public string Difficulty { get; set; } = string.Empty;
     public string ImageUrl { get; set; } = string.Empty;
     public int? Servings { get; set; }
-    public List<string> Ingredients { get; set; } = new();
+    public List<StructuredIngredientDto> Ingredients { get; set; } = new();
     public List<string> Instructions { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+}
+
+public class StructuredIngredientDto
+{
+    public decimal? Quantity { get; set; }
+    public string? Unit { get; set; }
+    public string Name { get; set; } = string.Empty;
 }
 
 public class RecipeExtractionResponse
@@ -235,7 +251,7 @@ public class ExtractedRecipeResponse
 {
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public List<string> Ingredients { get; set; } = new();
+    public List<StructuredIngredientDto> Ingredients { get; set; } = new();
     public List<string> Instructions { get; set; } = new();
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
@@ -251,7 +267,7 @@ public class SaveExtractedRecipeRequest
 {
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public List<string>? Ingredients { get; set; }
+    public List<StructuredIngredientDto>? Ingredients { get; set; }
     public List<string>? Instructions { get; set; }
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }

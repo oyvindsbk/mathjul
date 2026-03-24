@@ -4,7 +4,8 @@
       "Bash(dotnet package search Aspire.Hosting.NodeJs --take 1)",
       "Bash(dotnet package search Aspire.Hosting.SqlServer --take 1)",
       "Bash(dotnet package search Aspire.Microsoft.EntityFrameworkCore.SqlServer --take 1)",
-      "Bash(dotnet build backend/RecipeApi/RecipeApi.csproj)"
+      "Bash(dotnet build backend/RecipeApi/RecipeApi.csproj)",
+      "Bash(rtk npm:*)"
     ]
   }
 }

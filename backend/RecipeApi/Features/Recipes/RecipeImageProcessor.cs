@@ -157,7 +157,7 @@ public class ExtractedRecipeDto
 {
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
-    public List<string> Ingredients { get; set; } = new();
+    public List<StructuredIngredient> Ingredients { get; set; } = new();
     public List<string> Instructions { get; set; } = new();
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
@@ -171,24 +171,90 @@ internal static class RecipeExtractionPrompt
 Extract the following fields:
 - title: The recipe name
 - description: A brief description or subtitle if available
-- ingredients: Array of ingredient strings (e.g., ""2 cups flour"", ""1 tsp salt"")
+- ingredients: Array of ingredient objects, each with:
+  - quantity: numeric amount (e.g., 2, 0.5) or null if not specified (e.g., ""salt to taste"")
+  - unit: measurement unit (e.g., ""cups"", ""tsp"", ""g"", ""dl"", ""stk"") or null if unitless (e.g., ""2 eggs"")
+  - name: the ingredient name (e.g., ""flour"", ""salt"", ""eggs"")
 - instructions: Array of instruction steps as separate strings
 - prepTime: Preparation time in minutes (extract from text like ""Prep: 15 min"")
 - cookTime: Cooking time in minutes (extract from text like ""Cook: 30 min"")
-- servings: Number of servings (extract from text like ""Serves 4"")
+- servings: Number of servings/portions (extract from text like ""Serves 4"", ""4 porsjoner"")
 
+Convert fractions to decimals (e.g., 1/2 = 0.5, 1/4 = 0.25).
 If any field is not clearly visible or mentioned, use null for that field.
 
 Respond with ONLY valid JSON in this exact format:
 {
   ""title"": ""Recipe Name"",
   ""description"": ""Brief description"",
-  ""ingredients"": [""ingredient 1"", ""ingredient 2""],
+  ""ingredients"": [
+    {""quantity"": 2, ""unit"": ""cups"", ""name"": ""flour""},
+    {""quantity"": 1, ""unit"": ""tsp"", ""name"": ""salt""},
+    {""quantity"": null, ""unit"": null, ""name"": ""fresh herbs to taste""}
+  ],
   ""instructions"": [""step 1"", ""step 2""],
   ""prepTime"": 15,
   ""cookTime"": 30,
   ""servings"": 4
 }";
+
+    /// <summary>
+    /// If the AI returns ingredients as plain strings instead of objects, convert them.
+    /// </summary>
+    internal static string NormalizeIngredients(string json, ILogger logger)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            if (!root.TryGetProperty("ingredients", out var ingredients) &&
+                !root.TryGetProperty("Ingredients", out ingredients))
+                return json;
+
+            if (ingredients.ValueKind != JsonValueKind.Array || ingredients.GetArrayLength() == 0)
+                return json;
+
+            // Check if first element is a string (legacy format)
+            var first = ingredients[0];
+            if (first.ValueKind != JsonValueKind.String)
+                return json; // Already structured objects
+
+            logger.LogInformation("Converting plain string ingredients to structured format");
+
+            var structured = new List<StructuredIngredient>();
+            foreach (var item in ingredients.EnumerateArray())
+            {
+                structured.Add(new StructuredIngredient { Name = item.GetString() ?? string.Empty });
+            }
+
+            // Rebuild JSON with structured ingredients
+            using var ms = new MemoryStream();
+            using var writer = new Utf8JsonWriter(ms);
+            writer.WriteStartObject();
+            foreach (var prop in root.EnumerateObject())
+            {
+                if (prop.Name.Equals("ingredients", StringComparison.OrdinalIgnoreCase))
+                {
+                    writer.WritePropertyName(prop.Name);
+                    JsonSerializer.Serialize(writer, structured);
+                }
+                else
+                {
+                    prop.WriteTo(writer);
+                }
+            }
+            writer.WriteEndObject();
+            writer.Flush();
+
+            return System.Text.Encoding.UTF8.GetString(ms.ToArray());
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to normalize ingredients, proceeding with original JSON");
+            return json;
+        }
+    }
 
     internal static RecipeExtractionResult ParseResponse(Azure.AI.Inference.ChatCompletions chatCompletions, ILogger logger)
     {
@@ -223,10 +289,12 @@ Respond with ONLY valid JSON in this exact format:
 
         try
         {
-            var extractedRecipe = JsonSerializer.Deserialize<ExtractedRecipeDto>(
-                json,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
-            );
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+
+            // Pre-process: if ingredients contains plain strings, convert to structured objects
+            json = NormalizeIngredients(json, logger);
+
+            var extractedRecipe = JsonSerializer.Deserialize<ExtractedRecipeDto>(json, options);
 
             if (extractedRecipe == null || string.IsNullOrWhiteSpace(extractedRecipe.Title))
             {
