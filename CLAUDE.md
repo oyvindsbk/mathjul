@@ -48,17 +48,19 @@ Run verification after every meaningful change. Cheapest checks first.
 
 ### Frontend changes
 
-| Step | What      | Command                                | When                     |
-|------|-----------|----------------------------------------|--------------------------|
-| 1    | Lint      | `cd frontend && npm run lint`          | After every change       |
-| 2    | Typecheck | `cd frontend && npx tsc --noEmit`      | After editing source     |
-| 3    | Build     | `cd frontend && npm run build`         | After implementing logic |
+| Step | What      | Command                                       | When                                       |
+|------|-----------|-----------------------------------------------|--------------------------------------------|
+| 1    | Lint      | `cd frontend && npm run lint`                 | After every change                         |
+| 2    | Typecheck | `cd frontend && npx tsc --noEmit`             | After editing source                       |
+| 3    | Build     | `cd frontend && npm run build`                | After implementing logic                   |
+| 4    | E2E tests | `cd frontend && npx playwright test`          | After adding new pages/flows (needs server)|
 
 ### Backend changes
 
-| Step | What      | Command                                        | When                     |
-|------|-----------|------------------------------------------------|--------------------------|
-| 1    | Build     | `cd backend/RecipeApi && dotnet build`          | After every change       |
+| Step | What      | Command                                              | When                     |
+|------|-----------|------------------------------------------------------|--------------------------|
+| 1    | Build     | `cd backend/RecipeApi && dotnet build`               | After every change       |
+| 2    | Test      | `cd backend/RecipeApi && dotnet test`                | After implementing logic |
 
 ### Infrastructure changes
 
@@ -137,6 +139,8 @@ scripts/                         # Azure deployment scripts
 - Use feature branches for all changes
 - Test auth flows: both dev fake login and production Google auth
 - Handle both Aspire (Debug) and Docker (Release) database configurations
+- Write xUnit tests for new backend features in `backend/RecipeApi.Tests/`
+- Write Playwright tests for new frontend pages or flows in `frontend/tests/e2e/`
 
 ## DON'T
 
@@ -157,7 +161,7 @@ scripts/                         # Azure deployment scripts
 - Check browser DevTools: cookies (`auth_token`), localStorage (`jwt_token`), network requests
 
 ### Backend
-- Build verification (no unit test framework set up yet)
+- xUnit tests in `backend/RecipeApi.Tests/`, run with `cd backend/RecipeApi && dotnet test`
 - Manual testing via Aspire dashboard at `http://localhost:15112`
 - Locally ASPNETCORE_ENVIRONMENT is LocalDevelopment
 
