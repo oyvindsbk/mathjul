@@ -189,6 +189,76 @@ public class RecipesController : ControllerBase
         return CreatedAtAction(nameof(GetAllRecipes), new { id = recipe.Id }, recipeDto);
     }
 
+    [HttpPut("{id:int}")]
+    public async Task<ActionResult<RecipeDetailDto>> UpdateRecipe(int id, [FromBody] UpdateRecipeRequest request)
+    {
+        var recipe = await _context.Recipes.FindAsync(id);
+
+        if (recipe == null)
+        {
+            return NotFound(new { message = "Recipe not found" });
+        }
+
+        recipe.Title = request.Title;
+        recipe.Description = request.Description ?? string.Empty;
+        recipe.Ingredients = (request.Ingredients ?? new List<StructuredIngredientDto>())
+            .Select(i => new StructuredIngredient
+            {
+                Quantity = i.Quantity,
+                Unit = i.Unit,
+                Name = i.Name
+            }).ToList();
+        recipe.Instructions = string.Join("\n", request.Instructions ?? new List<string>());
+        recipe.PrepTime = request.PrepTime;
+        recipe.CookTimeMinutes = request.CookTime;
+        recipe.CookTime = request.CookTime.HasValue ? $"{request.CookTime} min" : string.Empty;
+        recipe.Servings = request.Servings;
+        recipe.Difficulty = request.Difficulty ?? "Medium";
+        recipe.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        var recipeDetail = new RecipeDetailDto
+        {
+            Id = recipe.Id,
+            Title = recipe.Title,
+            Description = recipe.Description,
+            CookTime = recipe.CookTime,
+            CookTimeMinutes = recipe.CookTimeMinutes,
+            PrepTime = recipe.PrepTime,
+            Difficulty = recipe.Difficulty,
+            ImageUrl = recipe.ImageUrl,
+            Servings = recipe.Servings,
+            Ingredients = recipe.Ingredients.Select(i => new StructuredIngredientDto
+            {
+                Quantity = i.Quantity,
+                Unit = i.Unit,
+                Name = i.Name
+            }).ToList(),
+            Instructions = recipe.Instructions.Split(new[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries).ToList(),
+            CreatedAt = recipe.CreatedAt,
+            UpdatedAt = recipe.UpdatedAt
+        };
+
+        return Ok(recipeDetail);
+    }
+
+    [HttpDelete("{id:int}")]
+    public async Task<IActionResult> DeleteRecipe(int id)
+    {
+        var recipe = await _context.Recipes.FindAsync(id);
+
+        if (recipe == null)
+        {
+            return NotFound(new { message = "Recipe not found" });
+        }
+
+        _context.Recipes.Remove(recipe);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+
     private static ExtractedRecipeResponse MapToExtractedResponse(ExtractedRecipeDto dto) => new()
     {
         Title = dto.Title,
@@ -264,6 +334,18 @@ public class ExtractFromUrlRequest
 }
 
 public class SaveExtractedRecipeRequest
+{
+    public string Title { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public List<StructuredIngredientDto>? Ingredients { get; set; }
+    public List<string>? Instructions { get; set; }
+    public int? PrepTime { get; set; }
+    public int? CookTime { get; set; }
+    public int? Servings { get; set; }
+    public string? Difficulty { get; set; }
+}
+
+public class UpdateRecipeRequest
 {
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }

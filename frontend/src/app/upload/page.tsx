@@ -4,17 +4,10 @@ import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthButton } from '@/components/AuthButton';
 import { useApiToken } from '@/hooks/useApiToken';
-import type { StructuredIngredient } from '@/lib/mock-data';
+import RecipeForm from '@/components/RecipeForm';
+import type { RecipeFormData } from '@/lib/services/recipe.service';
 
-interface ExtractedRecipe {
-  title: string;
-  description?: string;
-  ingredients: StructuredIngredient[];
-  instructions: string[];
-  prepTime?: number;
-  cookTime?: number;
-  servings?: number;
-}
+type ExtractedRecipe = RecipeFormData;
 
 type InputMode = 'image' | 'url';
 
@@ -178,9 +171,7 @@ export default function UploadRecipe() {
     }
   };
 
-  const handleSaveRecipe = async () => {
-    if (!extractedRecipe) return;
-
+  const handleSaveRecipe = async (data: RecipeFormData) => {
     if (!token) {
       setError('Authentication token not available. Please try logging in again.');
       return;
@@ -197,7 +188,7 @@ export default function UploadRecipe() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(extractedRecipe),
+        body: JSON.stringify(data),
       });
 
       if (!response.ok) {
@@ -210,11 +201,6 @@ export default function UploadRecipe() {
     } finally {
       setIsSaving(false);
     }
-  };
-
-  const handleEditField = (field: keyof ExtractedRecipe, value: string | string[] | number | null) => {
-    if (!extractedRecipe) return;
-    setExtractedRecipe({ ...extractedRecipe, [field]: value });
   };
 
   return (
@@ -383,184 +369,13 @@ export default function UploadRecipe() {
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
               Review and edit the extracted information before saving
             </p>
-
-            <div className="space-y-4">
-              {/* Title */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Title</label>
-                <input
-                  type="text"
-                  value={extractedRecipe.title}
-                  onChange={(e) => handleEditField('title', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium mb-2">Description</label>
-                <textarea
-                  value={extractedRecipe.description || ''}
-                  onChange={(e) => handleEditField('description', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-                  rows={2}
-                />
-              </div>
-
-              {/* Servings, Prep Time, Cook Time */}
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2">Servings</label>
-                  <input
-                    type="number"
-                    value={extractedRecipe.servings || ''}
-                    onChange={(e) => handleEditField('servings', parseInt(e.target.value) || null)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Prep Time (min)</label>
-                  <input
-                    type="number"
-                    value={extractedRecipe.prepTime || ''}
-                    onChange={(e) => handleEditField('prepTime', parseInt(e.target.value) || null)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">Cook Time (min)</label>
-                  <input
-                    type="number"
-                    value={extractedRecipe.cookTime || ''}
-                    onChange={(e) => handleEditField('cookTime', parseInt(e.target.value) || null)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-                  />
-                </div>
-              </div>
-
-              {/* Ingredients */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Ingredients ({extractedRecipe.ingredients.length})
-                </label>
-                <div className="space-y-2">
-                  {extractedRecipe.ingredients.map((ingredient, index) => (
-                    <div key={index} className="flex gap-2">
-                      <input
-                        type="number"
-                        step="any"
-                        value={ingredient.quantity ?? ''}
-                        onChange={(e) => {
-                          const newIngredients = [...extractedRecipe.ingredients];
-                          newIngredients[index] = { ...ingredient, quantity: e.target.value ? parseFloat(e.target.value) : null };
-                          setExtractedRecipe({ ...extractedRecipe, ingredients: newIngredients });
-                        }}
-                        placeholder="Qty"
-                        className="w-20 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-                      />
-                      <input
-                        type="text"
-                        value={ingredient.unit ?? ''}
-                        onChange={(e) => {
-                          const newIngredients = [...extractedRecipe.ingredients];
-                          newIngredients[index] = { ...ingredient, unit: e.target.value || null };
-                          setExtractedRecipe({ ...extractedRecipe, ingredients: newIngredients });
-                        }}
-                        placeholder="Unit"
-                        className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-                      />
-                      <input
-                        type="text"
-                        value={ingredient.name}
-                        onChange={(e) => {
-                          const newIngredients = [...extractedRecipe.ingredients];
-                          newIngredients[index] = { ...ingredient, name: e.target.value };
-                          setExtractedRecipe({ ...extractedRecipe, ingredients: newIngredients });
-                        }}
-                        placeholder="Ingredient name"
-                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-                      />
-                      <button
-                        onClick={() => {
-                          const newIngredients = extractedRecipe.ingredients.filter((_, i) => i !== index);
-                          setExtractedRecipe({ ...extractedRecipe, ingredients: newIngredients });
-                        }}
-                        className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => setExtractedRecipe({
-                      ...extractedRecipe,
-                      ingredients: [...extractedRecipe.ingredients, { quantity: null, unit: null, name: '' }]
-                    })}
-                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-                  >
-                    + Add Ingredient
-                  </button>
-                </div>
-              </div>
-
-              {/* Instructions */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Instructions ({extractedRecipe.instructions.length} steps)
-                </label>
-                <div className="space-y-2">
-                  {extractedRecipe.instructions.map((instruction, index) => (
-                    <div key={index} className="flex gap-2">
-                      <span className="px-3 py-2 bg-gray-200 dark:bg-gray-800 rounded-lg font-medium">
-                        {index + 1}
-                      </span>
-                      <textarea
-                        value={instruction}
-                        onChange={(e) => {
-                          const newInstructions = [...extractedRecipe.instructions];
-                          newInstructions[index] = e.target.value;
-                          handleEditField('instructions', newInstructions);
-                        }}
-                        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-                        rows={2}
-                      />
-                      <button
-                        onClick={() => {
-                          const newInstructions = extractedRecipe.instructions.filter((_, i) => i !== index);
-                          handleEditField('instructions', newInstructions);
-                        }}
-                        className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                  <button
-                    onClick={() => handleEditField('instructions', [...extractedRecipe.instructions, ''])}
-                    className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-                  >
-                    + Add Step
-                  </button>
-                </div>
-              </div>
-
-              {/* Save Button */}
-              <div className="flex gap-4 pt-4">
-                <button
-                  onClick={handleSaveRecipe}
-                  disabled={isSaving}
-                  className="flex-1 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
-                >
-                  {isSaving ? 'Saving...' : 'Save Recipe'}
-                </button>
-                <button
-                  onClick={() => setExtractedRecipe(null)}
-                  className="px-6 py-3 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
+            <RecipeForm
+              initialData={extractedRecipe}
+              onSave={handleSaveRecipe}
+              onCancel={() => setExtractedRecipe(null)}
+              isSaving={isSaving}
+              submitLabel="Save Recipe"
+            />
           </div>
         )}
       </main>
