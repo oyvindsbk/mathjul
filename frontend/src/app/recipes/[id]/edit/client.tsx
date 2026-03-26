@@ -7,6 +7,7 @@ import { recipeService } from '@/lib/services/recipe.service';
 import type { RecipeFormData } from '@/lib/services/recipe.service';
 import { useAuth } from '@/lib/context/AuthContext';
 import RecipeForm from '@/components/RecipeForm';
+import EditRecipeLoading from './loading';
 
 export default function EditRecipeClient({ id }: { id: string }) {
   const [initialData, setInitialData] = useState<RecipeFormData | null>(null);
@@ -14,7 +15,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const { token } = useAuth();
+  const { token, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -52,10 +53,9 @@ export default function EditRecipeClient({ id }: { id: string }) {
       }
     };
 
-    if (id) {
-      fetchRecipe();
-    }
-  }, [id, token]);
+    if (authLoading || !id) return;
+    fetchRecipe();
+  }, [id, authLoading, token]);
 
   const handleSave = async (data: RecipeFormData) => {
     setSaveError(null);
@@ -71,14 +71,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading recipe...</p>
-        </div>
-      </div>
-    );
+    return <EditRecipeLoading />;
   }
 
   if (error || !initialData) {

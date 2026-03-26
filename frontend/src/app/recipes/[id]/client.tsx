@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { recipeService } from "@/lib/services/recipe.service";
 import { useAuth } from "@/lib/context/AuthContext";
 import type { Recipe, StructuredIngredient } from "@/lib/mock-data";
+import RecipeDetailLoading from "./loading";
 
 interface RecipeDetail extends Recipe {
   cookTime?: string;
@@ -54,7 +55,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [desiredServings, setDesiredServings] = useState<number>(0);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { token } = useAuth();
+  const { token, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
   const handleDelete = async () => {
@@ -90,20 +91,12 @@ export default function RecipeDetailClient({ id }: { id: string }) {
       }
     };
 
-    if (id) {
-      fetchRecipe();
-    }
-  }, [id, token]);
+    if (authLoading || !id) return;
+    fetchRecipe();
+  }, [id, authLoading, token]);
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Laster inn oppskrift...</p>
-        </div>
-      </div>
-    );
+    return <RecipeDetailLoading />;
   }
 
   if (error || !recipe) {

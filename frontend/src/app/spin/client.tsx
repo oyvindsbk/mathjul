@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { recipeService } from '@/lib/services/recipe.service';
 import { useAuth } from '@/lib/context/AuthContext';
 import type { Recipe } from '@/lib/mock-data';
+import SpinLoading from './loading';
 
 const MAX_SEGMENTS = 20;
 
@@ -47,7 +48,7 @@ export default function SpinClient() {
       }
     };
     fetch();
-  }, [token, authLoading]);
+  }, [authLoading, token]);
 
   const segments = recipes;
   const segmentAngle = segments.length > 0 ? 360 / segments.length : 0;
@@ -86,14 +87,7 @@ export default function SpinClient() {
   }
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Laster inn oppskrifter...</p>
-        </div>
-      </div>
-    );
+    return <SpinLoading />;
   }
 
   if (error) {

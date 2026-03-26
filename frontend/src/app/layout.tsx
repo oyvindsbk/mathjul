@@ -4,6 +4,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { AuthProvider } from "@/lib/context/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { NavigationProgress } from "@/components/NavigationProgress";
 import { appConfig } from "@/lib/config";
 
 const geistSans = Geist({
@@ -32,6 +33,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
+          <NavigationProgress />
           <ProtectedRoute>
             <div className="flex flex-col w-full">
               {appConfig.mocking.enabled && (
