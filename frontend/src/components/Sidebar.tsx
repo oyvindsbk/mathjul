@@ -36,30 +36,6 @@ export function Sidebar() {
           </div>
         </Link>
 
-        <Link
-          href="/spin"
-          data-testid="nav-spin"
-          className={`block px-4 py-3 rounded-lg transition-colors duration-200 ${
-            isActive("/spin")
-              ? "bg-blue-600 text-white"
-              : "text-slate-300 hover:bg-slate-700"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <svg
-              className="w-5 h-5"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 1111.601 2.566V5a1 1 0 11-2 0v-.101a5 5 0 00-9.053-3.595A1 1 0 014 2zm9 1a1 1 0 100 2 1 1 0 000-2z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <span>Snurr mathjulet</span>
-          </div>
-        </Link>
       </nav>
     </aside>
   );

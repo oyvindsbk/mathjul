@@ -23,7 +23,6 @@ export const appConfig = {
   features: {
     // Add feature flags here as needed
     enableRecipeDetails: true,
-    enableSpinWheel: true,
   },
 } as const;
 
