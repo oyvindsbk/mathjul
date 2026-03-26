@@ -36,6 +36,21 @@ export function Sidebar() {
           </div>
         </Link>
 
+        <Link
+          href="/spin"
+          data-testid="nav-spin"
+          className={`block px-4 py-3 rounded-lg transition-colors duration-200 ${
+            isActive("/spin")
+              ? "bg-blue-600 text-white"
+              : "text-slate-300 hover:bg-slate-700"
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-lg">🎡</span>
+            <span>Spin the Wheel</span>
+          </div>
+        </Link>
+
       </nav>
     </aside>
   );
