@@ -9,7 +9,7 @@ namespace RecipeApi.Features.Recipes;
 
 public interface IRecipeImageProcessor
 {
-    Task<RecipeExtractionResult> ExtractRecipeFromImageAsync(IFormFile imageFile, CancellationToken cancellationToken = default);
+    Task<RecipeExtractionResult> ExtractRecipeFromImageAsync(IFormFile imageFile, string? categoryListJson = null, CancellationToken cancellationToken = default);
 }
 
 public class RecipeImageProcessor : IRecipeImageProcessor
@@ -39,6 +39,7 @@ public class RecipeImageProcessor : IRecipeImageProcessor
 
     public async Task<RecipeExtractionResult> ExtractRecipeFromImageAsync(
         IFormFile imageFile,
+        string? categoryListJson = null,
         CancellationToken cancellationToken = default)
     {
         if (imageFile == null || imageFile.Length == 0)
@@ -73,9 +74,10 @@ public class RecipeImageProcessor : IRecipeImageProcessor
 
             var imageData = BinaryData.FromBytes(imageBytes);
 
+            var systemPrompt = RecipeExtractionPrompt.BuildSystemPrompt(categoryListJson);
             var messages = new List<ChatMessage>
             {
-                new SystemChatMessage(RecipeExtractionPrompt.SystemPrompt),
+                new SystemChatMessage(systemPrompt),
                 new UserChatMessage(
                     ChatMessageContentPart.CreateTextPart("Please extract the recipe information from this image:"),
                     ChatMessageContentPart.CreateImagePart(imageData, "image/jpeg"))
@@ -162,11 +164,13 @@ public class ExtractedRecipeDto
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
     public int? Servings { get; set; }
+    public string? Difficulty { get; set; }
+    public List<int> SuggestedCategoryIds { get; set; } = new();
 }
 
 internal static class RecipeExtractionPrompt
 {
-    internal const string SystemPrompt = @"You are a recipe extraction expert. Analyze the provided recipe content and extract all information into a structured JSON format.
+    private const string BaseSystemPrompt = @"You are a recipe extraction expert. Analyze the provided recipe content and extract all information into a structured JSON format.
 
 Extract the following fields:
 - title: The recipe name
@@ -176,12 +180,24 @@ Extract the following fields:
   - unit: measurement unit (e.g., ""cups"", ""tsp"", ""g"", ""dl"", ""stk"") or null if unitless (e.g., ""2 eggs"")
   - name: the ingredient name (e.g., ""flour"", ""salt"", ""eggs"")
 - instructions: Array of instruction steps as separate strings
-- prepTime: Preparation time in minutes (extract from text like ""Prep: 15 min"")
-- cookTime: Cooking time in minutes (extract from text like ""Cook: 30 min"")
+- prepTime: Preparation time in minutes. Extract from explicit text (e.g., ""Prep: 15 min""). If not stated, estimate from the instructions (e.g., chopping, marinating steps).
+- cookTime: Cooking time in minutes. Extract from explicit text (e.g., ""Cook: 30 min"", ""bake for 45 minutes""). If not stated, estimate from the instructions (e.g., simmering, baking, frying steps).
 - servings: Number of servings/portions (extract from text like ""Serves 4"", ""4 porsjoner"")
+- difficulty: Estimate the difficulty as exactly one of: ""Enkel"", ""Middels"", or ""Avansert"".
+  Use these guidelines:
+  - ""Enkel"": few ingredients (under 8), straightforward steps, common techniques (boiling, mixing, frying)
+  - ""Middels"": moderate ingredient count, some technique required (e.g., making a sauce, folding, timing multiple components)
+  - ""Avansert"": many ingredients or steps, advanced techniques (e.g., tempering chocolate, making pastry dough, precise temperatures, long fermentation)
+  If the recipe content is ambiguous, prefer ""Middels"".
 
 Convert fractions to decimals (e.g., 1/2 = 0.5, 1/4 = 0.25).
-If any field is not clearly visible or mentioned, use null for that field.
+If prepTime or cookTime cannot be extracted or estimated, use null.";
+
+    internal static string BuildSystemPrompt(string? categoryListJson)
+    {
+        if (string.IsNullOrWhiteSpace(categoryListJson))
+        {
+            return BaseSystemPrompt + @"
 
 Respond with ONLY valid JSON in this exact format:
 {
@@ -195,8 +211,37 @@ Respond with ONLY valid JSON in this exact format:
   ""instructions"": [""step 1"", ""step 2""],
   ""prepTime"": 15,
   ""cookTime"": 30,
-  ""servings"": 4
+  ""servings"": 4,
+  ""difficulty"": ""Middels"",
+  ""suggestedCategoryIds"": []
 }";
+        }
+
+        return BaseSystemPrompt + $@"
+
+You also have access to a predefined list of categories. Based on the recipe, suggest which category IDs fit best.
+Only suggest IDs from the list below. Include 1-5 most relevant categories. If none fit, use an empty array.
+
+Available categories:
+{categoryListJson}
+
+Respond with ONLY valid JSON in this exact format:
+{{
+  ""title"": ""Recipe Name"",
+  ""description"": ""Brief description"",
+  ""ingredients"": [
+    {{""quantity"": 2, ""unit"": ""cups"", ""name"": ""flour""}},
+    {{""quantity"": 1, ""unit"": ""tsp"", ""name"": ""salt""}},
+    {{""quantity"": null, ""unit"": null, ""name"": ""fresh herbs to taste""}}
+  ],
+  ""instructions"": [""step 1"", ""step 2""],
+  ""prepTime"": 15,
+  ""cookTime"": 30,
+  ""servings"": 4,
+  ""difficulty"": ""Middels"",
+  ""suggestedCategoryIds"": [1, 3]
+}}";
+    }
 
     /// <summary>
     /// If the AI returns ingredients as plain strings instead of objects, convert them.

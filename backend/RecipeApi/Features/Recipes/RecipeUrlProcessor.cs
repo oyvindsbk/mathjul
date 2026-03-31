@@ -8,7 +8,7 @@ namespace RecipeApi.Features.Recipes;
 
 public interface IRecipeUrlProcessor
 {
-    Task<RecipeExtractionResult> ExtractRecipeFromUrlAsync(string url, CancellationToken cancellationToken = default);
+    Task<RecipeExtractionResult> ExtractRecipeFromUrlAsync(string url, string? categoryListJson = null, CancellationToken cancellationToken = default);
 }
 
 public class RecipeUrlProcessor : IRecipeUrlProcessor
@@ -40,6 +40,7 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
 
     public async Task<RecipeExtractionResult> ExtractRecipeFromUrlAsync(
         string url,
+        string? categoryListJson = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(url))
@@ -68,6 +69,7 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
 
             _logger.LogInformation("Extracted {Length} chars of text from URL, sending to AI", pageText.Length);
 
+            var systemPrompt = RecipeExtractionPrompt.BuildSystemPrompt(categoryListJson);
             var options = new ChatCompletionsOptions
             {
                 Model = _modelName,
@@ -75,7 +77,7 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
                 MaxTokens = 2000,
                 Messages =
                 {
-                    new ChatRequestSystemMessage(RecipeExtractionPrompt.SystemPrompt),
+                    new ChatRequestSystemMessage(systemPrompt),
                     new ChatRequestUserMessage($"Please extract the recipe information from the following webpage content:\n\n{pageText}")
                 }
             };

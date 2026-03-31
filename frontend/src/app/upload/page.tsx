@@ -115,7 +115,8 @@ export default function UploadRecipe() {
         throw new Error(data.errorMessage || 'Failed to extract recipe');
       }
 
-      setExtractedRecipe(data.extractedRecipe);
+      const { suggestedCategoryIds, ...rest } = data.extractedRecipe;
+      setExtractedRecipe({ ...rest, categoryIds: suggestedCategoryIds ?? [] });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to extract recipe';
       setError(errorMessage);
@@ -166,7 +167,8 @@ export default function UploadRecipe() {
         throw new Error(data.errorMessage || 'Failed to extract recipe');
       }
 
-      setExtractedRecipe(data.extractedRecipe);
+      const { suggestedCategoryIds, ...rest } = data.extractedRecipe;
+      setExtractedRecipe({ ...rest, categoryIds: suggestedCategoryIds ?? [] });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to extract recipe';
       setError(errorMessage);

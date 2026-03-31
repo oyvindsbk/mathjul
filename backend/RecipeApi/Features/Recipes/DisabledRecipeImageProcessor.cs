@@ -11,7 +11,7 @@ public class DisabledRecipeImageProcessor : IRecipeImageProcessor
         _logger = logger;
     }
 
-    public Task<RecipeExtractionResult> ExtractRecipeFromImageAsync(IFormFile imageFile, CancellationToken cancellationToken = default)
+    public Task<RecipeExtractionResult> ExtractRecipeFromImageAsync(IFormFile imageFile, string? categoryListJson = null, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Recipe image processing is disabled in this environment.");
         return Task.FromResult(RecipeExtractionResult.Failure("Recipe image processing is disabled in this environment."));

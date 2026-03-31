@@ -125,7 +125,8 @@ public class RecipesController : ControllerBase
             });
         }
 
-        var result = await _imageProcessor.ExtractRecipeFromImageAsync(image);
+        var categoryListJson = await BuildCategoryListJsonAsync();
+        var result = await _imageProcessor.ExtractRecipeFromImageAsync(image, categoryListJson);
 
         if (!result.IsSuccess)
         {
@@ -160,7 +161,8 @@ public class RecipesController : ControllerBase
             });
         }
 
-        var result = await _urlProcessor.ExtractRecipeFromUrlAsync(request.Url);
+        var categoryListJson = await BuildCategoryListJsonAsync();
+        var result = await _urlProcessor.ExtractRecipeFromUrlAsync(request.Url, categoryListJson);
 
         if (!result.IsSuccess)
         {
@@ -307,6 +309,16 @@ public class RecipesController : ControllerBase
         return NoContent();
     }
 
+    private async Task<string> BuildCategoryListJsonAsync()
+    {
+        var categories = await _context.Categories
+            .OrderBy(c => c.Group).ThenBy(c => c.Name)
+            .Select(c => new { c.Id, c.Name, c.Group })
+            .ToListAsync();
+
+        return System.Text.Json.JsonSerializer.Serialize(categories);
+    }
+
     private static ExtractedRecipeResponse MapToExtractedResponse(ExtractedRecipeDto dto) => new()
     {
         Title = dto.Title,
@@ -320,7 +332,9 @@ public class RecipesController : ControllerBase
         Instructions = dto.Instructions,
         PrepTime = dto.PrepTime,
         CookTime = dto.CookTime,
-        Servings = dto.Servings
+        Servings = dto.Servings,
+        Difficulty = dto.Difficulty,
+        SuggestedCategoryIds = dto.SuggestedCategoryIds
     };
 }
 
@@ -383,6 +397,8 @@ public class ExtractedRecipeResponse
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
     public int? Servings { get; set; }
+    public string? Difficulty { get; set; }
+    public List<int> SuggestedCategoryIds { get; set; } = new();
 }
 
 public class ExtractFromUrlRequest
