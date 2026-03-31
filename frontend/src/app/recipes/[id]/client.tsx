@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { recipeService } from "@/lib/services/recipe.service";
 import { useAuth } from "@/lib/context/AuthContext";
-import type { Recipe, StructuredIngredient } from "@/lib/mock-data";
+import type { Category, Recipe, StructuredIngredient } from "@/lib/mock-data";
 import RecipeDetailLoading from "./loading";
 
 interface RecipeDetail extends Recipe {
@@ -17,6 +17,7 @@ interface RecipeDetail extends Recipe {
   servings?: number;
   ingredients?: StructuredIngredient[];
   instructions?: string[];
+  categories?: Category[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -172,7 +173,17 @@ export default function RecipeDetailClient({ id }: { id: string }) {
               </span>
             </div>
 
-            <p className="text-lg text-gray-600 mb-6">{recipe.description}</p>
+            <p className="text-lg text-gray-600 mb-4">{recipe.description}</p>
+
+            {recipe.categories && recipe.categories.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-6">
+                {recipe.categories.map((cat) => (
+                  <span key={cat.id} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+                    {cat.name}
+                  </span>
+                ))}
+              </div>
+            )}
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-y border-gray-200">
               {recipe.prepTime && (

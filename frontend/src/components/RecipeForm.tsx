@@ -17,7 +17,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { RecipeFormData } from '@/lib/services/recipe.service';
-import type { StructuredIngredient } from '@/lib/mock-data';
+import type { Category, StructuredIngredient } from '@/lib/mock-data';
 
 interface RecipeFormProps {
   initialData: RecipeFormData;
@@ -25,6 +25,7 @@ interface RecipeFormProps {
   onCancel: () => void;
   isSaving: boolean;
   submitLabel?: string;
+  availableCategories?: Category[];
 }
 
 // Drag handle icon
@@ -176,6 +177,7 @@ export default function RecipeForm({
   onCancel,
   isSaving,
   submitLabel = 'Save Recipe',
+  availableCategories = [],
 }: RecipeFormProps) {
   const [formData, setFormData] = useState<RecipeFormData>(initialData);
 
@@ -251,6 +253,12 @@ export default function RecipeForm({
     const newIndex = instructionIds.indexOf(over.id as string);
     setInstructionIds((ids) => arrayMove(ids, oldIndex, newIndex));
     handleField('instructions', arrayMove(formData.instructions, oldIndex, newIndex));
+  };
+
+  const handleToggleCategory = (id: number) => {
+    const current = formData.categoryIds ?? [];
+    const next = current.includes(id) ? current.filter((c) => c !== id) : [...current, id];
+    handleField('categoryIds', next);
   };
 
   const handleSubmit = async () => {
@@ -386,6 +394,43 @@ export default function RecipeForm({
           </button>
         </div>
       </div>
+
+      {/* Categories */}
+      {availableCategories.length > 0 && (() => {
+        const groups = Array.from(new Set(availableCategories.map((c) => c.group)));
+        const selectedIds = formData.categoryIds ?? [];
+        return (
+          <div>
+            <label className="block text-sm font-medium mb-2">Kategorier</label>
+            <div className="space-y-3">
+              {groups.map((group) => (
+                <div key={group}>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">{group}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {availableCategories.filter((c) => c.group === group).map((cat) => {
+                      const active = selectedIds.includes(cat.id);
+                      return (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => handleToggleCategory(cat.id)}
+                          className={`px-3 py-1 rounded-full text-sm border transition-colors ${
+                            active
+                              ? 'bg-blue-500 text-white border-blue-500'
+                              : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-400'
+                          }`}
+                        >
+                          {cat.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Action Buttons */}
       <div className="flex gap-4 pt-4">

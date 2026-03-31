@@ -6,7 +6,7 @@
  */
 
 import { appConfig } from '../config';
-import { mockRecipes, type Recipe, type StructuredIngredient } from '../mock-data';
+import { mockCategories, mockRecipes, type Category, type Recipe, type StructuredIngredient } from '../mock-data';
 
 export interface RecipeFormData {
   title: string;
@@ -17,20 +17,26 @@ export interface RecipeFormData {
   cookTime?: number | null;
   servings?: number | null;
   difficulty?: string;
+  categoryIds?: number[];
 }
 
 class RecipeService {
   /**
-   * Fetch all recipes
+   * Fetch all recipes, optionally filtered by category IDs (AND-logic)
    */
-  async getAllRecipes(token?: string): Promise<Recipe[]> {
+  async getAllRecipes(token?: string, categoryIds?: number[]): Promise<Recipe[]> {
     if (appConfig.mocking.enabled) {
       return mockRecipes;
     }
 
     try {
+      const url = new URL(`${appConfig.api.baseUrl}/api/recipes`);
+      if (categoryIds && categoryIds.length > 0) {
+        url.searchParams.set('categories', categoryIds.join(','));
+      }
+
       const response = await this.fetchWithTimeout(
-        `${appConfig.api.baseUrl}/api/recipes`,
+        url.toString(),
         appConfig.mocking.fetchTimeout,
         token
       );
@@ -44,6 +50,27 @@ class RecipeService {
       // Propagate error to caller. Do not silently fallback to mock data.
       throw error;
     }
+  }
+
+  /**
+   * Fetch all categories
+   */
+  async getAllCategories(token?: string): Promise<Category[]> {
+    if (appConfig.mocking.enabled) {
+      return mockCategories;
+    }
+
+    const response = await this.fetchWithTimeout(
+      `${appConfig.api.baseUrl}/api/categories`,
+      appConfig.mocking.fetchTimeout,
+      token
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch categories: ${response.statusText}`);
+    }
+
+    return await response.json();
   }
 
   /**

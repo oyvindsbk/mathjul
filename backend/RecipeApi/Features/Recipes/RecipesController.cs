@@ -26,9 +26,25 @@ public class RecipesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<RecipeDto>>> GetAllRecipes()
+    public async Task<ActionResult<List<RecipeDto>>> GetAllRecipes([FromQuery] string? categories = null)
     {
-        var recipes = await _context.Recipes
+        IQueryable<Recipe> query = _context.Recipes.Include(r => r.Categories);
+
+        if (!string.IsNullOrWhiteSpace(categories))
+        {
+            var ids = categories.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => int.TryParse(s.Trim(), out var n) ? n : (int?)null)
+                .Where(n => n.HasValue)
+                .Select(n => n!.Value)
+                .ToList();
+
+            foreach (var categoryId in ids)
+            {
+                query = query.Where(r => r.Categories.Any(c => c.Id == categoryId));
+            }
+        }
+
+        var recipes = await query
             .Select(r => new RecipeDto
             {
                 Id = r.Id,
@@ -36,7 +52,8 @@ public class RecipesController : ControllerBase
                 Description = r.Description,
                 CookTime = r.CookTime,
                 Difficulty = r.Difficulty,
-                ImageUrl = r.ImageUrl
+                ImageUrl = r.ImageUrl,
+                Categories = r.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList()
             })
             .ToListAsync();
 
@@ -46,8 +63,10 @@ public class RecipesController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<ActionResult<RecipeDetailDto>> GetRecipeById(int id)
     {
-        var recipe = await _context.Recipes.FindAsync(id);
-        
+        var recipe = await _context.Recipes
+            .Include(r => r.Categories)
+            .FirstOrDefaultAsync(r => r.Id == id);
+
         if (recipe == null)
         {
             return NotFound(new { message = "Recipe not found" });
@@ -71,11 +90,24 @@ public class RecipesController : ControllerBase
                 Name = i.Name
             }).ToList(),
             Instructions = recipe.Instructions.Split(new[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries).ToList(),
+            Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
             CreatedAt = recipe.CreatedAt,
             UpdatedAt = recipe.UpdatedAt
         };
 
         return Ok(recipeDetail);
+    }
+
+    [HttpGet("/api/categories")]
+    public async Task<ActionResult<List<CategoryDto>>> GetAllCategories()
+    {
+        var categories = await _context.Categories
+            .OrderBy(c => c.Group)
+            .ThenBy(c => c.Id)
+            .Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group })
+            .ToListAsync();
+
+        return Ok(categories);
     }
 
     [HttpPost("from-image")]
@@ -151,6 +183,10 @@ public class RecipesController : ControllerBase
     {
         _logger.LogInformation("Saving extracted recipe: {Title}", request.Title);
 
+        var categories = request.CategoryIds?.Count > 0
+            ? await _context.Categories.Where(c => request.CategoryIds.Contains(c.Id)).ToListAsync()
+            : new List<Category>();
+
         var recipe = new Recipe
         {
             Title = request.Title,
@@ -169,6 +205,7 @@ public class RecipesController : ControllerBase
             Servings = request.Servings,
             Difficulty = request.Difficulty ?? "Medium",
             ImageUrl = string.Empty,
+            Categories = categories,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -183,7 +220,8 @@ public class RecipesController : ControllerBase
             Description = recipe.Description,
             CookTime = recipe.CookTime,
             Difficulty = recipe.Difficulty,
-            ImageUrl = recipe.ImageUrl
+            ImageUrl = recipe.ImageUrl,
+            Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList()
         };
 
         return CreatedAtAction(nameof(GetAllRecipes), new { id = recipe.Id }, recipeDto);
@@ -192,7 +230,9 @@ public class RecipesController : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<ActionResult<RecipeDetailDto>> UpdateRecipe(int id, [FromBody] UpdateRecipeRequest request)
     {
-        var recipe = await _context.Recipes.FindAsync(id);
+        var recipe = await _context.Recipes
+            .Include(r => r.Categories)
+            .FirstOrDefaultAsync(r => r.Id == id);
 
         if (recipe == null)
         {
@@ -216,6 +256,13 @@ public class RecipesController : ControllerBase
         recipe.Difficulty = request.Difficulty ?? "Medium";
         recipe.UpdatedAt = DateTime.UtcNow;
 
+        var newCategories = request.CategoryIds?.Count > 0
+            ? await _context.Categories.Where(c => request.CategoryIds.Contains(c.Id)).ToListAsync()
+            : new List<Category>();
+        recipe.Categories.Clear();
+        foreach (var cat in newCategories)
+            recipe.Categories.Add(cat);
+
         await _context.SaveChangesAsync();
 
         var recipeDetail = new RecipeDetailDto
@@ -236,6 +283,7 @@ public class RecipesController : ControllerBase
                 Name = i.Name
             }).ToList(),
             Instructions = recipe.Instructions.Split(new[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries).ToList(),
+            Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
             CreatedAt = recipe.CreatedAt,
             UpdatedAt = recipe.UpdatedAt
         };
@@ -276,6 +324,13 @@ public class RecipesController : ControllerBase
     };
 }
 
+public class CategoryDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Group { get; set; } = string.Empty;
+}
+
 public class RecipeDto
 {
     public int Id { get; set; }
@@ -284,6 +339,7 @@ public class RecipeDto
     public string CookTime { get; set; } = string.Empty;
     public string Difficulty { get; set; } = string.Empty;
     public string ImageUrl { get; set; } = string.Empty;
+    public List<CategoryDto> Categories { get; set; } = new();
 }
 
 public class RecipeDetailDto
@@ -299,6 +355,7 @@ public class RecipeDetailDto
     public int? Servings { get; set; }
     public List<StructuredIngredientDto> Ingredients { get; set; } = new();
     public List<string> Instructions { get; set; } = new();
+    public List<CategoryDto> Categories { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
@@ -343,6 +400,7 @@ public class SaveExtractedRecipeRequest
     public int? CookTime { get; set; }
     public int? Servings { get; set; }
     public string? Difficulty { get; set; }
+    public List<int>? CategoryIds { get; set; }
 }
 
 public class UpdateRecipeRequest
@@ -355,4 +413,5 @@ public class UpdateRecipeRequest
     public int? CookTime { get; set; }
     public int? Servings { get; set; }
     public string? Difficulty { get; set; }
+    public List<int>? CategoryIds { get; set; }
 }

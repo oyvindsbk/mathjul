@@ -12,10 +12,27 @@ public class RecipeDbContext : DbContext
     }
 
     public DbSet<Recipe> Recipes { get; set; }
+    public DbSet<Category> Categories { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // Configure Category entity
+        modelBuilder.Entity<Category>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Group).HasMaxLength(50);
+            entity.HasIndex(e => e.Name).IsUnique();
+        });
+
+        // Configure many-to-many Recipe <-> Category
+        modelBuilder.Entity<Recipe>()
+            .HasMany(r => r.Categories)
+            .WithMany(c => c.Recipes)
+            .UsingEntity(j => j.ToTable("RecipeCategory"));
 
         // Configure Recipe entity
         modelBuilder.Entity<Recipe>(entity =>
@@ -43,6 +60,28 @@ public class RecipeDbContext : DbContext
         // Seed initial data
         var seedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         
+        // Seed categories
+        modelBuilder.Entity<Category>().HasData(
+            // Måltidstype
+            new Category { Id = 1, Name = "Frokost", Group = "Måltidstype" },
+            new Category { Id = 2, Name = "Lunsj", Group = "Måltidstype" },
+            new Category { Id = 3, Name = "Middag", Group = "Måltidstype" },
+            new Category { Id = 4, Name = "Dessert", Group = "Måltidstype" },
+            new Category { Id = 5, Name = "Kveldsmat", Group = "Måltidstype" },
+            new Category { Id = 6, Name = "Søtbakst", Group = "Måltidstype" },
+            new Category { Id = 7, Name = "Snacks", Group = "Måltidstype" },
+            new Category { Id = 8, Name = "Drikke", Group = "Måltidstype" },
+            // Vanskelighetsgrad
+            new Category { Id = 9, Name = "Enkel", Group = "Vanskelighetsgrad" },
+            new Category { Id = 10, Name = "Middels", Group = "Vanskelighetsgrad" },
+            new Category { Id = 11, Name = "Avansert", Group = "Vanskelighetsgrad" },
+            // Tilberedningstid
+            new Category { Id = 12, Name = "Under 15 min", Group = "Tilberedningstid" },
+            new Category { Id = 13, Name = "Under 30 min", Group = "Tilberedningstid" },
+            new Category { Id = 14, Name = "Under 1 time", Group = "Tilberedningstid" },
+            new Category { Id = 15, Name = "Over 1 time", Group = "Tilberedningstid" }
+        );
+
         modelBuilder.Entity<Recipe>().HasData(
             new Recipe
             {

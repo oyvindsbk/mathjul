@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { recipeService } from '@/lib/services/recipe.service';
 import type { RecipeFormData } from '@/lib/services/recipe.service';
+import type { Category } from '@/lib/mock-data';
 import { useAuth } from '@/lib/context/AuthContext';
 import RecipeForm from '@/components/RecipeForm';
 import EditRecipeLoading from './loading';
 
 export default function EditRecipeClient({ id }: { id: string }) {
   const [initialData, setInitialData] = useState<RecipeFormData | null>(null);
+  const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -21,11 +23,15 @@ export default function EditRecipeClient({ id }: { id: string }) {
   useEffect(() => {
     const fetchRecipe = async () => {
       try {
-        const data = await recipeService.getRecipeById(id, token || undefined);
+        const [data, categories] = await Promise.all([
+          recipeService.getRecipeById(id, token || undefined),
+          recipeService.getAllCategories(token || undefined),
+        ]);
         if (!data) {
           setError('Recipe not found');
           return;
         }
+        setAvailableCategories(categories);
         const detail = data as {
           title: string;
           description?: string;
@@ -35,6 +41,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
           cookTimeMinutes?: number;
           servings?: number;
           difficulty?: string;
+          categories?: Category[];
         };
         setInitialData({
           title: detail.title,
@@ -45,6 +52,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
           cookTime: detail.cookTimeMinutes ?? null,
           servings: detail.servings ?? null,
           difficulty: detail.difficulty ?? 'Medium',
+          categoryIds: detail.categories?.map((c) => c.id) ?? [],
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch recipe');
@@ -119,6 +127,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
             onCancel={() => router.push(`/recipes/${id}`)}
             isSaving={isSaving}
             submitLabel="Save Changes"
+            availableCategories={availableCategories}
           />
         </div>
       </main>

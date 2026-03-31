@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { AuthButton } from '@/components/AuthButton';
 import { useApiToken } from '@/hooks/useApiToken';
 import RecipeForm from '@/components/RecipeForm';
+import { recipeService } from '@/lib/services/recipe.service';
 import type { RecipeFormData } from '@/lib/services/recipe.service';
+import type { Category } from '@/lib/mock-data';
 
 type ExtractedRecipe = RecipeFormData;
 
@@ -21,9 +23,14 @@ export default function UploadRecipe() {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { token, loading: tokenLoading, error: tokenError } = useApiToken();
+
+  useEffect(() => {
+    recipeService.getAllCategories().then(setAvailableCategories).catch(() => {});
+  }, []);
 
   const handleFileSelect = (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -375,6 +382,7 @@ export default function UploadRecipe() {
               onCancel={() => setExtractedRecipe(null)}
               isSaving={isSaving}
               submitLabel="Save Recipe"
+              availableCategories={availableCategories}
             />
           </div>
         )}

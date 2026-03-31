@@ -151,7 +151,9 @@ After all tasks are done:
 
 1. Run the full inner loop for all affected stacks
 2. Verify all checks pass
-3. Inform the user the feature is complete and ready for PR
+3. Run the review agents to ensure code quality, performance, security, and best practices
+4. Do a full check using playwright MCP of the feature if there was any frontend changes.
+5. Inform the user the feature is complete and ready for PR
 
 ## Validation
 
