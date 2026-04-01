@@ -349,6 +349,61 @@ public class RecipesController : ControllerBase
         return NoContent();
     }
 
+    [HttpPut("{id:int}/steps/{stepIndex:int}/image")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<ActionResult<InstructionStepDto>> UploadStepImage(int id, int stepIndex, IFormFile image)
+    {
+        var recipe = await _context.Recipes.FindAsync(id);
+        if (recipe == null) return NotFound(new { message = "Recipe not found" });
+        if (stepIndex < 0 || stepIndex >= recipe.InstructionSteps.Count)
+            return BadRequest(new { message = $"Step index {stepIndex} is out of range" });
+
+        var validation = ValidateImageFile(image);
+        if (validation != null) return BadRequest(new { message = validation });
+
+        var step = recipe.InstructionSteps[stepIndex];
+
+        // Delete old step image blob if present
+        if (!string.IsNullOrEmpty(step.ImageUrl))
+            await _blobStorage.DeleteAsync(BlobPathFromUrl(step.ImageUrl));
+
+        var ext = Path.GetExtension(image.FileName).ToLowerInvariant();
+        var blobPath = $"recipes/{id}/steps/{stepIndex}/{Guid.NewGuid()}{ext}";
+
+        using var stream = image.OpenReadStream();
+        var url = await _blobStorage.UploadAsync(stream, blobPath, image.ContentType);
+
+        step.ImageUrl = url;
+        recipe.UpdatedAt = DateTime.UtcNow;
+        // Mark InstructionSteps as modified (JSON column — EF needs explicit signal)
+        _context.Entry(recipe).Property(r => r.InstructionSteps).IsModified = true;
+        await _context.SaveChangesAsync();
+
+        return Ok(new InstructionStepDto { Text = step.Text, ImageUrl = step.ImageUrl });
+    }
+
+    [HttpDelete("{id:int}/steps/{stepIndex:int}/image")]
+    public async Task<IActionResult> DeleteStepImage(int id, int stepIndex)
+    {
+        var recipe = await _context.Recipes.FindAsync(id);
+        if (recipe == null) return NotFound(new { message = "Recipe not found" });
+        if (stepIndex < 0 || stepIndex >= recipe.InstructionSteps.Count)
+            return BadRequest(new { message = $"Step index {stepIndex} is out of range" });
+
+        var step = recipe.InstructionSteps[stepIndex];
+
+        if (!string.IsNullOrEmpty(step.ImageUrl))
+        {
+            await _blobStorage.DeleteAsync(BlobPathFromUrl(step.ImageUrl));
+            step.ImageUrl = null;
+            recipe.UpdatedAt = DateTime.UtcNow;
+            _context.Entry(recipe).Property(r => r.InstructionSteps).IsModified = true;
+            await _context.SaveChangesAsync();
+        }
+
+        return NoContent();
+    }
+
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteRecipe(int id)
     {
