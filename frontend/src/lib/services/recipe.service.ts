@@ -6,18 +6,19 @@
  */
 
 import { appConfig } from '../config';
-import { mockCategories, mockRecipes, type Category, type Recipe, type StructuredIngredient } from '../mock-data';
+import { mockCategories, mockRecipes, type Category, type InstructionStep, type Recipe, type StructuredIngredient } from '../mock-data';
 
 export interface RecipeFormData {
   title: string;
   description?: string;
   ingredients: StructuredIngredient[];
-  instructions: string[];
+  instructionSteps: InstructionStep[];
   prepTime?: number | null;
   cookTime?: number | null;
   servings?: number | null;
   difficulty?: string;
   categoryIds?: number[];
+  mainImageUrl?: string | null;
 }
 
 class RecipeService {
@@ -152,6 +153,44 @@ class RecipeService {
   }
 
   /**
+   * Upload or replace the main photo for a recipe
+   */
+  async uploadMainImage(id: string | number, file: File, token?: string): Promise<Recipe> {
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await this.fetchMultipart(`${appConfig.api.baseUrl}/api/recipes/${id}/main-image`, 'PUT', formData, token);
+    if (!response.ok) throw new Error(`Failed to upload main image: ${response.statusText}`);
+    return await response.json();
+  }
+
+  /**
+   * Remove the main photo from a recipe
+   */
+  async deleteMainImage(id: string | number, token?: string): Promise<void> {
+    const response = await this.fetchWithBody(`${appConfig.api.baseUrl}/api/recipes/${id}/main-image`, 'DELETE', undefined, token);
+    if (!response.ok) throw new Error(`Failed to delete main image: ${response.statusText}`);
+  }
+
+  /**
+   * Upload or replace a step photo
+   */
+  async uploadStepImage(id: string | number, stepIndex: number, file: File, token?: string): Promise<InstructionStep> {
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await this.fetchMultipart(`${appConfig.api.baseUrl}/api/recipes/${id}/steps/${stepIndex}/image`, 'PUT', formData, token);
+    if (!response.ok) throw new Error(`Failed to upload step image: ${response.statusText}`);
+    return await response.json();
+  }
+
+  /**
+   * Remove a step photo
+   */
+  async deleteStepImage(id: string | number, stepIndex: number, token?: string): Promise<void> {
+    const response = await this.fetchWithBody(`${appConfig.api.baseUrl}/api/recipes/${id}/steps/${stepIndex}/image`, 'DELETE', undefined, token);
+    if (!response.ok) throw new Error(`Failed to delete step image: ${response.statusText}`);
+  }
+
+  /**
    * Helper for mutation requests (POST/PUT/DELETE)
    */
   private fetchWithBody(url: string, method: string, body?: unknown, token?: string): Promise<Response> {
@@ -169,6 +208,15 @@ class RecipeService {
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
+  }
+
+  /**
+   * Helper for multipart/form-data requests
+   */
+  private fetchMultipart(url: string, method: string, body: FormData, token?: string): Promise<Response> {
+    const headers: Record<string, string> = { 'Accept': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return fetch(url, { method, headers, body });
   }
 
   /**

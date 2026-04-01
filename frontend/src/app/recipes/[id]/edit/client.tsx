@@ -36,7 +36,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
           title: string;
           description?: string;
           ingredients?: { quantity: number | null; unit: string | null; name: string }[];
-          instructions?: string[];
+          instructionSteps?: { text: string; imageUrl?: string | null }[];
           prepTime?: number;
           cookTimeMinutes?: number;
           servings?: number;
@@ -47,7 +47,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
           title: detail.title,
           description: detail.description,
           ingredients: detail.ingredients ?? [],
-          instructions: detail.instructions ?? [],
+          instructionSteps: detail.instructionSteps ?? [],
           prepTime: detail.prepTime ?? null,
           cookTime: detail.cookTimeMinutes ?? null,
           servings: detail.servings ?? null,

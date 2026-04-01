@@ -15,18 +15,23 @@ export interface Category {
   group: string;
 }
 
+export interface InstructionStep {
+  text: string;
+  imageUrl?: string | null;
+}
+
 export interface Recipe {
   id: number;
   title: string;
   description?: string;
   ingredients?: StructuredIngredient[];
-  instructions?: string[];
+  instructionSteps?: InstructionStep[];
   prepTime?: number | null;
   cookTime?: string | null;
   cookTimeMinutes?: number | null;
   servings?: number | null;
   difficulty?: string;
-  imageUrl?: string;
+  imageUrl?: string | null;
   categories?: Category[];
 }
 
@@ -60,12 +65,12 @@ export const mockRecipes: Recipe[] = [
       { quantity: 100, unit: 'g', name: 'parmesan' },
       { quantity: null, unit: null, name: 'salt and pepper to taste' },
     ],
-    instructions: [
-      'Cook spaghetti according to package instructions.',
-      'Fry pancetta until crispy.',
-      'Whisk eggs with parmesan.',
-      'Toss hot pasta with pancetta, remove from heat, add egg mixture.',
-      'Season and serve immediately.',
+    instructionSteps: [
+      { text: 'Cook spaghetti according to package instructions.' },
+      { text: 'Fry pancetta until crispy.' },
+      { text: 'Whisk eggs with parmesan.' },
+      { text: 'Toss hot pasta with pancetta, remove from heat, add egg mixture.' },
+      { text: 'Season and serve immediately.' },
     ],
     prepTime: 10,
     cookTimeMinutes: 20,
@@ -87,11 +92,11 @@ export const mockRecipes: Recipe[] = [
       { quantity: 200, unit: 'ml', name: 'heavy cream' },
       { quantity: 2, unit: 'tbsp', name: 'tikka masala spice mix' },
     ],
-    instructions: [
-      'Marinate chicken in spices and yogurt for 1 hour.',
-      'Grill or pan-fry chicken until cooked.',
-      'Make sauce with tomatoes and cream.',
-      'Combine chicken and sauce, simmer 10 minutes.',
+    instructionSteps: [
+      { text: 'Marinate chicken in spices and yogurt for 1 hour.' },
+      { text: 'Grill or pan-fry chicken until cooked.' },
+      { text: 'Make sauce with tomatoes and cream.' },
+      { text: 'Combine chicken and sauce, simmer 10 minutes.' },
     ],
     prepTime: 70,
     cookTimeMinutes: 30,
@@ -114,11 +119,11 @@ export const mockRecipes: Recipe[] = [
       { quantity: 280, unit: 'g', name: 'flour' },
       { quantity: 200, unit: 'g', name: 'chocolate chips' },
     ],
-    instructions: [
-      'Preheat oven to 180°C.',
-      'Cream butter and sugar.',
-      'Beat in eggs, then mix in flour and chocolate chips.',
-      'Drop spoonfuls on baking sheet and bake 10-12 minutes.',
+    instructionSteps: [
+      { text: 'Preheat oven to 180°C.' },
+      { text: 'Cream butter and sugar.' },
+      { text: 'Beat in eggs, then mix in flour and chocolate chips.' },
+      { text: 'Drop spoonfuls on baking sheet and bake 10-12 minutes.' },
     ],
     prepTime: 15,
     cookTimeMinutes: 12,
@@ -141,10 +146,10 @@ export const mockRecipes: Recipe[] = [
       { quantity: 100, unit: 'g', name: 'croutons' },
       { quantity: 3, unit: 'tbsp', name: 'Caesar dressing' },
     ],
-    instructions: [
-      'Tear lettuce into pieces.',
-      'Toss with dressing.',
-      'Top with parmesan and croutons.',
+    instructionSteps: [
+      { text: 'Tear lettuce into pieces.' },
+      { text: 'Toss with dressing.' },
+      { text: 'Top with parmesan and croutons.' },
     ],
     prepTime: 10,
     cookTimeMinutes: 0,

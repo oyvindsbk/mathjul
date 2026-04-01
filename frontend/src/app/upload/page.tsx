@@ -116,8 +116,13 @@ export default function UploadRecipe() {
         throw new Error(data.errorMessage || 'Failed to extract recipe');
       }
 
-      const { suggestedCategoryIds, ...rest } = data.extractedRecipe;
-      setExtractedRecipe({ ...rest, categoryIds: suggestedCategoryIds ?? [] });
+      const { suggestedCategoryIds, mainImageUrl, instructionSteps, ...rest } = data.extractedRecipe;
+      setExtractedRecipe({
+        ...rest,
+        instructionSteps: instructionSteps ?? [],
+        categoryIds: suggestedCategoryIds ?? [],
+        mainImageUrl: mainImageUrl ?? null,
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to extract recipe';
       setError(errorMessage);
@@ -168,8 +173,13 @@ export default function UploadRecipe() {
         throw new Error(data.errorMessage || 'Failed to extract recipe');
       }
 
-      const { suggestedCategoryIds, ...rest } = data.extractedRecipe;
-      setExtractedRecipe({ ...rest, categoryIds: suggestedCategoryIds ?? [] });
+      const { suggestedCategoryIds, mainImageUrl, instructionSteps, ...rest } = data.extractedRecipe;
+      setExtractedRecipe({
+        ...rest,
+        instructionSteps: instructionSteps ?? [],
+        categoryIds: suggestedCategoryIds ?? [],
+        mainImageUrl: mainImageUrl ?? null,
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to extract recipe';
       setError(errorMessage);

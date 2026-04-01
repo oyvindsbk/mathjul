@@ -17,7 +17,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { RecipeFormData } from '@/lib/services/recipe.service';
-import type { Category, StructuredIngredient } from '@/lib/mock-data';
+import type { Category, InstructionStep, StructuredIngredient } from '@/lib/mock-data';
 
 interface RecipeFormProps {
   initialData: RecipeFormData;
@@ -112,13 +112,13 @@ function SortableIngredient({ id, index, ingredient, onChange, onRemove }: Sorta
 interface SortableInstructionProps {
   id: string;
   index: number;
-  instruction: string;
-  onChange: (index: number, value: string) => void;
+  step: InstructionStep;
+  onChange: (index: number, text: string) => void;
   onRemove: (index: number) => void;
   onInsertBelow: (index: number) => void;
 }
 
-function SortableInstruction({ id, index, instruction, onChange, onRemove, onInsertBelow }: SortableInstructionProps) {
+function SortableInstruction({ id, index, step, onChange, onRemove, onInsertBelow }: SortableInstructionProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
   const style = {
@@ -142,7 +142,7 @@ function SortableInstruction({ id, index, instruction, onChange, onRemove, onIns
         {index + 1}
       </span>
       <textarea
-        value={instruction}
+        value={step.text}
         onChange={(e) => onChange(index, e.target.value)}
         className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
         rows={2}
@@ -183,7 +183,7 @@ export default function RecipeForm({
 
   // Stable IDs for DnD (index-based keys cause issues when reordering)
   const [ingredientIds] = useState(() => initialData.ingredients.map((_, i) => `ing-${i}-${Date.now()}`));
-  const [instructionIds, setInstructionIds] = useState(() => initialData.instructions.map((_, i) => `ins-${i}-${Date.now()}`));
+  const [instructionIds, setInstructionIds] = useState(() => initialData.instructionSteps.map((_, i) => `ins-${i}-${Date.now()}`));
   const [ingIds, setIngIds] = useState(ingredientIds);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -219,26 +219,26 @@ export default function RecipeForm({
   };
 
   // Instructions
-  const handleInstructionChange = (index: number, value: string) => {
-    const newInstructions = [...formData.instructions];
-    newInstructions[index] = value;
-    handleField('instructions', newInstructions);
+  const handleInstructionChange = (index: number, text: string) => {
+    const newSteps = [...formData.instructionSteps];
+    newSteps[index] = { ...newSteps[index], text };
+    handleField('instructionSteps', newSteps);
   };
 
   const handleRemoveInstruction = (index: number) => {
-    handleField('instructions', formData.instructions.filter((_, i) => i !== index));
+    handleField('instructionSteps', formData.instructionSteps.filter((_, i) => i !== index));
     setInstructionIds((ids) => ids.filter((_, i) => i !== index));
   };
 
   const handleAddInstruction = () => {
-    handleField('instructions', [...formData.instructions, '']);
+    handleField('instructionSteps', [...formData.instructionSteps, { text: '' }]);
     setInstructionIds((ids) => [...ids, `ins-${Date.now()}`]);
   };
 
   const handleInsertInstructionBelow = (index: number) => {
-    const newInstructions = [...formData.instructions];
-    newInstructions.splice(index + 1, 0, '');
-    handleField('instructions', newInstructions);
+    const newSteps = [...formData.instructionSteps];
+    newSteps.splice(index + 1, 0, { text: '' });
+    handleField('instructionSteps', newSteps);
     setInstructionIds((ids) => {
       const newIds = [...ids];
       newIds.splice(index + 1, 0, `ins-${Date.now()}`);
@@ -252,7 +252,7 @@ export default function RecipeForm({
     const oldIndex = instructionIds.indexOf(active.id as string);
     const newIndex = instructionIds.indexOf(over.id as string);
     setInstructionIds((ids) => arrayMove(ids, oldIndex, newIndex));
-    handleField('instructions', arrayMove(formData.instructions, oldIndex, newIndex));
+    handleField('instructionSteps', arrayMove(formData.instructionSteps, oldIndex, newIndex));
   };
 
   const handleToggleCategory = (id: number) => {
@@ -353,17 +353,17 @@ export default function RecipeForm({
       {/* Instructions */}
       <div>
         <label className="block text-sm font-medium mb-2">
-          Instructions ({formData.instructions.length} steps)
+          Instructions ({formData.instructionSteps.length} steps)
         </label>
         <div className="space-y-2">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleInstructionDragEnd}>
             <SortableContext items={instructionIds} strategy={verticalListSortingStrategy}>
-              {formData.instructions.map((instruction, index) => (
+              {formData.instructionSteps.map((step, index) => (
                 <SortableInstruction
                   key={instructionIds[index]}
                   id={instructionIds[index]}
                   index={index}
-                  instruction={instruction}
+                  step={step}
                   onChange={handleInstructionChange}
                   onRemove={handleRemoveInstruction}
                   onInsertBelow={handleInsertInstructionBelow}
