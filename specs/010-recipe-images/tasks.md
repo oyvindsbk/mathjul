@@ -6,7 +6,7 @@
 - [x] Task 1: Add Azure Blob Storage account and container to Bicep (`infrastructure/modules/storage.bicep`), wire into `main.bicep`, assign Storage Blob Data Contributor role to backend Container App managed identity
 
 ### Backend — Data Model
-- [ ] Task 2: Add `InstructionStep` value object (`{ Text, ImageUrl? }`), add `InstructionSteps` JSON column to `Recipe`, write EF Core migration that populates `InstructionSteps` from existing `Instructions` string, keep `Instructions` column temporarily as nullable for rollback safety
+- [x] Task 2: Add `InstructionStep` value object (`{ Text, ImageUrl? }`), add `InstructionSteps` JSON column to `Recipe`, write EF Core migration that populates `InstructionSteps` from existing `Instructions` string, keep `Instructions` column temporarily as nullable for rollback safety
 - [ ] Task 3: Update `RecipeDetailDto`, `SaveExtractedRecipeRequest`, `UpdateRecipeRequest`, and all mappings to use `InstructionSteps` instead of `Instructions`; update `RecipesController` accordingly; run `dotnet build` + `dotnet test`
 
 ### Backend — Blob Storage Service

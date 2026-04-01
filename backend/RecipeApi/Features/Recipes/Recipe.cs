@@ -23,6 +23,12 @@ public class StructuredIngredient
     public string Name { get; set; } = string.Empty;
 }
 
+public class InstructionStep
+{
+    public string Text { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
+}
+
 public class Recipe
 {
     public int Id { get; set; }
@@ -36,8 +42,10 @@ public class Recipe
 
     public List<StructuredIngredient> Ingredients { get; set; } = new();
 
-    // Store instructions as newline-separated string
-    public string Instructions { get; set; } = string.Empty;
+    // Legacy: newline-separated instructions string — kept nullable for rollback safety, replaced by InstructionSteps
+    public string? Instructions { get; set; }
+
+    public List<InstructionStep> InstructionSteps { get; set; } = new();
     
     public int? PrepTime { get; set; } // in minutes
     
