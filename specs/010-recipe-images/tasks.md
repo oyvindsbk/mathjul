@@ -15,7 +15,7 @@
 ### Backend — Image API Endpoints
 - [x] Task 5: Add `PUT /api/recipes/{id}/main-image` and `DELETE /api/recipes/{id}/main-image` endpoints; validate file type/size; store blob; update `Recipe.ImageUrl`; delete old blob on replace/delete
 - [x] Task 6: Add `PUT /api/recipes/{id}/steps/{stepIndex}/image` and `DELETE /api/recipes/{id}/steps/{stepIndex}/image` endpoints; validate; store blob with UUID filename; update `InstructionStep.ImageUrl`; delete old blob on replace/delete
-- [ ] Task 7: On `DELETE /api/recipes/{id}`, delete all blobs for that recipe (main + all step images)
+- [x] Task 7: On `DELETE /api/recipes/{id}`, delete all blobs for that recipe (main + all step images)
 
 ### Backend — AI Dish Extraction
 - [ ] Task 8: Extend `RecipeImageProcessor` with a `TryExtractDishPhotoAsync` method that sends the image to the vision model asking if a dish photo is present; if confident yes + full-frame, return the image as-is; if confident yes + crop region returned, crop with ImageSharp; if not confident, return null; integrate into `from-image` endpoint so the extracted/cropped image is saved to blob and `ImageUrl` set on the extracted recipe

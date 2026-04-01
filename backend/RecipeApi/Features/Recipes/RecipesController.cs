@@ -414,6 +414,9 @@ public class RecipesController : ControllerBase
             return NotFound(new { message = "Recipe not found" });
         }
 
+        // Delete all blobs for this recipe (main image + all step images)
+        await _blobStorage.DeleteByPrefixAsync($"recipes/{id}/");
+
         _context.Recipes.Remove(recipe);
         await _context.SaveChangesAsync();
 
