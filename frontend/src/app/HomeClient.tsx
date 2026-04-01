@@ -185,9 +185,13 @@ export default function HomeClient() {
                 {recipe.categories && recipe.categories.length > 0 && (
                   <div className="flex flex-wrap gap-1 mb-3">
                     {recipe.categories.map((cat) => (
-                      <span key={cat.id} className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs">
+                      <button
+                        key={cat.id}
+                        onClick={() => { setSelectedCategoryIds([cat.id]); setLoading(true); setFilterOpen(true); }}
+                        className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs hover:bg-blue-200 transition-colors cursor-pointer"
+                      >
                         {cat.name}
-                      </span>
+                      </button>
                     ))}
                   </div>
                 )}
