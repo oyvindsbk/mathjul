@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { recipeService } from '@/lib/services/recipe.service';
 import { useAuth } from '@/lib/context/AuthContext';
-import type { Recipe } from '@/lib/mock-data';
+import type { Recipe, Category } from '@/lib/mock-data';
 import SpinLoading from './loading';
 
 const MAX_SEGMENTS = 20;
@@ -23,12 +23,15 @@ function truncate(text: string, maxLen: number): string {
 }
 
 export default function SpinClient() {
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [allRecipes, setAllRecipes] = useState<Recipe[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [filterOpen, setFilterOpen] = useState(false);
   const { token, isLoading: authLoading } = useAuth();
 
   // Track cumulative rotation so each spin builds on the last, preventing rollback
@@ -36,10 +39,14 @@ export default function SpinClient() {
 
   useEffect(() => {
     if (authLoading) return;
-    const fetch = async () => {
+    const fetchData = async () => {
       try {
-        const data = await recipeService.getAllRecipes(token || undefined);
-        setRecipes(data.slice(0, MAX_SEGMENTS));
+        const [recipesData, categoriesData] = await Promise.all([
+          recipeService.getAllRecipes(token || undefined),
+          recipeService.getAllCategories(token || undefined),
+        ]);
+        setAllRecipes(recipesData);
+        setCategories(categoriesData);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load recipes');
@@ -47,11 +54,32 @@ export default function SpinClient() {
         setLoading(false);
       }
     };
-    fetch();
+    fetchData();
   }, [authLoading, token]);
+
+  function toggleCategory(id: number) {
+    setSelectedCategoryIds(prev =>
+      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+    );
+    setSelectedRecipe(null);
+  }
+
+  function clearCategories() {
+    setSelectedCategoryIds([]);
+    setSelectedRecipe(null);
+  }
+
+  const filteredRecipes = selectedCategoryIds.length === 0
+    ? allRecipes
+    : allRecipes.filter(r =>
+        selectedCategoryIds.every(id => r.categories?.some(c => c.id === id))
+      );
+
+  const recipes = filteredRecipes.slice(0, MAX_SEGMENTS);
 
   const segments = recipes;
   const segmentAngle = segments.length > 0 ? 360 / segments.length : 0;
+
 
   function spin() {
     if (spinning || segments.length < 2) return;
@@ -102,12 +130,80 @@ export default function SpinClient() {
   }
 
   if (segments.length < 2) {
+    const reason = selectedCategoryIds.length > 0
+      ? 'Ingen oppskrifter matcher de valgte kategoriene. Prøv å fjerne noen filtre.'
+      : 'Du trenger minst 2 oppskrifter for å bruke hjulet.';
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <p className="text-2xl mb-2">🍽️</p>
-          <p className="text-gray-700 mb-4">Du trenger minst 2 oppskrifter for å bruke hjulet.</p>
-          <Link href="/" className="text-blue-600 hover:underline">← Tilbake til oppskrifter</Link>
+      <div className="min-h-screen bg-gray-50 py-12 px-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-6">
+            <Link href="/" className="text-blue-600 hover:underline text-sm">
+              ← Tilbake til oppskrifter
+            </Link>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 text-center mb-2">
+            Spin the Wheel 🎡
+          </h1>
+          <p className="text-gray-600 text-center mb-6">
+            Kan ikke bestemme deg? La hjulet velge for deg!
+          </p>
+          {categories.length > 0 && (
+            <div className="mb-8">
+              <button
+                onClick={() => setFilterOpen(o => !o)}
+                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
+              >
+                <span>Filtrer kategorier</span>
+                {selectedCategoryIds.length > 0 && (
+                  <span className="bg-blue-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                    {selectedCategoryIds.length}
+                  </span>
+                )}
+                <span className="ml-1 text-gray-400">{filterOpen ? '▲' : '▼'}</span>
+              </button>
+              {filterOpen && (
+                <div className="mt-3 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+                  {Object.entries(
+                    categories.reduce<Record<string, Category[]>>((acc, cat) => {
+                      (acc[cat.group] ??= []).push(cat);
+                      return acc;
+                    }, {})
+                  ).map(([group, cats]) => (
+                    <div key={group} className="mb-4 last:mb-0">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{group}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {cats.map(cat => (
+                          <button
+                            key={cat.id}
+                            onClick={() => toggleCategory(cat.id)}
+                            className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
+                              selectedCategoryIds.includes(cat.id)
+                                ? 'bg-blue-500 text-white border-blue-500'
+                                : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                            }`}
+                          >
+                            {cat.name}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {selectedCategoryIds.length > 0 && (
+                    <button
+                      onClick={clearCategories}
+                      className="mt-2 text-sm text-gray-500 hover:text-gray-700 underline"
+                    >
+                      Fjern alle filtre
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          <div className="text-center">
+            <p className="text-2xl mb-2">🍽️</p>
+            <p className="text-gray-700 mb-4">{reason}</p>
+          </div>
         </div>
       </div>
     );
@@ -135,9 +231,65 @@ export default function SpinClient() {
         <h1 className="text-3xl font-bold text-gray-900 text-center mb-2">
           Spin the Wheel 🎡
         </h1>
-        <p className="text-gray-600 text-center mb-10">
+        <p className="text-gray-600 text-center mb-6">
           Kan ikke bestemme deg? La hjulet velge for deg!
         </p>
+
+        {/* Category filter */}
+        {categories.length > 0 && (
+          <div className="mb-8">
+            <button
+              onClick={() => setFilterOpen(o => !o)}
+              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
+            >
+              <span>Filtrer kategorier</span>
+              {selectedCategoryIds.length > 0 && (
+                <span className="bg-blue-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                  {selectedCategoryIds.length}
+                </span>
+              )}
+              <span className="ml-1 text-gray-400">{filterOpen ? '▲' : '▼'}</span>
+            </button>
+
+            {filterOpen && (
+              <div className="mt-3 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+                {Object.entries(
+                  categories.reduce<Record<string, Category[]>>((acc, cat) => {
+                    (acc[cat.group] ??= []).push(cat);
+                    return acc;
+                  }, {})
+                ).map(([group, cats]) => (
+                  <div key={group} className="mb-4 last:mb-0">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{group}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {cats.map(cat => (
+                        <button
+                          key={cat.id}
+                          onClick={() => toggleCategory(cat.id)}
+                          className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
+                            selectedCategoryIds.includes(cat.id)
+                              ? 'bg-blue-500 text-white border-blue-500'
+                              : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                          }`}
+                        >
+                          {cat.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {selectedCategoryIds.length > 0 && (
+                  <button
+                    onClick={clearCategories}
+                    className="mt-2 text-sm text-gray-500 hover:text-gray-700 underline"
+                  >
+                    Fjern alle filtre
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Wheel container */}
         <div className="flex flex-col items-center gap-8">
