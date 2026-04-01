@@ -14,6 +14,9 @@ param frontendUrl string = ''
 @secure()
 param jwtSecretKey string
 
+@description('Azure Storage account name for recipe images')
+param blobStorageAccountName string = ''
+
 @description('Container image')
 param containerImage string = 'mcr.microsoft.com/dotnet/samples:aspnetapp'
 
@@ -129,6 +132,14 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
             {
               name: 'Jwt__Audience'
               value: 'RecipeFrontend'
+            }
+            {
+              name: 'BlobStorage__AccountName'
+              value: blobStorageAccountName
+            }
+            {
+              name: 'BlobStorage__ContainerName'
+              value: 'recipe-images'
             }
           ]
         }

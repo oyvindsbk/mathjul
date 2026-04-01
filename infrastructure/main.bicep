@@ -35,6 +35,7 @@ var sqlDatabaseName = 'RecipeDb'
 var containerAppName = 'ca-recipe-api-${environment}-${uniqueSuffix}'
 var frontendContainerAppName = 'ca-recipe-web-${environment}-${uniqueSuffix}'
 var keyVaultName = 'kv-recipe-${environment}-${take(uniqueSuffix, 8)}'
+var storageAccountName = 'strecipe${environment}${take(uniqueSuffix, 8)}'
 
 // Tags
 var commonTags = {
@@ -78,9 +79,22 @@ module containerApp 'modules/container-app.bicep' = {
     keyVaultName: keyVault.outputs.keyVaultName
     jwtSecretKey: jwtSecretKey
     frontendUrl: frontendUrl
+    blobStorageAccountName: storageAccountName
     tags: commonTags
   }
 }
+
+// Blob Storage for recipe images
+module storage 'modules/storage.bicep' = {
+  name: 'storageDeployment'
+  params: {
+    storageAccountName: storageAccountName
+    location: location
+    backendPrincipalId: containerApp.outputs.principalId
+    tags: commonTags
+  }
+}
+
 
 // Note: Key Vault role assignment (Key Vault Secrets User) is a one-time setup.
 // Run modules/key-vault-access.bicep manually if the Container App managed identity changes.
