@@ -10,7 +10,7 @@
 - [x] Task 3: Update `RecipeDetailDto`, `SaveExtractedRecipeRequest`, `UpdateRecipeRequest`, and all mappings to use `InstructionSteps` instead of `Instructions`; update `RecipesController` accordingly; run `dotnet build` + `dotnet test`
 
 ### Backend — Blob Storage Service
-- [ ] Task 4: Add `IBlobStorageService` + `AzureBlobStorageService` using `Azure.Storage.Blobs` with `DefaultAzureCredential`; register in DI; add `BlobStorageOptions` (account name, container name) loaded from config; add Azurite connection string support for local dev
+- [x] Task 4: Add `IBlobStorageService` + `AzureBlobStorageService` using `Azure.Storage.Blobs` with `DefaultAzureCredential`; register in DI; add `BlobStorageOptions` (account name, container name) loaded from config; add Azurite connection string support for local dev
 
 ### Backend — Image API Endpoints
 - [ ] Task 5: Add `PUT /api/recipes/{id}/main-image` and `DELETE /api/recipes/{id}/main-image` endpoints; validate file type/size; store blob; update `Recipe.ImageUrl`; delete old blob on replace/delete
