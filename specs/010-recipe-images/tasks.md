@@ -13,7 +13,7 @@
 - [x] Task 4: Add `IBlobStorageService` + `AzureBlobStorageService` using `Azure.Storage.Blobs` with `DefaultAzureCredential`; register in DI; add `BlobStorageOptions` (account name, container name) loaded from config; add Azurite connection string support for local dev
 
 ### Backend — Image API Endpoints
-- [ ] Task 5: Add `PUT /api/recipes/{id}/main-image` and `DELETE /api/recipes/{id}/main-image` endpoints; validate file type/size; store blob; update `Recipe.ImageUrl`; delete old blob on replace/delete
+- [x] Task 5: Add `PUT /api/recipes/{id}/main-image` and `DELETE /api/recipes/{id}/main-image` endpoints; validate file type/size; store blob; update `Recipe.ImageUrl`; delete old blob on replace/delete
 - [ ] Task 6: Add `PUT /api/recipes/{id}/steps/{stepIndex}/image` and `DELETE /api/recipes/{id}/steps/{stepIndex}/image` endpoints; validate; store blob with UUID filename; update `InstructionStep.ImageUrl`; delete old blob on replace/delete
 - [ ] Task 7: On `DELETE /api/recipes/{id}`, delete all blobs for that recipe (main + all step images)
 

@@ -8,20 +8,26 @@ namespace RecipeApi.Features.Recipes;
 [Route("api/[controller]")]
 public class RecipesController : ControllerBase
 {
+    private static readonly string[] AllowedImageContentTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    private const long MaxImageBytes = 10 * 1024 * 1024; // 10MB
+
     private readonly RecipeDbContext _context;
     private readonly IRecipeImageProcessor _imageProcessor;
     private readonly IRecipeUrlProcessor _urlProcessor;
+    private readonly IBlobStorageService _blobStorage;
     private readonly ILogger<RecipesController> _logger;
 
     public RecipesController(
         RecipeDbContext context,
         IRecipeImageProcessor imageProcessor,
         IRecipeUrlProcessor urlProcessor,
+        IBlobStorageService blobStorage,
         ILogger<RecipesController> logger)
     {
         _context = context;
         _imageProcessor = imageProcessor;
         _urlProcessor = urlProcessor;
+        _blobStorage = blobStorage;
         _logger = logger;
     }
 
@@ -295,6 +301,54 @@ public class RecipesController : ControllerBase
         return Ok(recipeDetail);
     }
 
+    [HttpPut("{id:int}/main-image")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<ActionResult<RecipeDto>> UploadMainImage(int id, IFormFile image)
+    {
+        var recipe = await _context.Recipes.FindAsync(id);
+        if (recipe == null) return NotFound(new { message = "Recipe not found" });
+
+        var validation = ValidateImageFile(image);
+        if (validation != null) return BadRequest(new { message = validation });
+
+        // Delete old blob if present
+        if (!string.IsNullOrEmpty(recipe.ImageUrl))
+            await _blobStorage.DeleteAsync(BlobPathFromUrl(recipe.ImageUrl));
+
+        var ext = Path.GetExtension(image.FileName).ToLowerInvariant();
+        var blobPath = $"recipes/{id}/main/{Guid.NewGuid()}{ext}";
+
+        using var stream = image.OpenReadStream();
+        var url = await _blobStorage.UploadAsync(stream, blobPath, image.ContentType);
+
+        recipe.ImageUrl = url;
+        recipe.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Ok(new RecipeDto
+        {
+            Id = recipe.Id, Title = recipe.Title, Description = recipe.Description,
+            CookTime = recipe.CookTime, Difficulty = recipe.Difficulty, ImageUrl = recipe.ImageUrl
+        });
+    }
+
+    [HttpDelete("{id:int}/main-image")]
+    public async Task<IActionResult> DeleteMainImage(int id)
+    {
+        var recipe = await _context.Recipes.FindAsync(id);
+        if (recipe == null) return NotFound(new { message = "Recipe not found" });
+
+        if (!string.IsNullOrEmpty(recipe.ImageUrl))
+        {
+            await _blobStorage.DeleteAsync(BlobPathFromUrl(recipe.ImageUrl));
+            recipe.ImageUrl = null;
+            recipe.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+
+        return NoContent();
+    }
+
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteRecipe(int id)
     {
@@ -309,6 +363,24 @@ public class RecipesController : ControllerBase
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    private string? ValidateImageFile(IFormFile? file)
+    {
+        if (file == null || file.Length == 0) return "No image file provided";
+        if (file.Length > MaxImageBytes) return $"File size exceeds {MaxImageBytes / 1024 / 1024}MB limit";
+        if (!AllowedImageContentTypes.Contains(file.ContentType.ToLowerInvariant())) return "Invalid file type. Allowed: JPEG, PNG, WEBP";
+        return null;
+    }
+
+    /// <summary>Extracts the blob path from a full blob URL (everything after the container segment).</summary>
+    private static string BlobPathFromUrl(string url)
+    {
+        // e.g. https://account.blob.core.windows.net/recipe-images/recipes/1/main/uuid.jpg
+        // -> recipes/1/main/uuid.jpg
+        var uri = new Uri(url);
+        var segments = uri.AbsolutePath.TrimStart('/').Split('/', 2);
+        return segments.Length == 2 ? segments[1] : uri.AbsolutePath.TrimStart('/');
     }
 
     private async Task<string> BuildCategoryListJsonAsync()
@@ -354,7 +426,7 @@ public class RecipeDto
     public string Description { get; set; } = string.Empty;
     public string CookTime { get; set; } = string.Empty;
     public string Difficulty { get; set; } = string.Empty;
-    public string ImageUrl { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
     public List<CategoryDto> Categories { get; set; } = new();
 }
 
