@@ -289,20 +289,6 @@ export default function RecipeForm({
         />
       </div>
 
-      {/* Difficulty */}
-      <div>
-        <label className="block text-sm font-medium mb-2">Difficulty</label>
-        <select
-          value={formData.difficulty || 'Medium'}
-          onChange={(e) => handleField('difficulty', e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-        >
-          <option value="Easy">Easy</option>
-          <option value="Medium">Medium</option>
-          <option value="Hard">Hard</option>
-        </select>
-      </div>
-
       {/* Servings, Prep Time, Cook Time */}
       <div className="grid grid-cols-3 gap-4">
         <div>
