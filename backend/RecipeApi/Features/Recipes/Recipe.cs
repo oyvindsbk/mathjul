@@ -42,9 +42,6 @@ public class Recipe
 
     public List<StructuredIngredient> Ingredients { get; set; } = new();
 
-    // Legacy: newline-separated instructions string — kept nullable for rollback safety, replaced by InstructionSteps
-    public string? Instructions { get; set; }
-
     public List<InstructionStep> InstructionSteps { get; set; } = new();
     
     public int? PrepTime { get; set; } // in minutes
@@ -59,7 +56,7 @@ public class Recipe
     [StringLength(20)]
     public string Difficulty { get; set; } = string.Empty;
     
-    public string ImageUrl { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
     
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

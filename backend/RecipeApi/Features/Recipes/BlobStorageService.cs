@@ -31,8 +31,11 @@ public class AzureBlobStorageService : IBlobStorageService
 
         if (!string.IsNullOrEmpty(options.ConnectionString))
         {
-            // Local dev: Azurite or explicit connection string
-            serviceClient = new BlobServiceClient(options.ConnectionString);
+            // Local dev: Azurite or explicit connection string.
+            // Pin to a service version supported by the local Azurite emulator so that
+            // upgrading the SDK package doesn't break local dev with an older Azurite.
+            var localOptions = new BlobClientOptions(BlobClientOptions.ServiceVersion.V2024_11_04);
+            serviceClient = new BlobServiceClient(options.ConnectionString, localOptions);
         }
         else
         {

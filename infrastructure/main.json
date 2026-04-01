@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "15646767145995462972"
+      "templateHash": "4425077283247501324"
     }
   },
   "parameters": {
@@ -70,6 +70,7 @@
     "containerAppName": "[format('ca-recipe-api-{0}-{1}', parameters('environment'), variables('uniqueSuffix'))]",
     "frontendContainerAppName": "[format('ca-recipe-web-{0}-{1}', parameters('environment'), variables('uniqueSuffix'))]",
     "keyVaultName": "[format('kv-recipe-{0}-{1}', parameters('environment'), take(variables('uniqueSuffix'), 8))]",
+    "storageAccountName": "[format('strecipe{0}{1}', parameters('environment'), take(variables('uniqueSuffix'), 8))]",
     "commonTags": {
       "environment": "[parameters('environment')]",
       "application": "recipe-app",
@@ -359,6 +360,9 @@
           "frontendUrl": {
             "value": "[parameters('frontendUrl')]"
           },
+          "blobStorageAccountName": {
+            "value": "[variables('storageAccountName')]"
+          },
           "tags": {
             "value": "[variables('commonTags')]"
           }
@@ -370,7 +374,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "11145301583417882004"
+              "templateHash": "13604871217447635873"
             }
           },
           "parameters": {
@@ -403,6 +407,13 @@
               "type": "securestring",
               "metadata": {
                 "description": "JWT Secret Key for token signing"
+              }
+            },
+            "blobStorageAccountName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Azure Storage account name for recipe images"
               }
             },
             "containerImage": {
@@ -525,6 +536,14 @@
                         {
                           "name": "Jwt__Audience",
                           "value": "RecipeFrontend"
+                        },
+                        {
+                          "name": "BlobStorage__AccountName",
+                          "value": "[parameters('blobStorageAccountName')]"
+                        },
+                        {
+                          "name": "BlobStorage__ContainerName",
+                          "value": "recipe-images"
                         }
                       ]
                     }
@@ -568,6 +587,148 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.Resources/deployments', 'keyVaultDeployment')]"
+      ]
+    },
+    {
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "storageDeployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "storageAccountName": {
+            "value": "[variables('storageAccountName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "backendPrincipalId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'containerAppDeployment'), '2025-04-01').outputs.principalId.value]"
+          },
+          "tags": {
+            "value": "[variables('commonTags')]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "13112973682014280104"
+            }
+          },
+          "parameters": {
+            "storageAccountName": {
+              "type": "string",
+              "metadata": {
+                "description": "The name of the storage account"
+              }
+            },
+            "location": {
+              "type": "string",
+              "metadata": {
+                "description": "The location for the storage account"
+              }
+            },
+            "containerName": {
+              "type": "string",
+              "defaultValue": "recipe-images",
+              "metadata": {
+                "description": "The name of the blob container for recipe images"
+              }
+            },
+            "backendPrincipalId": {
+              "type": "string",
+              "metadata": {
+                "description": "The principal ID of the backend Container App managed identity"
+              }
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {},
+              "metadata": {
+                "description": "Tags to apply to resources"
+              }
+            }
+          },
+          "variables": {
+            "storageBlobDataContributorRoleId": "ba92f5b4-2d11-453d-a403-e96b0029c9fe"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.Storage/storageAccounts",
+              "apiVersion": "2023-01-01",
+              "name": "[parameters('storageAccountName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "sku": {
+                "name": "Standard_LRS"
+              },
+              "kind": "StorageV2",
+              "properties": {
+                "allowBlobPublicAccess": true,
+                "minimumTlsVersion": "TLS1_2",
+                "supportsHttpsTrafficOnly": true,
+                "accessTier": "Hot"
+              }
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
+              "apiVersion": "2023-01-01",
+              "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', parameters('containerName'))]",
+              "properties": {
+                "publicAccess": "Blob"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
+              ]
+            },
+            {
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
+              "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), parameters('backendPrincipalId'), variables('storageBlobDataContributorRoleId'))]",
+              "properties": {
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', variables('storageBlobDataContributorRoleId'))]",
+                "principalId": "[parameters('backendPrincipalId')]",
+                "principalType": "ServicePrincipal"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+              ]
+            }
+          ],
+          "outputs": {
+            "storageAccountName": {
+              "type": "string",
+              "value": "[parameters('storageAccountName')]"
+            },
+            "storageAccountEndpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').primaryEndpoints.blob]"
+            },
+            "containerName": {
+              "type": "string",
+              "value": "[parameters('containerName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'containerAppDeployment')]"
       ]
     },
     {
