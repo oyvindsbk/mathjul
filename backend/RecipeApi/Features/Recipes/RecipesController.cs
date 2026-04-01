@@ -89,7 +89,7 @@ public class RecipesController : ControllerBase
                 Unit = i.Unit,
                 Name = i.Name
             }).ToList(),
-            Instructions = recipe.Instructions.Split(new[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries).ToList(),
+            InstructionSteps = recipe.InstructionSteps.Select(s => new InstructionStepDto { Text = s.Text, ImageUrl = s.ImageUrl }).ToList(),
             Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
             CreatedAt = recipe.CreatedAt,
             UpdatedAt = recipe.UpdatedAt
@@ -200,7 +200,8 @@ public class RecipesController : ControllerBase
                     Unit = i.Unit,
                     Name = i.Name
                 }).ToList(),
-            Instructions = string.Join("\n", request.Instructions ?? new List<string>()),
+            InstructionSteps = (request.InstructionSteps ?? new List<InstructionStepDto>())
+                .Select(s => new InstructionStep { Text = s.Text, ImageUrl = s.ImageUrl }).ToList(),
             PrepTime = request.PrepTime,
             CookTimeMinutes = request.CookTime,
             CookTime = request.CookTime.HasValue ? $"{request.CookTime} min" : string.Empty,
@@ -250,7 +251,8 @@ public class RecipesController : ControllerBase
                 Unit = i.Unit,
                 Name = i.Name
             }).ToList();
-        recipe.Instructions = string.Join("\n", request.Instructions ?? new List<string>());
+        recipe.InstructionSteps = (request.InstructionSteps ?? new List<InstructionStepDto>())
+            .Select(s => new InstructionStep { Text = s.Text, ImageUrl = s.ImageUrl }).ToList();
         recipe.PrepTime = request.PrepTime;
         recipe.CookTimeMinutes = request.CookTime;
         recipe.CookTime = request.CookTime.HasValue ? $"{request.CookTime} min" : string.Empty;
@@ -284,7 +286,7 @@ public class RecipesController : ControllerBase
                 Unit = i.Unit,
                 Name = i.Name
             }).ToList(),
-            Instructions = recipe.Instructions.Split(new[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries).ToList(),
+            InstructionSteps = recipe.InstructionSteps.Select(s => new InstructionStepDto { Text = s.Text, ImageUrl = s.ImageUrl }).ToList(),
             Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
             CreatedAt = recipe.CreatedAt,
             UpdatedAt = recipe.UpdatedAt
@@ -329,7 +331,7 @@ public class RecipesController : ControllerBase
             Unit = i.Unit,
             Name = i.Name
         }).ToList(),
-        Instructions = dto.Instructions,
+        InstructionSteps = dto.Instructions.Select(text => new InstructionStepDto { Text = text }).ToList(),
         PrepTime = dto.PrepTime,
         CookTime = dto.CookTime,
         Servings = dto.Servings,
@@ -356,6 +358,12 @@ public class RecipeDto
     public List<CategoryDto> Categories { get; set; } = new();
 }
 
+public class InstructionStepDto
+{
+    public string Text { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
+}
+
 public class RecipeDetailDto
 {
     public int Id { get; set; }
@@ -365,10 +373,10 @@ public class RecipeDetailDto
     public int? CookTimeMinutes { get; set; }
     public int? PrepTime { get; set; }
     public string Difficulty { get; set; } = string.Empty;
-    public string ImageUrl { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
     public int? Servings { get; set; }
     public List<StructuredIngredientDto> Ingredients { get; set; } = new();
-    public List<string> Instructions { get; set; } = new();
+    public List<InstructionStepDto> InstructionSteps { get; set; } = new();
     public List<CategoryDto> Categories { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -393,7 +401,7 @@ public class ExtractedRecipeResponse
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public List<StructuredIngredientDto> Ingredients { get; set; } = new();
-    public List<string> Instructions { get; set; } = new();
+    public List<InstructionStepDto> InstructionSteps { get; set; } = new();
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
     public int? Servings { get; set; }
@@ -411,7 +419,7 @@ public class SaveExtractedRecipeRequest
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public List<StructuredIngredientDto>? Ingredients { get; set; }
-    public List<string>? Instructions { get; set; }
+    public List<InstructionStepDto>? InstructionSteps { get; set; }
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
     public int? Servings { get; set; }
@@ -424,7 +432,7 @@ public class UpdateRecipeRequest
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public List<StructuredIngredientDto>? Ingredients { get; set; }
-    public List<string>? Instructions { get; set; }
+    public List<InstructionStepDto>? InstructionSteps { get; set; }
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
     public int? Servings { get; set; }

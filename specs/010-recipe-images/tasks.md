@@ -7,7 +7,7 @@
 
 ### Backend — Data Model
 - [x] Task 2: Add `InstructionStep` value object (`{ Text, ImageUrl? }`), add `InstructionSteps` JSON column to `Recipe`, write EF Core migration that populates `InstructionSteps` from existing `Instructions` string, keep `Instructions` column temporarily as nullable for rollback safety
-- [ ] Task 3: Update `RecipeDetailDto`, `SaveExtractedRecipeRequest`, `UpdateRecipeRequest`, and all mappings to use `InstructionSteps` instead of `Instructions`; update `RecipesController` accordingly; run `dotnet build` + `dotnet test`
+- [x] Task 3: Update `RecipeDetailDto`, `SaveExtractedRecipeRequest`, `UpdateRecipeRequest`, and all mappings to use `InstructionSteps` instead of `Instructions`; update `RecipesController` accordingly; run `dotnet build` + `dotnet test`
 
 ### Backend — Blob Storage Service
 - [ ] Task 4: Add `IBlobStorageService` + `AzureBlobStorageService` using `Azure.Storage.Blobs` with `DefaultAzureCredential`; register in DI; add `BlobStorageOptions` (account name, container name) loaded from config; add Azurite connection string support for local dev
