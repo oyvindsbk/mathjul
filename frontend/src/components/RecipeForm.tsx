@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -17,7 +17,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { RecipeFormData } from '@/lib/services/recipe.service';
-import type { Category, StructuredIngredient } from '@/lib/mock-data';
+import type { Category, InstructionStep, StructuredIngredient } from '@/lib/mock-data';
 
 interface RecipeFormProps {
   initialData: RecipeFormData;
@@ -26,6 +26,10 @@ interface RecipeFormProps {
   isSaving: boolean;
   submitLabel?: string;
   availableCategories?: Category[];
+  /** Called when user selects a photo for a step. Return the URL to display (blob: or remote). */
+  onStepPhotoSelected?: (index: number, file: File) => Promise<string | null>;
+  /** Called when user removes a step photo. */
+  onStepPhotoRemove?: (index: number) => Promise<void>;
 }
 
 // Drag handle icon
@@ -112,19 +116,59 @@ function SortableIngredient({ id, index, ingredient, onChange, onRemove }: Sorta
 interface SortableInstructionProps {
   id: string;
   index: number;
-  instruction: string;
-  onChange: (index: number, value: string) => void;
+  step: InstructionStep;
+  onChange: (index: number, text: string) => void;
   onRemove: (index: number) => void;
   onInsertBelow: (index: number) => void;
+  onPhotoSelected?: (index: number, file: File) => Promise<void>;
+  onPhotoRemove?: (index: number) => Promise<void>;
 }
 
-function SortableInstruction({ id, index, instruction, onChange, onRemove, onInsertBelow }: SortableInstructionProps) {
+function SortableInstruction({ id, index, step, onChange, onRemove, onInsertBelow, onPhotoSelected, onPhotoRemove }: SortableInstructionProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [isPhotoLoading, setIsPhotoLoading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+  };
+
+  const handlePhotoFile = async (file: File) => {
+    if (!onPhotoSelected) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      setPhotoError('Only JPEG, PNG, WEBP accepted');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setPhotoError('Max 10 MB');
+      return;
+    }
+    setPhotoError(null);
+    setIsPhotoLoading(true);
+    try {
+      await onPhotoSelected(index, file);
+    } catch {
+      setPhotoError('Failed to upload photo');
+    } finally {
+      setIsPhotoLoading(false);
+    }
+  };
+
+  const handlePhotoRemove = async () => {
+    if (!onPhotoRemove) return;
+    setIsPhotoLoading(true);
+    setPhotoError(null);
+    try {
+      await onPhotoRemove(index);
+    } catch {
+      setPhotoError('Failed to remove photo');
+    } finally {
+      setIsPhotoLoading(false);
+    }
   };
 
   return (
@@ -141,12 +185,80 @@ function SortableInstruction({ id, index, instruction, onChange, onRemove, onIns
       <span className="px-3 py-2 bg-gray-200 dark:bg-gray-800 rounded-lg font-medium min-w-[2.5rem] text-center self-start">
         {index + 1}
       </span>
-      <textarea
-        value={instruction}
-        onChange={(e) => onChange(index, e.target.value)}
-        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-        rows={2}
-      />
+      <div className="flex-1 space-y-2">
+        <textarea
+          value={step.text}
+          onChange={(e) => onChange(index, e.target.value)}
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
+          rows={2}
+        />
+        {/* Per-step photo zone — only shown when photo callbacks are wired */}
+        {onPhotoSelected && (
+          <div>
+            {step.imageUrl ? (
+              <div className="relative w-40">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={step.imageUrl}
+                  alt={`Step ${index + 1} photo`}
+                  className="w-40 h-28 object-cover rounded border border-gray-200 dark:border-gray-700"
+                />
+                {isPhotoLoading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-white/60 dark:bg-black/40 rounded">
+                    <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  </div>
+                )}
+                <div className="flex gap-1 mt-1">
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={isPhotoLoading}
+                    className="px-2 py-0.5 text-xs bg-gray-200 dark:bg-gray-700 rounded hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50"
+                  >
+                    Replace
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePhotoRemove}
+                    disabled={isPhotoLoading}
+                    className="px-2 py-0.5 text-xs bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 rounded hover:bg-red-200 dark:hover:bg-red-900/60 disabled:opacity-50"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                disabled={isPhotoLoading}
+                className="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-500 dark:text-gray-400 border border-dashed border-gray-300 dark:border-gray-600 rounded hover:border-gray-400 dark:hover:border-gray-500 disabled:opacity-50"
+              >
+                {isPhotoLoading ? (
+                  <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                )}
+                Add photo
+              </button>
+            )}
+            {photoError && <p className="text-xs text-red-600 dark:text-red-400">{photoError}</p>}
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handlePhotoFile(file);
+                e.target.value = '';
+              }}
+            />
+          </div>
+        )}
+      </div>
       <div className="flex flex-col gap-1 self-start">
         <button
           type="button"
@@ -178,12 +290,14 @@ export default function RecipeForm({
   isSaving,
   submitLabel = 'Save Recipe',
   availableCategories = [],
+  onStepPhotoSelected,
+  onStepPhotoRemove,
 }: RecipeFormProps) {
   const [formData, setFormData] = useState<RecipeFormData>(initialData);
 
   // Stable IDs for DnD (index-based keys cause issues when reordering)
   const [ingredientIds] = useState(() => initialData.ingredients.map((_, i) => `ing-${i}-${Date.now()}`));
-  const [instructionIds, setInstructionIds] = useState(() => initialData.instructions.map((_, i) => `ins-${i}-${Date.now()}`));
+  const [instructionIds, setInstructionIds] = useState(() => initialData.instructionSteps.map((_, i) => `ins-${i}-${Date.now()}`));
   const [ingIds, setIngIds] = useState(ingredientIds);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -219,26 +333,46 @@ export default function RecipeForm({
   };
 
   // Instructions
-  const handleInstructionChange = (index: number, value: string) => {
-    const newInstructions = [...formData.instructions];
-    newInstructions[index] = value;
-    handleField('instructions', newInstructions);
+  const handleInstructionChange = (index: number, text: string) => {
+    const newSteps = [...formData.instructionSteps];
+    newSteps[index] = { ...newSteps[index], text };
+    handleField('instructionSteps', newSteps);
   };
 
+  const handleStepPhotoSelected = onStepPhotoSelected
+    ? async (index: number, file: File) => {
+        const url = await onStepPhotoSelected(index, file);
+        if (url !== null) {
+          const newSteps = [...formData.instructionSteps];
+          newSteps[index] = { ...newSteps[index], imageUrl: url };
+          handleField('instructionSteps', newSteps);
+        }
+      }
+    : undefined;
+
+  const handleStepPhotoRemove = onStepPhotoRemove
+    ? async (index: number) => {
+        await onStepPhotoRemove(index);
+        const newSteps = [...formData.instructionSteps];
+        newSteps[index] = { ...newSteps[index], imageUrl: null };
+        handleField('instructionSteps', newSteps);
+      }
+    : undefined;
+
   const handleRemoveInstruction = (index: number) => {
-    handleField('instructions', formData.instructions.filter((_, i) => i !== index));
+    handleField('instructionSteps', formData.instructionSteps.filter((_, i) => i !== index));
     setInstructionIds((ids) => ids.filter((_, i) => i !== index));
   };
 
   const handleAddInstruction = () => {
-    handleField('instructions', [...formData.instructions, '']);
+    handleField('instructionSteps', [...formData.instructionSteps, { text: '' }]);
     setInstructionIds((ids) => [...ids, `ins-${Date.now()}`]);
   };
 
   const handleInsertInstructionBelow = (index: number) => {
-    const newInstructions = [...formData.instructions];
-    newInstructions.splice(index + 1, 0, '');
-    handleField('instructions', newInstructions);
+    const newSteps = [...formData.instructionSteps];
+    newSteps.splice(index + 1, 0, { text: '' });
+    handleField('instructionSteps', newSteps);
     setInstructionIds((ids) => {
       const newIds = [...ids];
       newIds.splice(index + 1, 0, `ins-${Date.now()}`);
@@ -252,7 +386,7 @@ export default function RecipeForm({
     const oldIndex = instructionIds.indexOf(active.id as string);
     const newIndex = instructionIds.indexOf(over.id as string);
     setInstructionIds((ids) => arrayMove(ids, oldIndex, newIndex));
-    handleField('instructions', arrayMove(formData.instructions, oldIndex, newIndex));
+    handleField('instructionSteps', arrayMove(formData.instructionSteps, oldIndex, newIndex));
   };
 
   const handleToggleCategory = (id: number) => {
@@ -353,20 +487,22 @@ export default function RecipeForm({
       {/* Instructions */}
       <div>
         <label className="block text-sm font-medium mb-2">
-          Instructions ({formData.instructions.length} steps)
+          Instructions ({formData.instructionSteps.length} steps)
         </label>
         <div className="space-y-2">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleInstructionDragEnd}>
             <SortableContext items={instructionIds} strategy={verticalListSortingStrategy}>
-              {formData.instructions.map((instruction, index) => (
+              {formData.instructionSteps.map((step, index) => (
                 <SortableInstruction
                   key={instructionIds[index]}
                   id={instructionIds[index]}
                   index={index}
-                  instruction={instruction}
+                  step={step}
                   onChange={handleInstructionChange}
                   onRemove={handleRemoveInstruction}
                   onInsertBelow={handleInsertInstructionBelow}
+                  onPhotoSelected={handleStepPhotoSelected}
+                  onPhotoRemove={handleStepPhotoRemove}
                 />
               ))}
             </SortableContext>

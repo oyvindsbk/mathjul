@@ -8,20 +8,26 @@ namespace RecipeApi.Features.Recipes;
 [Route("api/[controller]")]
 public class RecipesController : ControllerBase
 {
+    private static readonly string[] AllowedImageContentTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    private const long MaxImageBytes = 10 * 1024 * 1024; // 10MB
+
     private readonly RecipeDbContext _context;
     private readonly IRecipeImageProcessor _imageProcessor;
     private readonly IRecipeUrlProcessor _urlProcessor;
+    private readonly IBlobStorageService _blobStorage;
     private readonly ILogger<RecipesController> _logger;
 
     public RecipesController(
         RecipeDbContext context,
         IRecipeImageProcessor imageProcessor,
         IRecipeUrlProcessor urlProcessor,
+        IBlobStorageService blobStorage,
         ILogger<RecipesController> logger)
     {
         _context = context;
         _imageProcessor = imageProcessor;
         _urlProcessor = urlProcessor;
+        _blobStorage = blobStorage;
         _logger = logger;
     }
 
@@ -89,7 +95,7 @@ public class RecipesController : ControllerBase
                 Unit = i.Unit,
                 Name = i.Name
             }).ToList(),
-            Instructions = recipe.Instructions.Split(new[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries).ToList(),
+            InstructionSteps = recipe.InstructionSteps.Select(s => new InstructionStepDto { Text = s.Text, ImageUrl = s.ImageUrl }).ToList(),
             Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
             CreatedAt = recipe.CreatedAt,
             UpdatedAt = recipe.UpdatedAt
@@ -137,14 +143,29 @@ public class RecipesController : ControllerBase
             });
         }
 
-        // Map extracted recipe to response
-        var response = new RecipeExtractionResponse
+        // Attempt to extract/crop a dish photo from the image and store it in blob storage
+        string? mainImageUrl = null;
+        try
         {
-            Success = true,
-            ExtractedRecipe = MapToExtractedResponse(result.Recipe!)
-        };
+            using var photoStream = new MemoryStream();
+            await image.CopyToAsync(photoStream);
+            var dishBytes = await _imageProcessor.TryExtractDishPhotoAsync(photoStream.ToArray());
+            if (dishBytes != null)
+            {
+                var blobPath = $"recipes/pending/{Guid.NewGuid()}.jpg";
+                using var dishStream = new MemoryStream(dishBytes);
+                mainImageUrl = await _blobStorage.UploadAsync(dishStream, blobPath, "image/jpeg");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Dish photo extraction failed, continuing without main image");
+        }
 
-        return Ok(response);
+        var extracted = MapToExtractedResponse(result.Recipe!);
+        extracted.MainImageUrl = mainImageUrl;
+
+        return Ok(new RecipeExtractionResponse { Success = true, ExtractedRecipe = extracted });
     }
 
     [HttpPost("from-url")]
@@ -200,13 +221,14 @@ public class RecipesController : ControllerBase
                     Unit = i.Unit,
                     Name = i.Name
                 }).ToList(),
-            Instructions = string.Join("\n", request.Instructions ?? new List<string>()),
+            InstructionSteps = (request.InstructionSteps ?? new List<InstructionStepDto>())
+                .Select(s => new InstructionStep { Text = s.Text, ImageUrl = s.ImageUrl }).ToList(),
             PrepTime = request.PrepTime,
             CookTimeMinutes = request.CookTime,
             CookTime = request.CookTime.HasValue ? $"{request.CookTime} min" : string.Empty,
             Servings = request.Servings,
             Difficulty = request.Difficulty ?? "Medium",
-            ImageUrl = string.Empty,
+            ImageUrl = request.MainImageUrl,
             Categories = categories,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -250,7 +272,8 @@ public class RecipesController : ControllerBase
                 Unit = i.Unit,
                 Name = i.Name
             }).ToList();
-        recipe.Instructions = string.Join("\n", request.Instructions ?? new List<string>());
+        recipe.InstructionSteps = (request.InstructionSteps ?? new List<InstructionStepDto>())
+            .Select(s => new InstructionStep { Text = s.Text, ImageUrl = s.ImageUrl }).ToList();
         recipe.PrepTime = request.PrepTime;
         recipe.CookTimeMinutes = request.CookTime;
         recipe.CookTime = request.CookTime.HasValue ? $"{request.CookTime} min" : string.Empty;
@@ -284,13 +307,116 @@ public class RecipesController : ControllerBase
                 Unit = i.Unit,
                 Name = i.Name
             }).ToList(),
-            Instructions = recipe.Instructions.Split(new[] { "\n", "\r\n" }, StringSplitOptions.RemoveEmptyEntries).ToList(),
+            InstructionSteps = recipe.InstructionSteps.Select(s => new InstructionStepDto { Text = s.Text, ImageUrl = s.ImageUrl }).ToList(),
             Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
             CreatedAt = recipe.CreatedAt,
             UpdatedAt = recipe.UpdatedAt
         };
 
         return Ok(recipeDetail);
+    }
+
+    [HttpPut("{id:int}/main-image")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<ActionResult<RecipeDto>> UploadMainImage(int id, IFormFile image)
+    {
+        var recipe = await _context.Recipes.FindAsync(id);
+        if (recipe == null) return NotFound(new { message = "Recipe not found" });
+
+        var validation = ValidateImageFile(image);
+        if (validation != null) return BadRequest(new { message = validation });
+
+        // Delete old blob if present
+        if (!string.IsNullOrEmpty(recipe.ImageUrl))
+            await _blobStorage.DeleteAsync(BlobPathFromUrl(recipe.ImageUrl));
+
+        var ext = Path.GetExtension(image.FileName).ToLowerInvariant();
+        var blobPath = $"recipes/{id}/main/{Guid.NewGuid()}{ext}";
+
+        using var stream = image.OpenReadStream();
+        var url = await _blobStorage.UploadAsync(stream, blobPath, image.ContentType);
+
+        recipe.ImageUrl = url;
+        recipe.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Ok(new RecipeDto
+        {
+            Id = recipe.Id, Title = recipe.Title, Description = recipe.Description,
+            CookTime = recipe.CookTime, Difficulty = recipe.Difficulty, ImageUrl = recipe.ImageUrl
+        });
+    }
+
+    [HttpDelete("{id:int}/main-image")]
+    public async Task<IActionResult> DeleteMainImage(int id)
+    {
+        var recipe = await _context.Recipes.FindAsync(id);
+        if (recipe == null) return NotFound(new { message = "Recipe not found" });
+
+        if (!string.IsNullOrEmpty(recipe.ImageUrl))
+        {
+            await _blobStorage.DeleteAsync(BlobPathFromUrl(recipe.ImageUrl));
+            recipe.ImageUrl = null;
+            recipe.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+        }
+
+        return NoContent();
+    }
+
+    [HttpPut("{id:int}/steps/{stepIndex:int}/image")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<ActionResult<InstructionStepDto>> UploadStepImage(int id, int stepIndex, IFormFile image)
+    {
+        var recipe = await _context.Recipes.FindAsync(id);
+        if (recipe == null) return NotFound(new { message = "Recipe not found" });
+        if (stepIndex < 0 || stepIndex >= recipe.InstructionSteps.Count)
+            return BadRequest(new { message = $"Step index {stepIndex} is out of range" });
+
+        var validation = ValidateImageFile(image);
+        if (validation != null) return BadRequest(new { message = validation });
+
+        var step = recipe.InstructionSteps[stepIndex];
+
+        // Delete old step image blob if present
+        if (!string.IsNullOrEmpty(step.ImageUrl))
+            await _blobStorage.DeleteAsync(BlobPathFromUrl(step.ImageUrl));
+
+        var ext = Path.GetExtension(image.FileName).ToLowerInvariant();
+        var blobPath = $"recipes/{id}/steps/{stepIndex}/{Guid.NewGuid()}{ext}";
+
+        using var stream = image.OpenReadStream();
+        var url = await _blobStorage.UploadAsync(stream, blobPath, image.ContentType);
+
+        step.ImageUrl = url;
+        recipe.UpdatedAt = DateTime.UtcNow;
+        // Mark InstructionSteps as modified (JSON column — EF needs explicit signal)
+        _context.Entry(recipe).Property(r => r.InstructionSteps).IsModified = true;
+        await _context.SaveChangesAsync();
+
+        return Ok(new InstructionStepDto { Text = step.Text, ImageUrl = step.ImageUrl });
+    }
+
+    [HttpDelete("{id:int}/steps/{stepIndex:int}/image")]
+    public async Task<IActionResult> DeleteStepImage(int id, int stepIndex)
+    {
+        var recipe = await _context.Recipes.FindAsync(id);
+        if (recipe == null) return NotFound(new { message = "Recipe not found" });
+        if (stepIndex < 0 || stepIndex >= recipe.InstructionSteps.Count)
+            return BadRequest(new { message = $"Step index {stepIndex} is out of range" });
+
+        var step = recipe.InstructionSteps[stepIndex];
+
+        if (!string.IsNullOrEmpty(step.ImageUrl))
+        {
+            await _blobStorage.DeleteAsync(BlobPathFromUrl(step.ImageUrl));
+            step.ImageUrl = null;
+            recipe.UpdatedAt = DateTime.UtcNow;
+            _context.Entry(recipe).Property(r => r.InstructionSteps).IsModified = true;
+            await _context.SaveChangesAsync();
+        }
+
+        return NoContent();
     }
 
     [HttpDelete("{id:int}")]
@@ -303,10 +429,31 @@ public class RecipesController : ControllerBase
             return NotFound(new { message = "Recipe not found" });
         }
 
+        // Delete all blobs for this recipe (main image + all step images)
+        await _blobStorage.DeleteByPrefixAsync($"recipes/{id}/");
+
         _context.Recipes.Remove(recipe);
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    private string? ValidateImageFile(IFormFile? file)
+    {
+        if (file == null || file.Length == 0) return "No image file provided";
+        if (file.Length > MaxImageBytes) return $"File size exceeds {MaxImageBytes / 1024 / 1024}MB limit";
+        if (!AllowedImageContentTypes.Contains(file.ContentType.ToLowerInvariant())) return "Invalid file type. Allowed: JPEG, PNG, WEBP";
+        return null;
+    }
+
+    /// <summary>Extracts the blob path from a full blob URL (everything after the container segment).</summary>
+    private static string BlobPathFromUrl(string url)
+    {
+        // e.g. https://account.blob.core.windows.net/recipe-images/recipes/1/main/uuid.jpg
+        // -> recipes/1/main/uuid.jpg
+        var uri = new Uri(url);
+        var segments = uri.AbsolutePath.TrimStart('/').Split('/', 2);
+        return segments.Length == 2 ? segments[1] : uri.AbsolutePath.TrimStart('/');
     }
 
     private async Task<string> BuildCategoryListJsonAsync()
@@ -329,7 +476,7 @@ public class RecipesController : ControllerBase
             Unit = i.Unit,
             Name = i.Name
         }).ToList(),
-        Instructions = dto.Instructions,
+        InstructionSteps = dto.Instructions.Select(text => new InstructionStepDto { Text = text }).ToList(),
         PrepTime = dto.PrepTime,
         CookTime = dto.CookTime,
         Servings = dto.Servings,
@@ -352,8 +499,14 @@ public class RecipeDto
     public string Description { get; set; } = string.Empty;
     public string CookTime { get; set; } = string.Empty;
     public string Difficulty { get; set; } = string.Empty;
-    public string ImageUrl { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
     public List<CategoryDto> Categories { get; set; } = new();
+}
+
+public class InstructionStepDto
+{
+    public string Text { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
 }
 
 public class RecipeDetailDto
@@ -365,10 +518,10 @@ public class RecipeDetailDto
     public int? CookTimeMinutes { get; set; }
     public int? PrepTime { get; set; }
     public string Difficulty { get; set; } = string.Empty;
-    public string ImageUrl { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
     public int? Servings { get; set; }
     public List<StructuredIngredientDto> Ingredients { get; set; } = new();
-    public List<string> Instructions { get; set; } = new();
+    public List<InstructionStepDto> InstructionSteps { get; set; } = new();
     public List<CategoryDto> Categories { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
@@ -393,12 +546,14 @@ public class ExtractedRecipeResponse
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public List<StructuredIngredientDto> Ingredients { get; set; } = new();
-    public List<string> Instructions { get; set; } = new();
+    public List<InstructionStepDto> InstructionSteps { get; set; } = new();
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
     public int? Servings { get; set; }
     public string? Difficulty { get; set; }
     public List<int> SuggestedCategoryIds { get; set; } = new();
+    /// <summary>Blob URL of the AI-extracted dish photo, if detected.</summary>
+    public string? MainImageUrl { get; set; }
 }
 
 public class ExtractFromUrlRequest
@@ -411,12 +566,14 @@ public class SaveExtractedRecipeRequest
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public List<StructuredIngredientDto>? Ingredients { get; set; }
-    public List<string>? Instructions { get; set; }
+    public List<InstructionStepDto>? InstructionSteps { get; set; }
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
     public int? Servings { get; set; }
     public string? Difficulty { get; set; }
     public List<int>? CategoryIds { get; set; }
+    /// <summary>Pre-uploaded blob URL from AI dish extraction (pending blob path will be renamed on save).</summary>
+    public string? MainImageUrl { get; set; }
 }
 
 public class UpdateRecipeRequest
@@ -424,7 +581,7 @@ public class UpdateRecipeRequest
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public List<StructuredIngredientDto>? Ingredients { get; set; }
-    public List<string>? Instructions { get; set; }
+    public List<InstructionStepDto>? InstructionSteps { get; set; }
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
     public int? Servings { get; set; }

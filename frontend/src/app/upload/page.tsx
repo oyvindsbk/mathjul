@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AuthButton } from '@/components/AuthButton';
 import { useApiToken } from '@/hooks/useApiToken';
 import RecipeForm from '@/components/RecipeForm';
+import MainPhotoUpload from '@/components/MainPhotoUpload';
 import { recipeService } from '@/lib/services/recipe.service';
 import type { RecipeFormData } from '@/lib/services/recipe.service';
 import type { Category } from '@/lib/mock-data';
@@ -24,6 +25,12 @@ export default function UploadRecipe() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
+  // Main photo state for the extracted recipe
+  const [currentMainImageUrl, setCurrentMainImageUrl] = useState<string | null>(null);
+  const [pendingMainImageFile, setPendingMainImageFile] = useState<File | null>(null);
+  const [isUploadingMainImage, setIsUploadingMainImage] = useState(false);
+  // Step photos: map from object URL → File, for pending upload after recipe creation
+  const pendingStepPhotosRef = useRef<Map<string, File>>(new Map());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const { token, loading: tokenLoading, error: tokenError } = useApiToken();
@@ -116,8 +123,15 @@ export default function UploadRecipe() {
         throw new Error(data.errorMessage || 'Failed to extract recipe');
       }
 
-      const { suggestedCategoryIds, ...rest } = data.extractedRecipe;
-      setExtractedRecipe({ ...rest, categoryIds: suggestedCategoryIds ?? [] });
+      const { suggestedCategoryIds, mainImageUrl, instructionSteps, ...rest } = data.extractedRecipe;
+      setCurrentMainImageUrl(mainImageUrl ?? null);
+      setPendingMainImageFile(null);
+      setExtractedRecipe({
+        ...rest,
+        instructionSteps: instructionSteps ?? [],
+        categoryIds: suggestedCategoryIds ?? [],
+        mainImageUrl: mainImageUrl ?? null,
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to extract recipe';
       setError(errorMessage);
@@ -168,8 +182,15 @@ export default function UploadRecipe() {
         throw new Error(data.errorMessage || 'Failed to extract recipe');
       }
 
-      const { suggestedCategoryIds, ...rest } = data.extractedRecipe;
-      setExtractedRecipe({ ...rest, categoryIds: suggestedCategoryIds ?? [] });
+      const { suggestedCategoryIds, mainImageUrl, instructionSteps, ...rest } = data.extractedRecipe;
+      setCurrentMainImageUrl(mainImageUrl ?? null);
+      setPendingMainImageFile(null);
+      setExtractedRecipe({
+        ...rest,
+        instructionSteps: instructionSteps ?? [],
+        categoryIds: suggestedCategoryIds ?? [],
+        mainImageUrl: mainImageUrl ?? null,
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to extract recipe';
       setError(errorMessage);
@@ -192,17 +213,49 @@ export default function UploadRecipe() {
 
     try {
       const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+      // Strip blob: URLs from steps before saving (server doesn't know about them)
+      const cleanedSteps = data.instructionSteps.map((s) => ({
+        ...s,
+        imageUrl: s.imageUrl?.startsWith('blob:') ? null : (s.imageUrl ?? null),
+      }));
+      // Include the current main image URL (AI-extracted or removed by user)
+      const payload: RecipeFormData = { ...data, instructionSteps: cleanedSteps, mainImageUrl: currentMainImageUrl };
       const response = await fetch(`${apiBaseUrl}/api/recipes/save-extracted`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         throw new Error('Failed to save recipe');
+      }
+
+      const saved = await response.json() as { id: number };
+
+      // Upload pending main image
+      if (pendingMainImageFile) {
+        setIsUploadingMainImage(true);
+        await recipeService.uploadMainImage(saved.id, pendingMainImageFile, token);
+        setIsUploadingMainImage(false);
+      }
+
+      // Upload pending step images (keyed by blob: URL, matched by position in final step list)
+      const pendingMap = pendingStepPhotosRef.current;
+      if (pendingMap.size > 0) {
+        await Promise.all(
+          data.instructionSteps.map(async (step, index) => {
+            if (step.imageUrl && step.imageUrl.startsWith('blob:')) {
+              const file = pendingMap.get(step.imageUrl);
+              if (file) {
+                await recipeService.uploadStepImage(saved.id, index, file, token);
+              }
+            }
+          })
+        );
+        pendingMap.clear();
       }
 
       router.push('/');
@@ -210,6 +263,7 @@ export default function UploadRecipe() {
       setError(err instanceof Error ? err.message : 'Failed to save recipe');
     } finally {
       setIsSaving(false);
+      setIsUploadingMainImage(false);
     }
   };
 
@@ -379,6 +433,19 @@ export default function UploadRecipe() {
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
               Review and edit the extracted information before saving
             </p>
+            <MainPhotoUpload
+              currentImageUrl={currentMainImageUrl}
+              pendingFile={pendingMainImageFile}
+              onFileSelected={(file) => {
+                setPendingMainImageFile(file);
+                setCurrentMainImageUrl(null);
+              }}
+              onRemove={() => {
+                setPendingMainImageFile(null);
+                setCurrentMainImageUrl(null);
+              }}
+              isUploading={isUploadingMainImage}
+            />
             <RecipeForm
               initialData={extractedRecipe}
               onSave={handleSaveRecipe}
@@ -386,6 +453,14 @@ export default function UploadRecipe() {
               isSaving={isSaving}
               submitLabel="Save Recipe"
               availableCategories={availableCategories}
+              onStepPhotoSelected={async (_, file) => {
+                const url = URL.createObjectURL(file);
+                pendingStepPhotosRef.current.set(url, file);
+                return url;
+              }}
+              onStepPhotoRemove={async () => {
+                // The form will clear imageUrl from the step; nothing else needed here
+              }}
             />
           </div>
         )}

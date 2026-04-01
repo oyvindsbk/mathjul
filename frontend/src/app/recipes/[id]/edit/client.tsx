@@ -8,6 +8,7 @@ import type { RecipeFormData } from '@/lib/services/recipe.service';
 import type { Category } from '@/lib/mock-data';
 import { useAuth } from '@/lib/context/AuthContext';
 import RecipeForm from '@/components/RecipeForm';
+import MainPhotoUpload from '@/components/MainPhotoUpload';
 import EditRecipeLoading from './loading';
 
 export default function EditRecipeClient({ id }: { id: string }) {
@@ -17,6 +18,9 @@ export default function EditRecipeClient({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [currentMainImageUrl, setCurrentMainImageUrl] = useState<string | null>(null);
+  const [isUploadingMainImage, setIsUploadingMainImage] = useState(false);
+  const [mainImageError, setMainImageError] = useState<string | null>(null);
   const { token, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -36,18 +40,20 @@ export default function EditRecipeClient({ id }: { id: string }) {
           title: string;
           description?: string;
           ingredients?: { quantity: number | null; unit: string | null; name: string }[];
-          instructions?: string[];
+          instructionSteps?: { text: string; imageUrl?: string | null }[];
           prepTime?: number;
           cookTimeMinutes?: number;
           servings?: number;
           difficulty?: string;
           categories?: Category[];
+          imageUrl?: string | null;
         };
+        setCurrentMainImageUrl(detail.imageUrl ?? null);
         setInitialData({
           title: detail.title,
           description: detail.description,
           ingredients: detail.ingredients ?? [],
-          instructions: detail.instructions ?? [],
+          instructionSteps: detail.instructionSteps ?? [],
           prepTime: detail.prepTime ?? null,
           cookTime: detail.cookTimeMinutes ?? null,
           servings: detail.servings ?? null,
@@ -64,6 +70,32 @@ export default function EditRecipeClient({ id }: { id: string }) {
     if (authLoading || !id) return;
     fetchRecipe();
   }, [id, authLoading, token]);
+
+  const handleMainImageSelected = async (file: File) => {
+    setMainImageError(null);
+    setIsUploadingMainImage(true);
+    try {
+      const updated = await recipeService.uploadMainImage(id, file, token || undefined);
+      setCurrentMainImageUrl((updated as { imageUrl?: string | null }).imageUrl ?? null);
+    } catch (err) {
+      setMainImageError(err instanceof Error ? err.message : 'Failed to upload photo');
+    } finally {
+      setIsUploadingMainImage(false);
+    }
+  };
+
+  const handleMainImageRemove = async () => {
+    setMainImageError(null);
+    setIsUploadingMainImage(true);
+    try {
+      await recipeService.deleteMainImage(id, token || undefined);
+      setCurrentMainImageUrl(null);
+    } catch (err) {
+      setMainImageError(err instanceof Error ? err.message : 'Failed to remove photo');
+    } finally {
+      setIsUploadingMainImage(false);
+    }
+  };
 
   const handleSave = async (data: RecipeFormData) => {
     setSaveError(null);
@@ -121,6 +153,13 @@ export default function EditRecipeClient({ id }: { id: string }) {
         )}
 
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6">
+          <MainPhotoUpload
+            currentImageUrl={currentMainImageUrl}
+            onFileSelected={handleMainImageSelected}
+            onRemove={handleMainImageRemove}
+            isUploading={isUploadingMainImage}
+            error={mainImageError}
+          />
           <RecipeForm
             initialData={initialData}
             onSave={handleSave}
@@ -128,6 +167,13 @@ export default function EditRecipeClient({ id }: { id: string }) {
             isSaving={isSaving}
             submitLabel="Save Changes"
             availableCategories={availableCategories}
+            onStepPhotoSelected={async (index, file) => {
+              const updated = await recipeService.uploadStepImage(id, index, file, token || undefined);
+              return (updated as { imageUrl?: string | null }).imageUrl ?? null;
+            }}
+            onStepPhotoRemove={async (index) => {
+              await recipeService.deleteStepImage(id, index, token || undefined);
+            }}
           />
         </div>
       </main>

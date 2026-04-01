@@ -111,6 +111,16 @@ else
     builder.Services.AddScoped<IRecipeUrlProcessor, DisabledRecipeUrlProcessor>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
 
+// Register Blob Storage service
+var blobOptions = new BlobStorageOptions
+{
+    AccountName = builder.Configuration["BlobStorage:AccountName"] ?? string.Empty,
+    ContainerName = builder.Configuration["BlobStorage:ContainerName"] ?? "recipe-images",
+    ConnectionString = builder.Configuration["BlobStorage:ConnectionString"]
+};
+builder.Services.AddSingleton(blobOptions);
+builder.Services.AddSingleton<IBlobStorageService, AzureBlobStorageService>();
+
 // Configure Key Vault client for email whitelist (cached, refreshable reads)
 if (!IsLocalDev())
 {
