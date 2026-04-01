@@ -29,8 +29,9 @@ export default function UploadRecipe() {
   const { token, loading: tokenLoading, error: tokenError } = useApiToken();
 
   useEffect(() => {
-    recipeService.getAllCategories().then(setAvailableCategories).catch(() => {});
-  }, []);
+    if (tokenLoading) return;
+    recipeService.getAllCategories(token || undefined).then(setAvailableCategories).catch(() => {});
+  }, [tokenLoading, token]);
 
   const handleFileSelect = (file: File) => {
     if (!file.type.startsWith('image/')) {

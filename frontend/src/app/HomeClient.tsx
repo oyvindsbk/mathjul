@@ -29,8 +29,9 @@ export default function HomeClient() {
   }, []);
 
   useEffect(() => {
-    recipeService.getAllCategories().then(setAvailableCategories).catch(() => {});
-  }, []);
+    if (authLoading) return;
+    recipeService.getAllCategories(token || undefined).then(setAvailableCategories).catch(() => {});
+  }, [authLoading, token]);
 
   // Wait for auth to resolve before fetching — avoids a spurious 401 on first render
   useEffect(() => {
