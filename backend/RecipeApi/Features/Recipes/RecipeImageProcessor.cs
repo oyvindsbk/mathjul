@@ -10,6 +10,7 @@ namespace RecipeApi.Features.Recipes;
 public interface IRecipeImageProcessor
 {
     Task<RecipeExtractionResult> ExtractRecipeFromImageAsync(IFormFile imageFile, string? categoryListJson = null, CancellationToken cancellationToken = default);
+    Task<byte[]?> TryExtractDishPhotoAsync(byte[] imageBytes, CancellationToken cancellationToken = default);
 }
 
 public class RecipeImageProcessor : IRecipeImageProcessor
@@ -113,6 +114,58 @@ public class RecipeImageProcessor : IRecipeImageProcessor
         {
             _logger.LogError(ex, "Error extracting recipe from image");
             return RecipeExtractionResult.Failure($"Error processing image: {ex.Message}");
+        }
+    }
+
+    public async Task<byte[]?> TryExtractDishPhotoAsync(byte[] imageBytes, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var imageData = BinaryData.FromBytes(imageBytes);
+            var messages = new List<ChatMessage>
+            {
+                new SystemChatMessage(DishPhotoPrompt.SystemPrompt),
+                new UserChatMessage(
+                    ChatMessageContentPart.CreateTextPart("Analyze this image for a dish photo:"),
+                    ChatMessageContentPart.CreateImagePart(imageData, "image/jpeg"))
+            };
+
+            var options = new ChatCompletionOptions { Temperature = 0.1f, MaxOutputTokenCount = 256 };
+            var response = await _chatClient.CompleteChatAsync(messages, options, cancellationToken);
+            var content = response.Value.Content[0].Text.Trim();
+
+            _logger.LogInformation("Dish photo detection response: {Response}", content);
+
+            var result = DishPhotoPrompt.ParseResponse(content);
+            if (result == null)
+            {
+                _logger.LogInformation("No dish photo detected in image");
+                return null;
+            }
+
+            if (result.FullFrame)
+                return imageBytes;
+
+            // Crop to bounding box
+            using var image = SixLabors.ImageSharp.Image.Load(imageBytes);
+            var cropX = (int)(result.X * image.Width);
+            var cropY = (int)(result.Y * image.Height);
+            var cropW = (int)(result.Width * image.Width);
+            var cropH = (int)(result.Height * image.Height);
+            cropX = Math.Max(0, Math.Min(cropX, image.Width - 1));
+            cropY = Math.Max(0, Math.Min(cropY, image.Height - 1));
+            cropW = Math.Max(1, Math.Min(cropW, image.Width - cropX));
+            cropH = Math.Max(1, Math.Min(cropH, image.Height - cropY));
+
+            image.Mutate(ctx => ctx.Crop(new SixLabors.ImageSharp.Rectangle(cropX, cropY, cropW, cropH)));
+            using var output = new MemoryStream();
+            image.SaveAsJpeg(output, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder { Quality = 85 });
+            return output.ToArray();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Dish photo extraction failed, skipping");
+            return null;
         }
     }
 
@@ -352,6 +405,61 @@ Respond with ONLY valid JSON in this exact format:
         {
             logger.LogError(ex, "Failed to parse AI response as JSON. Raw content: {Content}", json);
             return RecipeExtractionResult.Failure("Failed to parse the AI response. The AI did not return valid recipe data. Please try again.");
+        }
+    }
+}
+
+internal record DishPhotoResult(bool FullFrame, float X, float Y, float Width, float Height);
+
+internal static class DishPhotoPrompt
+{
+    internal const string SystemPrompt = @"You are a food photo analyzer. Determine whether the image contains a dish photo.
+
+Respond with ONLY valid JSON in one of these two formats:
+
+If the image clearly shows food/a dish that fills most of the frame:
+{""dish"": true, ""fullFrame"": true}
+
+If the image clearly shows food/a dish in a specific region:
+{""dish"": true, ""fullFrame"": false, ""x"": 0.1, ""y"": 0.05, ""width"": 0.8, ""height"": 0.9}
+(x, y, width, height are normalized 0-1 fractions of image dimensions)
+
+If the image does NOT clearly show food (e.g. it's a recipe card, text, or ambiguous):
+{""dish"": false}
+
+Be conservative: only return dish=true when you are confident.";
+
+    internal static DishPhotoResult? ParseResponse(string content)
+    {
+        try
+        {
+            var json = content.Trim();
+            if (json.StartsWith("```"))
+            {
+                var firstNewline = json.IndexOf('\n');
+                var lastFence = json.LastIndexOf("```");
+                if (firstNewline >= 0 && lastFence > firstNewline)
+                    json = json[(firstNewline + 1)..lastFence].Trim();
+            }
+
+            using var doc = JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            if (!root.TryGetProperty("dish", out var dishProp) || !dishProp.GetBoolean())
+                return null;
+
+            if (root.TryGetProperty("fullFrame", out var ff) && ff.GetBoolean())
+                return new DishPhotoResult(true, 0, 0, 1, 1);
+
+            var x = root.TryGetProperty("x", out var xp) ? xp.GetSingle() : 0f;
+            var y = root.TryGetProperty("y", out var yp) ? yp.GetSingle() : 0f;
+            var w = root.TryGetProperty("width", out var wp) ? wp.GetSingle() : 1f;
+            var h = root.TryGetProperty("height", out var hp) ? hp.GetSingle() : 1f;
+            return new DishPhotoResult(false, x, y, w, h);
+        }
+        catch
+        {
+            return null;
         }
     }
 }

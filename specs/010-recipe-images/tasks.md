@@ -18,7 +18,7 @@
 - [x] Task 7: On `DELETE /api/recipes/{id}`, delete all blobs for that recipe (main + all step images)
 
 ### Backend — AI Dish Extraction
-- [ ] Task 8: Extend `RecipeImageProcessor` with a `TryExtractDishPhotoAsync` method that sends the image to the vision model asking if a dish photo is present; if confident yes + full-frame, return the image as-is; if confident yes + crop region returned, crop with ImageSharp; if not confident, return null; integrate into `from-image` endpoint so the extracted/cropped image is saved to blob and `ImageUrl` set on the extracted recipe
+- [x] Task 8: Extend `RecipeImageProcessor` with a `TryExtractDishPhotoAsync` method that sends the image to the vision model asking if a dish photo is present; if confident yes + full-frame, return the image as-is; if confident yes + crop region returned, crop with ImageSharp; if not confident, return null; integrate into `from-image` endpoint so the extracted/cropped image is saved to blob and `ImageUrl` set on the extracted recipe
 
 ### Frontend — Types & Service
 - [ ] Task 9: Update TypeScript types (`Recipe`, instruction types) to use `InstructionStep[]` instead of `string[]`; update `recipe.service.ts` to call new image endpoints; update mock data

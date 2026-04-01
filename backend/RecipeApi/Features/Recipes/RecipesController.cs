@@ -143,14 +143,29 @@ public class RecipesController : ControllerBase
             });
         }
 
-        // Map extracted recipe to response
-        var response = new RecipeExtractionResponse
+        // Attempt to extract/crop a dish photo from the image and store it in blob storage
+        string? mainImageUrl = null;
+        try
         {
-            Success = true,
-            ExtractedRecipe = MapToExtractedResponse(result.Recipe!)
-        };
+            using var photoStream = new MemoryStream();
+            await image.CopyToAsync(photoStream);
+            var dishBytes = await _imageProcessor.TryExtractDishPhotoAsync(photoStream.ToArray());
+            if (dishBytes != null)
+            {
+                var blobPath = $"recipes/pending/{Guid.NewGuid()}.jpg";
+                using var dishStream = new MemoryStream(dishBytes);
+                mainImageUrl = await _blobStorage.UploadAsync(dishStream, blobPath, "image/jpeg");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Dish photo extraction failed, continuing without main image");
+        }
 
-        return Ok(response);
+        var extracted = MapToExtractedResponse(result.Recipe!);
+        extracted.MainImageUrl = mainImageUrl;
+
+        return Ok(new RecipeExtractionResponse { Success = true, ExtractedRecipe = extracted });
     }
 
     [HttpPost("from-url")]
@@ -213,7 +228,7 @@ public class RecipesController : ControllerBase
             CookTime = request.CookTime.HasValue ? $"{request.CookTime} min" : string.Empty,
             Servings = request.Servings,
             Difficulty = request.Difficulty ?? "Medium",
-            ImageUrl = string.Empty,
+            ImageUrl = request.MainImageUrl,
             Categories = categories,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -537,6 +552,8 @@ public class ExtractedRecipeResponse
     public int? Servings { get; set; }
     public string? Difficulty { get; set; }
     public List<int> SuggestedCategoryIds { get; set; } = new();
+    /// <summary>Blob URL of the AI-extracted dish photo, if detected.</summary>
+    public string? MainImageUrl { get; set; }
 }
 
 public class ExtractFromUrlRequest
@@ -555,6 +572,8 @@ public class SaveExtractedRecipeRequest
     public int? Servings { get; set; }
     public string? Difficulty { get; set; }
     public List<int>? CategoryIds { get; set; }
+    /// <summary>Pre-uploaded blob URL from AI dish extraction (pending blob path will be renamed on save).</summary>
+    public string? MainImageUrl { get; set; }
 }
 
 public class UpdateRecipeRequest
