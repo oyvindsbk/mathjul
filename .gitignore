@@ -69,3 +69,9 @@ Desktop.ini
 
 # Claude loop template (keep the template folder ignored if desired)
 claude-loop-template/**
+
+# Azurite (local Azure Storage emulator)
+__azurite_db_*.json
+__blobstorage__/
+__queuestorage__/
+AzuriteConfig

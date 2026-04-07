@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import CropModal from './CropModal';
 import {
   DndContext,
   closestCenter,
@@ -129,6 +130,7 @@ function SortableInstruction({ id, index, step, onChange, onRemove, onInsertBelo
   const photoInputRef = useRef<HTMLInputElement>(null);
   const [isPhotoLoading, setIsPhotoLoading] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
+  const [cropTarget, setCropTarget] = useState<File | null>(null);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -136,7 +138,20 @@ function SortableInstruction({ id, index, step, onChange, onRemove, onInsertBelo
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const handlePhotoFile = async (file: File) => {
+  const uploadFile = async (file: File) => {
+    if (!onPhotoSelected) return;
+    setPhotoError(null);
+    setIsPhotoLoading(true);
+    try {
+      await onPhotoSelected(index, file);
+    } catch {
+      setPhotoError('Failed to upload photo');
+    } finally {
+      setIsPhotoLoading(false);
+    }
+  };
+
+  const handlePhotoFile = (file: File) => {
     if (!onPhotoSelected) return;
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];
     if (!allowed.includes(file.type)) {
@@ -148,14 +163,7 @@ function SortableInstruction({ id, index, step, onChange, onRemove, onInsertBelo
       return;
     }
     setPhotoError(null);
-    setIsPhotoLoading(true);
-    try {
-      await onPhotoSelected(index, file);
-    } catch {
-      setPhotoError('Failed to upload photo');
-    } finally {
-      setIsPhotoLoading(false);
-    }
+    setCropTarget(file);
   };
 
   const handlePhotoRemove = async () => {
@@ -173,6 +181,13 @@ function SortableInstruction({ id, index, step, onChange, onRemove, onInsertBelo
 
   return (
     <div ref={setNodeRef} style={style} className="flex gap-2">
+      {cropTarget && (
+        <CropModal
+          file={cropTarget}
+          onConfirm={(cropped) => { setCropTarget(null); void uploadFile(cropped); }}
+          onSkip={() => { setCropTarget(null); void uploadFile(cropTarget); }}
+        />
+      )}
       <button
         type="button"
         {...attributes}

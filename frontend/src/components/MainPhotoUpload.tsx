@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import CropModal from './CropModal';
 
 interface MainPhotoUploadProps {
   /** Currently saved image URL (from AI extraction or existing recipe). */
@@ -28,6 +29,7 @@ export default function MainPhotoUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [cropTarget, setCropTarget] = useState<File | null>(null);
 
   // Prefer a pending file preview over the saved URL
   const pendingPreviewUrl = pendingFile ? URL.createObjectURL(pendingFile) : null;
@@ -48,7 +50,7 @@ export default function MainPhotoUpload({
       return;
     }
     setLocalError(null);
-    onFileSelected(file);
+    setCropTarget(file);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,6 +78,13 @@ export default function MainPhotoUpload({
 
   return (
     <div className="mb-6">
+      {cropTarget && (
+        <CropModal
+          file={cropTarget}
+          onConfirm={(cropped) => { setCropTarget(null); onFileSelected(cropped); }}
+          onSkip={() => { setCropTarget(null); onFileSelected(cropTarget); }}
+        />
+      )}
       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
         Main Photo
       </label>
@@ -104,6 +113,16 @@ export default function MainPhotoUpload({
             >
               Replace photo
             </button>
+            {pendingFile && (
+              <button
+                type="button"
+                onClick={() => setCropTarget(pendingFile)}
+                disabled={isUploading}
+                className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50"
+              >
+                Crop
+              </button>
+            )}
             <button
               type="button"
               onClick={onRemove}
