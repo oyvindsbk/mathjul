@@ -172,8 +172,17 @@ export default function HomeClient() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" data-testid="recipe-grid">
           {recipes.map((recipe) => (
             <div key={recipe.id} data-testid={`recipe-card-${recipe.id}`} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col">
-              <div className="h-48 bg-gray-200 flex items-center justify-center">
-                <span className="text-gray-500">Oppskrift bilde</span>
+              <div className="h-48 bg-gray-200 flex items-center justify-center overflow-hidden">
+                {recipe.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={recipe.imageUrl}
+                    alt={recipe.title}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-gray-500">Oppskrift bilde</span>
+                )}
               </div>
               <div className="p-6 flex flex-col flex-1">
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
