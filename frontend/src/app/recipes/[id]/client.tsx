@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { recipeService } from "@/lib/services/recipe.service";
 import { useAuth } from "@/lib/context/AuthContext";
-import type { Category, InstructionStep, Recipe, StructuredIngredient } from "@/lib/mock-data";
+import type { Category, IngredientSection, InstructionSection, InstructionStep, Recipe, StructuredIngredient } from "@/lib/mock-data";
 import RecipeDetailLoading from "./loading";
 
 interface RecipeDetail extends Recipe {
@@ -17,6 +17,8 @@ interface RecipeDetail extends Recipe {
   servings?: number;
   ingredients?: StructuredIngredient[];
   instructionSteps?: InstructionStep[];
+  ingredientSections?: IngredientSection[];
+  instructionSections?: InstructionSection[];
   categories?: Category[];
   createdAt?: string;
   updatedAt?: string;
@@ -239,55 +241,117 @@ export default function RecipeDetailClient({ id }: { id: string }) {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-6" data-testid="ingredients-heading">Ingredienser</h2>
-              <ul className="space-y-3">
-                {recipe.ingredients && recipe.ingredients.length > 0 ? (
-                  recipe.ingredients.map((ingredient, index) => {
-                    const display = formatIngredient(ingredient, recipe.servings, desiredServings);
-                    return (
-                      <li key={index} className="flex items-start">
-                        <input
-                          type="checkbox"
-                          className="mt-1 mr-3 w-4 h-4 text-blue-600 rounded cursor-pointer"
-                          aria-label={`Ingredient: ${display}`}
-                        />
-                        <span className="text-gray-700">{display}</span>
-                      </li>
-                    );
-                  })
-                ) : (
-                  <li className="text-gray-500">Ingen ingredienser tilgjengelig</li>
-                )}
-              </ul>
+              {recipe.ingredientSections && recipe.ingredientSections.length > 0 ? (
+                <div className="space-y-6">
+                  {recipe.ingredientSections.map((section, sIdx) => (
+                    <div key={sIdx}>
+                      <h3 className="text-base font-semibold text-gray-700 mb-3 border-b border-gray-200 pb-1">{section.heading}</h3>
+                      <ul className="space-y-3">
+                        {section.ingredients.map((ingredient, iIdx) => {
+                          const display = formatIngredient(ingredient, recipe.servings, desiredServings);
+                          return (
+                            <li key={iIdx} className="flex items-start">
+                              <input
+                                type="checkbox"
+                                className="mt-1 mr-3 w-4 h-4 text-blue-600 rounded cursor-pointer"
+                                aria-label={`Ingredient: ${display}`}
+                              />
+                              <span className="text-gray-700">{display}</span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <ul className="space-y-3">
+                  {recipe.ingredients && recipe.ingredients.length > 0 ? (
+                    recipe.ingredients.map((ingredient, index) => {
+                      const display = formatIngredient(ingredient, recipe.servings, desiredServings);
+                      return (
+                        <li key={index} className="flex items-start">
+                          <input
+                            type="checkbox"
+                            className="mt-1 mr-3 w-4 h-4 text-blue-600 rounded cursor-pointer"
+                            aria-label={`Ingredient: ${display}`}
+                          />
+                          <span className="text-gray-700">{display}</span>
+                        </li>
+                      );
+                    })
+                  ) : (
+                    <li className="text-gray-500">Ingen ingredienser tilgjengelig</li>
+                  )}
+                </ul>
+              )}
             </div>
           </div>
 
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-md p-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-6" data-testid="instructions-heading">Instruksjoner</h2>
-              <ol className="space-y-6">
-                {recipe.instructionSteps && recipe.instructionSteps.length > 0 ? (
-                  recipe.instructionSteps.map((step: InstructionStep, index: number) => (
-                    <li key={index} className="flex items-start gap-4">
-                      <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-semibold flex-shrink-0 mt-0.5">
-                        {index + 1}
-                      </span>
-                      <div className="flex-1">
-                        <p className="text-gray-700">{step.text}</p>
-                        {step.imageUrl && (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={step.imageUrl}
-                            alt={`Trinn ${index + 1}`}
-                            className="mt-3 rounded-lg max-h-48 object-cover border border-gray-200"
-                          />
-                        )}
+              {recipe.instructionSections && recipe.instructionSections.length > 0 ? (
+                <div className="space-y-8">
+                  {(() => {
+                    let stepCounter = 0;
+                    return recipe.instructionSections!.map((section, sIdx) => (
+                      <div key={sIdx}>
+                        <h3 className="text-base font-semibold text-gray-700 mb-4 border-b border-gray-200 pb-1">{section.heading}</h3>
+                        <ol className="space-y-6">
+                          {section.steps.map((step: InstructionStep) => {
+                            stepCounter++;
+                            const num = stepCounter;
+                            return (
+                              <li key={num} className="flex items-start gap-4">
+                                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-semibold flex-shrink-0 mt-0.5">
+                                  {num}
+                                </span>
+                                <div className="flex-1">
+                                  <p className="text-gray-700">{step.text}</p>
+                                  {step.imageUrl && (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={step.imageUrl}
+                                      alt={`Trinn ${num}`}
+                                      className="mt-3 rounded-lg max-h-48 object-cover border border-gray-200"
+                                    />
+                                  )}
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ol>
                       </div>
-                    </li>
-                  ))
-                ) : (
-                  <li className="text-gray-500">Ingen instruksjoner tilgjengelig</li>
-                )}
-              </ol>
+                    ));
+                  })()}
+                </div>
+              ) : (
+                <ol className="space-y-6">
+                  {recipe.instructionSteps && recipe.instructionSteps.length > 0 ? (
+                    recipe.instructionSteps.map((step: InstructionStep, index: number) => (
+                      <li key={index} className="flex items-start gap-4">
+                        <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-semibold flex-shrink-0 mt-0.5">
+                          {index + 1}
+                        </span>
+                        <div className="flex-1">
+                          <p className="text-gray-700">{step.text}</p>
+                          {step.imageUrl && (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={step.imageUrl}
+                              alt={`Trinn ${index + 1}`}
+                              className="mt-3 rounded-lg max-h-48 object-cover border border-gray-200"
+                            />
+                          )}
+                        </div>
+                      </li>
+                    ))
+                  ) : (
+                    <li className="text-gray-500">Ingen instruksjoner tilgjengelig</li>
+                  )}
+                </ol>
+              )}
             </div>
           </div>
         </div>

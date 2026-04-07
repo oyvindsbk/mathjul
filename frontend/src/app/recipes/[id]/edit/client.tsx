@@ -41,6 +41,8 @@ export default function EditRecipeClient({ id }: { id: string }) {
           description?: string;
           ingredients?: { quantity: number | null; unit: string | null; name: string }[];
           instructionSteps?: { text: string; imageUrl?: string | null }[];
+          ingredientSections?: { heading: string; ingredients: { quantity: number | null; unit: string | null; name: string }[] }[];
+          instructionSections?: { heading: string; steps: { text: string; imageUrl?: string | null }[] }[];
           prepTime?: number;
           cookTimeMinutes?: number;
           servings?: number;
@@ -54,6 +56,8 @@ export default function EditRecipeClient({ id }: { id: string }) {
           description: detail.description,
           ingredients: detail.ingredients ?? [],
           instructionSteps: detail.instructionSteps ?? [],
+          ingredientSections: detail.ingredientSections ?? [],
+          instructionSections: detail.instructionSections ?? [],
           prepTime: detail.prepTime ?? null,
           cookTime: detail.cookTimeMinutes ?? null,
           servings: detail.servings ?? null,

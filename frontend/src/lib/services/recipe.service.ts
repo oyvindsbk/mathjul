@@ -6,13 +6,15 @@
  */
 
 import { appConfig } from '../config';
-import { mockCategories, mockRecipes, type Category, type InstructionStep, type Recipe, type StructuredIngredient } from '../mock-data';
+import { mockCategories, mockRecipes, type Category, type IngredientSection, type InstructionSection, type InstructionStep, type Recipe, type StructuredIngredient } from '../mock-data';
 
 export interface RecipeFormData {
   title: string;
   description?: string;
   ingredients: StructuredIngredient[];
   instructionSteps: InstructionStep[];
+  ingredientSections: IngredientSection[];
+  instructionSections: InstructionSection[];
   prepTime?: number | null;
   cookTime?: number | null;
   servings?: number | null;

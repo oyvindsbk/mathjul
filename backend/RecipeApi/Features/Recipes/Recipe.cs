@@ -29,6 +29,18 @@ public class InstructionStep
     public string? ImageUrl { get; set; }
 }
 
+public class IngredientSection
+{
+    public string Heading { get; set; } = string.Empty;
+    public List<StructuredIngredient> Ingredients { get; set; } = new();
+}
+
+public class InstructionSection
+{
+    public string Heading { get; set; } = string.Empty;
+    public List<InstructionStep> Steps { get; set; } = new();
+}
+
 public class Recipe
 {
     public int Id { get; set; }
@@ -43,6 +55,10 @@ public class Recipe
     public List<StructuredIngredient> Ingredients { get; set; } = new();
 
     public List<InstructionStep> InstructionSteps { get; set; } = new();
+
+    public List<IngredientSection> IngredientSections { get; set; } = new();
+
+    public List<InstructionSection> InstructionSections { get; set; } = new();
     
     public int? PrepTime { get; set; } // in minutes
     

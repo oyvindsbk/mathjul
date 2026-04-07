@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import CropModal from './CropModal';
 import {
   DndContext,
@@ -8,6 +8,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   DragEndEvent,
 } from '@dnd-kit/core';
 import {
@@ -18,7 +19,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { RecipeFormData } from '@/lib/services/recipe.service';
-import type { Category, InstructionStep, StructuredIngredient } from '@/lib/mock-data';
+import type { Category, IngredientSection, InstructionSection, InstructionStep, StructuredIngredient } from '@/lib/mock-data';
 
 interface RecipeFormProps {
   initialData: RecipeFormData;
@@ -298,6 +299,15 @@ function SortableInstruction({ id, index, step, onChange, onRemove, onInsertBelo
   );
 }
 
+function DroppableSection({ id, children }: { id: string; children: React.ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <div ref={setNodeRef} className={`min-h-[2rem] transition-colors rounded ${isOver ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}>
+      {children}
+    </div>
+  );
+}
+
 export default function RecipeForm({
   initialData,
   onSave,
@@ -315,13 +325,21 @@ export default function RecipeForm({
   const [instructionIds, setInstructionIds] = useState(() => initialData.instructionSteps.map((_, i) => `ins-${i}-${Date.now()}`));
   const [ingIds, setIngIds] = useState(ingredientIds);
 
+  // Stable IDs for sectioned DnD
+  const [sectionIngIds, setSectionIngIds] = useState<string[][]>(() =>
+    initialData.ingredientSections.map((s, si) => s.ingredients.map((_, i) => `sing-${si}-${i}-${Date.now()}`))
+  );
+  const [sectionStepIds, setSectionStepIds] = useState<string[][]>(() =>
+    initialData.instructionSections.map((s, si) => s.steps.map((_, i) => `sstep-${si}-${i}-${Date.now()}`))
+  );
+
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const handleField = (field: keyof RecipeFormData, value: RecipeFormData[typeof field]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Ingredients
+  // Ingredients (flat)
   const handleIngredientChange = (index: number, updated: StructuredIngredient) => {
     const newIngredients = [...formData.ingredients];
     newIngredients[index] = updated;
@@ -347,7 +365,124 @@ export default function RecipeForm({
     handleField('ingredients', arrayMove(formData.ingredients, oldIndex, newIndex));
   };
 
-  // Instructions
+  // Ingredient sections
+  const handleAddIngredientSection = () => {
+    const newSection: IngredientSection = { heading: '', ingredients: [] };
+    if (formData.ingredientSections.length === 0 && formData.ingredients.length > 0) {
+      // Convert flat list to first section
+      handleField('ingredientSections', [{ heading: '', ingredients: [...formData.ingredients] }, newSection]);
+      handleField('ingredients', []);
+      setSectionIngIds([
+        formData.ingredients.map((_, i) => `sing-${Date.now()}-${i}`),
+        [],
+      ]);
+    } else {
+      handleField('ingredientSections', [...formData.ingredientSections, newSection]);
+      setSectionIngIds((ids) => [...ids, []]);
+    }
+  };
+
+  const handleRemoveIngredientSections = () => {
+    const allIngredients = formData.ingredientSections.flatMap((s) => s.ingredients);
+    handleField('ingredients', allIngredients);
+    handleField('ingredientSections', []);
+    setSectionIngIds([]);
+  };
+
+  const handleIngredientSectionHeading = (sIdx: number, heading: string) => {
+    const sections = [...formData.ingredientSections];
+    sections[sIdx] = { ...sections[sIdx], heading };
+    handleField('ingredientSections', sections);
+  };
+
+  const handleRemoveIngredientSection = (sIdx: number) => {
+    handleField('ingredientSections', formData.ingredientSections.filter((_, i) => i !== sIdx));
+    setSectionIngIds((ids) => ids.filter((_, i) => i !== sIdx));
+  };
+
+  const handleSectionIngredientChange = (sIdx: number, iIdx: number, updated: StructuredIngredient) => {
+    const sections = formData.ingredientSections.map((s, si) =>
+      si === sIdx ? { ...s, ingredients: s.ingredients.map((ing, ii) => (ii === iIdx ? updated : ing)) } : s
+    );
+    handleField('ingredientSections', sections);
+  };
+
+  const handleRemoveSectionIngredient = (sIdx: number, iIdx: number) => {
+    const sections = formData.ingredientSections.map((s, si) =>
+      si === sIdx ? { ...s, ingredients: s.ingredients.filter((_, ii) => ii !== iIdx) } : s
+    );
+    handleField('ingredientSections', sections);
+    setSectionIngIds((ids) => ids.map((arr, si) => si === sIdx ? arr.filter((_, ii) => ii !== iIdx) : arr));
+  };
+
+  const handleAddSectionIngredient = (sIdx: number) => {
+    const sections = formData.ingredientSections.map((s, si) =>
+      si === sIdx ? { ...s, ingredients: [...s.ingredients, { quantity: null, unit: null, name: '' }] } : s
+    );
+    handleField('ingredientSections', sections);
+    setSectionIngIds((ids) => ids.map((arr, si) => si === sIdx ? [...arr, `sing-${Date.now()}`] : arr));
+  };
+
+  const handleSectionIngredientDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // Find source section
+    let fromSection = -1;
+    let fromIndex = -1;
+    for (let si = 0; si < sectionIngIds.length; si++) {
+      const idx = sectionIngIds[si].indexOf(activeId);
+      if (idx !== -1) { fromSection = si; fromIndex = idx; break; }
+    }
+    if (fromSection === -1) return;
+
+    // Find target section and index
+    let toSection = -1;
+    let toIndex = -1;
+    // overId is a droppable section container
+    const sectionMatch = overId.match(/^ing-section-(\d+)$/);
+    if (sectionMatch) {
+      toSection = parseInt(sectionMatch[1]);
+      toIndex = sectionIngIds[toSection]?.length ?? 0; // append to end
+    } else {
+      // overId is an item id
+      for (let si = 0; si < sectionIngIds.length; si++) {
+        const idx = sectionIngIds[si].indexOf(overId);
+        if (idx !== -1) { toSection = si; toIndex = idx; break; }
+      }
+    }
+    if (toSection === -1) return;
+
+    if (fromSection === toSection) {
+      // Same section reorder
+      setSectionIngIds((allIds) => allIds.map((arr, si) =>
+        si === fromSection ? arrayMove(arr, fromIndex, toIndex) : arr
+      ));
+      const sections = formData.ingredientSections.map((s, si) =>
+        si === fromSection ? { ...s, ingredients: arrayMove(s.ingredients, fromIndex, toIndex) } : s
+      );
+      handleField('ingredientSections', sections);
+    } else {
+      // Cross-section move
+      const ingredient = formData.ingredientSections[fromSection].ingredients[fromIndex];
+      const movedId = sectionIngIds[fromSection][fromIndex];
+      setSectionIngIds((allIds) => allIds.map((arr, si) => {
+        if (si === fromSection) return arr.filter((_, i) => i !== fromIndex);
+        if (si === toSection) { const next = [...arr]; next.splice(toIndex, 0, movedId); return next; }
+        return arr;
+      }));
+      const sections = formData.ingredientSections.map((s, si) => {
+        if (si === fromSection) return { ...s, ingredients: s.ingredients.filter((_, i) => i !== fromIndex) };
+        if (si === toSection) { const next = [...s.ingredients]; next.splice(toIndex, 0, ingredient); return { ...s, ingredients: next }; }
+        return s;
+      });
+      handleField('ingredientSections', sections);
+    }
+  };
+
+  // Instructions (flat)
   const handleInstructionChange = (index: number, text: string) => {
     const newSteps = [...formData.instructionSteps];
     newSteps[index] = { ...newSteps[index], text };
@@ -404,6 +539,134 @@ export default function RecipeForm({
     handleField('instructionSteps', arrayMove(formData.instructionSteps, oldIndex, newIndex));
   };
 
+  // Instruction sections
+  const handleAddInstructionSection = () => {
+    const newSection: InstructionSection = { heading: '', steps: [] };
+    if (formData.instructionSections.length === 0 && formData.instructionSteps.length > 0) {
+      handleField('instructionSections', [{ heading: '', steps: [...formData.instructionSteps] }, newSection]);
+      handleField('instructionSteps', []);
+      setSectionStepIds([
+        formData.instructionSteps.map((_, i) => `sstep-${Date.now()}-${i}`),
+        [],
+      ]);
+    } else {
+      handleField('instructionSections', [...formData.instructionSections, newSection]);
+      setSectionStepIds((ids) => [...ids, []]);
+    }
+  };
+
+  const handleRemoveInstructionSections = () => {
+    const allSteps = formData.instructionSections.flatMap((s) => s.steps);
+    handleField('instructionSteps', allSteps);
+    handleField('instructionSections', []);
+    setSectionStepIds([]);
+  };
+
+  const handleInstructionSectionHeading = (sIdx: number, heading: string) => {
+    const sections = [...formData.instructionSections];
+    sections[sIdx] = { ...sections[sIdx], heading };
+    handleField('instructionSections', sections);
+  };
+
+  const handleRemoveInstructionSection = (sIdx: number) => {
+    handleField('instructionSections', formData.instructionSections.filter((_, i) => i !== sIdx));
+    setSectionStepIds((ids) => ids.filter((_, i) => i !== sIdx));
+  };
+
+  const handleSectionStepChange = (sIdx: number, stIdx: number, text: string) => {
+    const sections = formData.instructionSections.map((s, si) =>
+      si === sIdx ? { ...s, steps: s.steps.map((st, sti) => (sti === stIdx ? { ...st, text } : st)) } : s
+    );
+    handleField('instructionSections', sections);
+  };
+
+  const handleRemoveSectionStep = (sIdx: number, stIdx: number) => {
+    const sections = formData.instructionSections.map((s, si) =>
+      si === sIdx ? { ...s, steps: s.steps.filter((_, sti) => sti !== stIdx) } : s
+    );
+    handleField('instructionSections', sections);
+    setSectionStepIds((ids) => ids.map((arr, si) => si === sIdx ? arr.filter((_, sti) => sti !== stIdx) : arr));
+  };
+
+  const handleAddSectionStep = (sIdx: number) => {
+    const sections = formData.instructionSections.map((s, si) =>
+      si === sIdx ? { ...s, steps: [...s.steps, { text: '' }] } : s
+    );
+    handleField('instructionSections', sections);
+    setSectionStepIds((ids) => ids.map((arr, si) => si === sIdx ? [...arr, `sstep-${Date.now()}`] : arr));
+  };
+
+  const handleInsertSectionStepBelow = (sIdx: number, stIdx: number) => {
+    const sections = formData.instructionSections.map((s, si) => {
+      if (si !== sIdx) return s;
+      const newSteps = [...s.steps];
+      newSteps.splice(stIdx + 1, 0, { text: '' });
+      return { ...s, steps: newSteps };
+    });
+    handleField('instructionSections', sections);
+    setSectionStepIds((ids) => ids.map((arr, si) => {
+      if (si !== sIdx) return arr;
+      const newArr = [...arr];
+      newArr.splice(stIdx + 1, 0, `sstep-${Date.now()}`);
+      return newArr;
+    }));
+  };
+
+  const handleSectionStepDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // Find source section
+    let fromSection = -1;
+    let fromIndex = -1;
+    for (let si = 0; si < sectionStepIds.length; si++) {
+      const idx = sectionStepIds[si].indexOf(activeId);
+      if (idx !== -1) { fromSection = si; fromIndex = idx; break; }
+    }
+    if (fromSection === -1) return;
+
+    // Find target section and index
+    let toSection = -1;
+    let toIndex = -1;
+    const sectionMatch = overId.match(/^step-section-(\d+)$/);
+    if (sectionMatch) {
+      toSection = parseInt(sectionMatch[1]);
+      toIndex = sectionStepIds[toSection]?.length ?? 0;
+    } else {
+      for (let si = 0; si < sectionStepIds.length; si++) {
+        const idx = sectionStepIds[si].indexOf(overId);
+        if (idx !== -1) { toSection = si; toIndex = idx; break; }
+      }
+    }
+    if (toSection === -1) return;
+
+    if (fromSection === toSection) {
+      setSectionStepIds((allIds) => allIds.map((arr, si) =>
+        si === fromSection ? arrayMove(arr, fromIndex, toIndex) : arr
+      ));
+      const sections = formData.instructionSections.map((s, si) =>
+        si === fromSection ? { ...s, steps: arrayMove(s.steps, fromIndex, toIndex) } : s
+      );
+      handleField('instructionSections', sections);
+    } else {
+      const step = formData.instructionSections[fromSection].steps[fromIndex];
+      const movedId = sectionStepIds[fromSection][fromIndex];
+      setSectionStepIds((allIds) => allIds.map((arr, si) => {
+        if (si === fromSection) return arr.filter((_, i) => i !== fromIndex);
+        if (si === toSection) { const next = [...arr]; next.splice(toIndex, 0, movedId); return next; }
+        return arr;
+      }));
+      const sections = formData.instructionSections.map((s, si) => {
+        if (si === fromSection) return { ...s, steps: s.steps.filter((_, i) => i !== fromIndex) };
+        if (si === toSection) { const next = [...s.steps]; next.splice(toIndex, 0, step); return { ...s, steps: next }; }
+        return s;
+      });
+      handleField('instructionSections', sections);
+    }
+  };
+
   const handleToggleCategory = (id: number) => {
     const current = formData.categoryIds ?? [];
     const next = current.includes(id) ? current.filter((c) => c !== id) : [...current, id];
@@ -413,6 +676,9 @@ export default function RecipeForm({
   const handleSubmit = async () => {
     await onSave(formData);
   };
+
+  const usingSectionedIngredients = formData.ingredientSections.length > 0;
+  const usingSectionedInstructions = formData.instructionSections.length > 0;
 
   return (
     <div className="space-y-4">
@@ -471,65 +737,225 @@ export default function RecipeForm({
 
       {/* Ingredients */}
       <div>
-        <label className="block text-sm font-medium mb-2">
-          Ingredienser ({formData.ingredients.length})
-        </label>
-        <div className="space-y-2">
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleIngredientDragEnd}>
-            <SortableContext items={ingIds} strategy={verticalListSortingStrategy}>
-              {formData.ingredients.map((ingredient, index) => (
-                <SortableIngredient
-                  key={ingIds[index]}
-                  id={ingIds[index]}
-                  index={index}
-                  ingredient={ingredient}
-                  onChange={handleIngredientChange}
-                  onRemove={handleRemoveIngredient}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
-          <button
-            type="button"
-            onClick={handleAddIngredient}
-            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-          >
-            + Legg til ingrediens
-          </button>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-sm font-medium">
+            Ingredienser
+          </label>
+          {usingSectionedIngredients ? (
+            <button
+              type="button"
+              onClick={handleRemoveIngredientSections}
+              className="text-xs text-gray-500 hover:text-red-600 underline"
+            >
+              Fjern seksjoner
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleAddIngredientSection}
+              className="text-xs text-blue-600 hover:text-blue-800 underline"
+            >
+              + Legg til seksjon
+            </button>
+          )}
         </div>
+
+        {usingSectionedIngredients ? (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSectionIngredientDragEnd}>
+            <div className="space-y-4">
+              {formData.ingredientSections.map((section, sIdx) => (
+                <div key={sIdx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-2">
+                  <div className="flex gap-2 items-center">
+                    <input
+                      type="text"
+                      value={section.heading}
+                      onChange={(e) => handleIngredientSectionHeading(sIdx, e.target.value)}
+                      placeholder="Seksjonstittel (f.eks. Saus, Marinade)"
+                      className="flex-1 px-3 py-1.5 text-sm font-semibold border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveIngredientSection(sIdx)}
+                      className="px-2 py-1.5 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                    >
+                      Fjern seksjon
+                    </button>
+                  </div>
+                  <div className="space-y-2 pl-1">
+                    <SortableContext items={sectionIngIds[sIdx] ?? []} strategy={verticalListSortingStrategy}>
+                      <DroppableSection id={`ing-section-${sIdx}`}>
+                        {section.ingredients.map((ingredient, iIdx) => (
+                          <SortableIngredient
+                            key={(sectionIngIds[sIdx] ?? [])[iIdx] ?? iIdx}
+                            id={(sectionIngIds[sIdx] ?? [])[iIdx] ?? `sing-${sIdx}-${iIdx}`}
+                            index={iIdx}
+                            ingredient={ingredient}
+                            onChange={(i, updated) => handleSectionIngredientChange(sIdx, i, updated)}
+                            onRemove={(i) => handleRemoveSectionIngredient(sIdx, i)}
+                          />
+                        ))}
+                      </DroppableSection>
+                    </SortableContext>
+                    <button
+                      type="button"
+                      onClick={() => handleAddSectionIngredient(sIdx)}
+                      className="px-3 py-1.5 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600"
+                    >
+                      + Ingrediens
+                    </button>
+                  </div>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={handleAddIngredientSection}
+                className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm"
+              >
+                + Ny seksjon
+              </button>
+            </div>
+          </DndContext>
+        ) : (
+          <div className="space-y-2">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleIngredientDragEnd}>
+              <SortableContext items={ingIds} strategy={verticalListSortingStrategy}>
+                {formData.ingredients.map((ingredient, index) => (
+                  <SortableIngredient
+                    key={ingIds[index]}
+                    id={ingIds[index]}
+                    index={index}
+                    ingredient={ingredient}
+                    onChange={handleIngredientChange}
+                    onRemove={handleRemoveIngredient}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+            <button
+              type="button"
+              onClick={handleAddIngredient}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+            >
+              + Legg til ingrediens
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Instructions */}
       <div>
-        <label className="block text-sm font-medium mb-2">
-          Instruksjoner ({formData.instructionSteps.length} steg)
-        </label>
-        <div className="space-y-2">
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleInstructionDragEnd}>
-            <SortableContext items={instructionIds} strategy={verticalListSortingStrategy}>
-              {formData.instructionSteps.map((step, index) => (
-                <SortableInstruction
-                  key={instructionIds[index]}
-                  id={instructionIds[index]}
-                  index={index}
-                  step={step}
-                  onChange={handleInstructionChange}
-                  onRemove={handleRemoveInstruction}
-                  onInsertBelow={handleInsertInstructionBelow}
-                  onPhotoSelected={handleStepPhotoSelected}
-                  onPhotoRemove={handleStepPhotoRemove}
-                />
-              ))}
-            </SortableContext>
-          </DndContext>
-          <button
-            type="button"
-            onClick={handleAddInstruction}
-            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-          >
-            + Legg til steg
-          </button>
+        <div className="flex items-center justify-between mb-2">
+          <label className="block text-sm font-medium">
+            Instruksjoner
+          </label>
+          {usingSectionedInstructions ? (
+            <button
+              type="button"
+              onClick={handleRemoveInstructionSections}
+              className="text-xs text-gray-500 hover:text-red-600 underline"
+            >
+              Fjern seksjoner
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleAddInstructionSection}
+              className="text-xs text-blue-600 hover:text-blue-800 underline"
+            >
+              + Legg til seksjon
+            </button>
+          )}
         </div>
+
+        {usingSectionedInstructions ? (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleSectionStepDragEnd}>
+            <div className="space-y-4">
+              {formData.instructionSections.map((section, sIdx) => {
+                const globalStepOffset = formData.instructionSections
+                  .slice(0, sIdx)
+                  .reduce((acc, s) => acc + s.steps.length, 0);
+                return (
+                  <div key={sIdx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 space-y-2">
+                    <div className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={section.heading}
+                        onChange={(e) => handleInstructionSectionHeading(sIdx, e.target.value)}
+                        placeholder="Seksjonstittel (f.eks. Forberedelser, Steking)"
+                        className="flex-1 px-3 py-1.5 text-sm font-semibold border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveInstructionSection(sIdx)}
+                        className="px-2 py-1.5 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200"
+                      >
+                        Fjern seksjon
+                      </button>
+                    </div>
+                    <div className="space-y-2 pl-1">
+                      <SortableContext items={sectionStepIds[sIdx] ?? []} strategy={verticalListSortingStrategy}>
+                        <DroppableSection id={`step-section-${sIdx}`}>
+                          {section.steps.map((step, stIdx) => (
+                            <SortableInstruction
+                              key={(sectionStepIds[sIdx] ?? [])[stIdx] ?? stIdx}
+                              id={(sectionStepIds[sIdx] ?? [])[stIdx] ?? `sstep-${sIdx}-${stIdx}`}
+                              index={globalStepOffset + stIdx}
+                              step={step}
+                              onChange={(_globalIdx, text) => handleSectionStepChange(sIdx, stIdx, text)}
+                              onRemove={() => handleRemoveSectionStep(sIdx, stIdx)}
+                              onInsertBelow={() => handleInsertSectionStepBelow(sIdx, stIdx)}
+                            />
+                          ))}
+                        </DroppableSection>
+                      </SortableContext>
+                      <button
+                        type="button"
+                        onClick={() => handleAddSectionStep(sIdx)}
+                        className="px-3 py-1.5 text-sm bg-green-500 text-white rounded-lg hover:bg-green-600"
+                      >
+                        + Steg
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                onClick={handleAddInstructionSection}
+                className="px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 text-sm"
+              >
+                + Ny seksjon
+              </button>
+            </div>
+          </DndContext>
+        ) : (
+          <div className="space-y-2">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleInstructionDragEnd}>
+              <SortableContext items={instructionIds} strategy={verticalListSortingStrategy}>
+                {formData.instructionSteps.map((step, index) => (
+                  <SortableInstruction
+                    key={instructionIds[index]}
+                    id={instructionIds[index]}
+                    index={index}
+                    step={step}
+                    onChange={handleInstructionChange}
+                    onRemove={handleRemoveInstruction}
+                    onInsertBelow={handleInsertInstructionBelow}
+                    onPhotoSelected={handleStepPhotoSelected}
+                    onPhotoRemove={handleStepPhotoRemove}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+            <button
+              type="button"
+              onClick={handleAddInstruction}
+              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+            >
+              + Legg til steg
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Categories */}

@@ -20,12 +20,24 @@ export interface InstructionStep {
   imageUrl?: string | null;
 }
 
+export interface IngredientSection {
+  heading: string;
+  ingredients: StructuredIngredient[];
+}
+
+export interface InstructionSection {
+  heading: string;
+  steps: InstructionStep[];
+}
+
 export interface Recipe {
   id: number;
   title: string;
   description?: string;
   ingredients?: StructuredIngredient[];
   instructionSteps?: InstructionStep[];
+  ingredientSections?: IngredientSection[];
+  instructionSections?: InstructionSection[];
   prepTime?: number | null;
   cookTime?: string | null;
   cookTimeMinutes?: number | null;
