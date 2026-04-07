@@ -49,7 +49,7 @@ export default function SpinClient() {
         setCategories(categoriesData);
         setError(null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load recipes');
+        setError(err instanceof Error ? err.message : 'Kunne ikke laste oppskrifter');
       } finally {
         setLoading(false);
       }
@@ -229,7 +229,7 @@ export default function SpinClient() {
         </div>
 
         <h1 className="text-3xl font-bold text-gray-900 text-center mb-2">
-          Spin the Wheel 🎡
+          Spin hjulet 🎡
         </h1>
         <p className="text-gray-600 text-center mb-6">
           Kan ikke bestemme deg? La hjulet velge for deg!

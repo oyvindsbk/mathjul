@@ -60,7 +60,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
   const router = useRouter();
 
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this recipe? This cannot be undone.')) {
+    if (!window.confirm('Er du sikker på at du vil slette denne oppskriften? Dette kan ikke angres.')) {
       return;
     }
     setIsDeleting(true);
@@ -68,7 +68,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
       await recipeService.deleteRecipe(id, token || undefined);
       router.push('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete recipe');
+      setError(err instanceof Error ? err.message : 'Kunne ikke slette oppskriften');
       setIsDeleting(false);
     }
   };
@@ -78,7 +78,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
       try {
         const data = await recipeService.getRecipeById(id, token || undefined);
         if (!data) {
-          setError('Recipe not found');
+          setError('Oppskrift ikke funnet');
           setRecipe(null);
         } else {
           setRecipe(data as RecipeDetail);
@@ -86,7 +86,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
         }
       } catch (err) {
         console.error('Error fetching recipe:', err);
-        setError(err instanceof Error ? err.message : 'Failed to fetch recipe');
+        setError(err instanceof Error ? err.message : 'Kunne ikke hente oppskriften');
       } finally {
         setLoading(false);
       }
@@ -115,8 +115,8 @@ export default function RecipeDetailClient({ id }: { id: string }) {
             Tilbake til oppskrifter
           </Link>
           <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-lg">
-            <p className="font-semibold">Error</p>
-            <p>{error || 'Recipe not found'}</p>
+            <p className="font-semibold">Feil</p>
+            <p>{error || 'Oppskrift ikke funnet'}</p>
           </div>
         </div>
       </div>
@@ -135,21 +135,21 @@ export default function RecipeDetailClient({ id }: { id: string }) {
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to Recipes
+            Tilbake til oppskrifter
           </Link>
           <div className="flex gap-3">
             <Link
               href={`/recipes/${id}/edit`}
               className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium"
             >
-              Edit
+              Rediger
             </Link>
             <button
               onClick={handleDelete}
               disabled={isDeleting}
               className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isDeleting ? 'Deleting...' : 'Delete'}
+              {isDeleting ? 'Sletter...' : 'Slett'}
             </button>
           </div>
         </div>
@@ -209,7 +209,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
                     <button
                       onClick={() => setDesiredServings(Math.max(1, desiredServings - 1))}
                       className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold text-lg flex items-center justify-center"
-                      aria-label="Fewer portions"
+                      aria-label="Færre porsjoner"
                     >
                       -
                     </button>
@@ -217,7 +217,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
                     <button
                       onClick={() => setDesiredServings(desiredServings + 1)}
                       className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold text-lg flex items-center justify-center"
-                      aria-label="More portions"
+                      aria-label="Flere porsjoner"
                     >
                       +
                     </button>
@@ -228,7 +228,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
               <div className="text-center">
                 <div className="text-sm text-gray-500">Sist oppdatert</div>
                 <div className="text-sm text-gray-600">
-                  {recipe.updatedAt ? new Date(recipe.updatedAt).toLocaleDateString() : 'N/A'}
+                  {recipe.updatedAt ? new Date(recipe.updatedAt).toLocaleDateString() : '–'}
                 </div>
               </div>
             </div>
@@ -277,7 +277,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={step.imageUrl}
-                            alt={`Step ${index + 1}`}
+                            alt={`Trinn ${index + 1}`}
                             className="mt-3 rounded-lg max-h-48 object-cover border border-gray-200"
                           />
                         )}

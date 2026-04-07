@@ -42,12 +42,12 @@ export default function UploadRecipe() {
 
   const handleFileSelect = (file: File) => {
     if (!file.type.startsWith('image/')) {
-      setError('Please select an image file');
+      setError('Velg en bildefil');
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      setError('File size must be less than 10MB');
+      setError('Filstørrelsen må være under 10 MB');
       return;
     }
 
@@ -91,7 +91,7 @@ export default function UploadRecipe() {
     if (!selectedFile) return;
 
     if (!token) {
-      setError('Authentication token not available. Please try logging in again.');
+      setError('Autentiseringstoken ikke tilgjengelig. Prøv å logge inn igjen.');
       return;
     }
 
@@ -113,14 +113,14 @@ export default function UploadRecipe() {
       });
 
       const text = await response.text();
-      if (!text) throw new Error('No response from server. The request may have timed out.');
+      if (!text) throw new Error('Ingen svar fra serveren. Forespørselen kan ha timet ut.');
       const data = JSON.parse(text);
 
       if (!response.ok || !data.success) {
         if (response.status === 403) {
-          throw new Error('Access denied. Your account is not authorized. Please contact an administrator.');
+          throw new Error('Tilgang nektet. Kontoen din er ikke autorisert. Kontakt en administrator.');
         }
-        throw new Error(data.errorMessage || 'Failed to extract recipe');
+        throw new Error(data.errorMessage || 'Kunne ikke hente oppskriften');
       }
 
       const { suggestedCategoryIds, mainImageUrl, instructionSteps, ...rest } = data.extractedRecipe;
@@ -133,9 +133,9 @@ export default function UploadRecipe() {
         mainImageUrl: mainImageUrl ?? null,
       });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to extract recipe';
+      const errorMessage = err instanceof Error ? err.message : 'Kunne ikke hente oppskriften';
       setError(errorMessage);
-      if (errorMessage.includes('Access denied')) {
+      if (errorMessage.includes('Tilgang nektet')) {
         setTimeout(() => router.push('/403'), 2000);
       }
     } finally {
@@ -145,12 +145,12 @@ export default function UploadRecipe() {
 
   const handleExtractFromUrl = async () => {
     if (!recipeUrl.trim()) {
-      setError('Please enter a URL');
+      setError('Skriv inn en URL');
       return;
     }
 
     if (!token) {
-      setError('Authentication token not available. Please try logging in again.');
+      setError('Autentiseringstoken ikke tilgjengelig. Prøv å logge inn igjen.');
       return;
     }
 
@@ -172,14 +172,14 @@ export default function UploadRecipe() {
       });
 
       const text = await response.text();
-      if (!text) throw new Error('No response from server. The request may have timed out.');
+      if (!text) throw new Error('Ingen svar fra serveren. Forespørselen kan ha timet ut.');
       const data = JSON.parse(text);
 
       if (!response.ok || !data.success) {
         if (response.status === 403) {
-          throw new Error('Access denied. Your account is not authorized. Please contact an administrator.');
+          throw new Error('Tilgang nektet. Kontoen din er ikke autorisert. Kontakt en administrator.');
         }
-        throw new Error(data.errorMessage || 'Failed to extract recipe');
+        throw new Error(data.errorMessage || 'Kunne ikke hente oppskriften');
       }
 
       const { suggestedCategoryIds, mainImageUrl, instructionSteps, ...rest } = data.extractedRecipe;
@@ -192,9 +192,9 @@ export default function UploadRecipe() {
         mainImageUrl: mainImageUrl ?? null,
       });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to extract recipe';
+      const errorMessage = err instanceof Error ? err.message : 'Kunne ikke hente oppskriften';
       setError(errorMessage);
-      if (errorMessage.includes('Access denied')) {
+      if (errorMessage.includes('Tilgang nektet')) {
         setTimeout(() => router.push('/403'), 2000);
       }
     } finally {
@@ -204,7 +204,7 @@ export default function UploadRecipe() {
 
   const handleSaveRecipe = async (data: RecipeFormData) => {
     if (!token) {
-      setError('Authentication token not available. Please try logging in again.');
+      setError('Autentiseringstoken ikke tilgjengelig. Prøv å logge inn igjen.');
       return;
     }
 
@@ -230,7 +230,7 @@ export default function UploadRecipe() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to save recipe');
+        throw new Error('Kunne ikke lagre oppskriften');
       }
 
       const saved = await response.json() as { id: number };
@@ -260,7 +260,7 @@ export default function UploadRecipe() {
 
       router.push('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save recipe');
+      setError(err instanceof Error ? err.message : 'Kunne ikke lagre oppskriften');
     } finally {
       setIsSaving(false);
       setIsUploadingMainImage(false);
@@ -271,14 +271,14 @@ export default function UploadRecipe() {
     <div className="min-h-screen p-8 pb-20 gap-16 sm:p-20">
       <main className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">Import Recipe</h1>
+          <h1 className="text-4xl font-bold">Importer oppskrift</h1>
           <div className="flex items-center gap-4">
             <AuthButton />
             <button
               onClick={() => router.push('/')}
               className="px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
             >
-              ← Back to Recipes
+              ← Tilbake til oppskrifter
             </button>
           </div>
         </div>
@@ -293,7 +293,7 @@ export default function UploadRecipe() {
                 : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
             }`}
           >
-            Upload Image
+            Last opp bilde
           </button>
           <button
             onClick={() => handleSwitchMode('url')}
@@ -303,7 +303,7 @@ export default function UploadRecipe() {
                 : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
             }`}
           >
-            Paste URL
+            Lim inn URL
           </button>
         </div>
 
@@ -344,15 +344,15 @@ export default function UploadRecipe() {
                   />
                 </svg>
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                  Drag and drop an image here, or
+                  Dra og slipp et bilde her, eller
                 </p>
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                 >
-                  Select File
+                  Velg fil
                 </button>
-                <p className="mt-2 text-xs text-gray-500">PNG, JPG, WEBP up to 10MB</p>
+                <p className="mt-2 text-xs text-gray-500">PNG, JPG, WEBP opptil 10 MB</p>
               </div>
             ) : (
               <div>
@@ -367,7 +367,7 @@ export default function UploadRecipe() {
                     onClick={() => fileInputRef.current?.click()}
                     className="px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
                   >
-                    Change Image
+                    Bytt bilde
                   </button>
                   {!extractedRecipe && (
                     <button
@@ -375,7 +375,7 @@ export default function UploadRecipe() {
                       disabled={isExtracting}
                       className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                     >
-                      {isExtracting ? 'Extracting Recipe...' : 'Extract Recipe'}
+                      {isExtracting ? 'Henter oppskrift...' : 'Hent oppskrift'}
                     </button>
                   )}
                 </div>
@@ -388,7 +388,7 @@ export default function UploadRecipe() {
         {inputMode === 'url' && (
           <div className="border-2 border-gray-300 dark:border-gray-700 rounded-lg p-8 mb-8">
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Paste the URL of a recipe page and we&apos;ll extract the recipe automatically.
+              Lim inn URL-en til en oppskriftsside, så henter vi oppskriften automatisk.
             </p>
             <div className="flex gap-3">
               <input
@@ -405,7 +405,7 @@ export default function UploadRecipe() {
                   disabled={isExtracting || !recipeUrl.trim()}
                   className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed whitespace-nowrap"
                 >
-                  {isExtracting ? 'Extracting...' : 'Extract Recipe'}
+                  {isExtracting ? 'Henter...' : 'Hent oppskrift'}
                 </button>
               )}
             </div>
@@ -415,7 +415,7 @@ export default function UploadRecipe() {
         {/* Token Loading State */}
         {tokenLoading && (
           <div className="mb-8 p-4 bg-blue-100 dark:bg-blue-900/30 border border-blue-400 dark:border-blue-800 rounded-lg text-blue-700 dark:text-blue-400">
-            Preparing authentication...
+            Forbereder autentisering...
           </div>
         )}
 
@@ -429,9 +429,9 @@ export default function UploadRecipe() {
         {/* Extracted Recipe */}
         {extractedRecipe && (
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6 mb-8">
-            <h2 className="text-2xl font-bold mb-4">Extracted Recipe</h2>
+            <h2 className="text-2xl font-bold mb-4">Hentet oppskrift</h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              Review and edit the extracted information before saving
+              Kontroller og rediger informasjonen før lagring
             </p>
             <MainPhotoUpload
               currentImageUrl={currentMainImageUrl}
@@ -451,7 +451,7 @@ export default function UploadRecipe() {
               onSave={handleSaveRecipe}
               onCancel={() => setExtractedRecipe(null)}
               isSaving={isSaving}
-              submitLabel="Save Recipe"
+              submitLabel="Lagre oppskrift"
               availableCategories={availableCategories}
               onStepPhotoSelected={async (_, file) => {
                 const url = URL.createObjectURL(file);

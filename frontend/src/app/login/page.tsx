@@ -27,11 +27,11 @@ export default function LoginPage() {
                 <span>🚀 Dev Login (Fake)</span>
               </button>
               <p className="text-center text-xs text-amber-600 font-semibold">
-                Development Mode: Click above to login instantly
+                Utviklingsmodus: Klikk ovenfor for å logge inn umiddelbart
               </p>
               <div className="border-t border-gray-300 pt-4">
                 <p className="text-center text-sm text-gray-600 mb-3">
-                  Or use production auth:
+                  Eller bruk produksjonsautentisering:
                 </p>
                 <button
                   onClick={() => {

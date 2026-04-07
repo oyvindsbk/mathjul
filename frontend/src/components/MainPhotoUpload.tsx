@@ -30,6 +30,7 @@ export default function MainPhotoUpload({
   const [isDragging, setIsDragging] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [cropTarget, setCropTarget] = useState<File | null>(null);
+  const [isFetchingForCrop, setIsFetchingForCrop] = useState(false);
 
   // Prefer a pending file preview over the saved URL
   const pendingPreviewUrl = pendingFile ? URL.createObjectURL(pendingFile) : null;
@@ -38,8 +39,8 @@ export default function MainPhotoUpload({
 
   const validate = (file: File): string | null => {
     const allowed = ['image/jpeg', 'image/png', 'image/webp'];
-    if (!allowed.includes(file.type)) return 'Only JPEG, PNG, and WEBP images are accepted.';
-    if (file.size > 10 * 1024 * 1024) return 'File must be smaller than 10 MB.';
+    if (!allowed.includes(file.type)) return 'Kun JPEG, PNG og WEBP-bilder godtas.';
+    if (file.size > 10 * 1024 * 1024) return 'Filen må være mindre enn 10 MB.';
     return null;
   };
 
@@ -51,6 +52,24 @@ export default function MainPhotoUpload({
     }
     setLocalError(null);
     setCropTarget(file);
+  };
+
+  const handleCropCurrentImage = async () => {
+    if (!currentImageUrl) return;
+    setIsFetchingForCrop(true);
+    setLocalError(null);
+    try {
+      const response = await fetch(currentImageUrl);
+      if (!response.ok) throw new Error('Failed to fetch image');
+      const blob = await response.blob();
+      const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
+      const file = new File([blob], `photo.${ext}`, { type: blob.type });
+      setCropTarget(file);
+    } catch {
+      setLocalError('Kunne ikke laste bildet for beskjæring.');
+    } finally {
+      setIsFetchingForCrop(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,7 +105,7 @@ export default function MainPhotoUpload({
         />
       )}
       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-        Main Photo
+        Hovedbilde
       </label>
 
       {hasImage ? (
@@ -94,7 +113,7 @@ export default function MainPhotoUpload({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={displayUrl!}
-            alt="Recipe main photo"
+            alt="Oppskriftens hovedbilde"
             className="w-full max-h-72 object-cover rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm"
           />
 
@@ -111,25 +130,34 @@ export default function MainPhotoUpload({
               disabled={isUploading}
               className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50"
             >
-              Replace photo
+              Erstatt bilde
             </button>
-            {pendingFile && (
+            {pendingFile ? (
               <button
                 type="button"
                 onClick={() => setCropTarget(pendingFile)}
                 disabled={isUploading}
                 className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50"
               >
-                Crop
+                Beskjær
               </button>
-            )}
+            ) : currentImageUrl ? (
+              <button
+                type="button"
+                onClick={handleCropCurrentImage}
+                disabled={isUploading || isFetchingForCrop}
+                className="px-3 py-1.5 text-sm bg-gray-200 dark:bg-gray-700 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 disabled:opacity-50"
+              >
+                {isFetchingForCrop ? 'Laster…' : 'Beskjær'}
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={onRemove}
               disabled={isUploading}
               className="px-3 py-1.5 text-sm bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/60 disabled:opacity-50"
             >
-              Remove photo
+              Fjern bilde
             </button>
           </div>
         </div>
@@ -147,7 +175,7 @@ export default function MainPhotoUpload({
           role="button"
           tabIndex={0}
           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') fileInputRef.current?.click(); }}
-          aria-label="Upload main photo"
+          aria-label="Last opp hovedbilde"
         >
           <svg
             className="mx-auto h-10 w-10 text-gray-400 mb-2"
@@ -164,9 +192,9 @@ export default function MainPhotoUpload({
             />
           </svg>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Drag &amp; drop or <span className="text-blue-500 underline">choose a photo</span>
+            Dra og slipp eller <span className="text-blue-500 underline">velg et bilde</span>
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">JPEG, PNG, WEBP · max 10 MB</p>
+          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">JPEG, PNG, WEBP · maks 10 MB</p>
         </div>
       )}
 

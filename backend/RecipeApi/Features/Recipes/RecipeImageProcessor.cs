@@ -225,6 +225,8 @@ internal static class RecipeExtractionPrompt
 {
     private const string BaseSystemPrompt = @"You are a recipe extraction expert. Analyze the provided recipe content and extract all information into a structured JSON format.
 
+IMPORTANT: All text fields in your response (title, description, ingredient names, instruction steps) MUST be written in Norwegian (Bokmål), regardless of the language of the source material.
+
 Extract the following fields:
 - title: The recipe name
 - description: A brief description or subtitle if available

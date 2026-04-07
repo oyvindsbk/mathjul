@@ -32,7 +32,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
           recipeService.getAllCategories(token || undefined),
         ]);
         if (!data) {
-          setError('Recipe not found');
+          setError('Oppskrift ikke funnet');
           return;
         }
         setAvailableCategories(categories);
@@ -61,7 +61,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
           categoryIds: detail.categories?.map((c) => c.id) ?? [],
         });
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch recipe');
+        setError(err instanceof Error ? err.message : 'Kunne ikke hente oppskriften');
       } finally {
         setLoading(false);
       }
@@ -78,7 +78,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
       const updated = await recipeService.uploadMainImage(id, file, token || undefined);
       setCurrentMainImageUrl((updated as { imageUrl?: string | null }).imageUrl ?? null);
     } catch (err) {
-      setMainImageError(err instanceof Error ? err.message : 'Failed to upload photo');
+      setMainImageError(err instanceof Error ? err.message : 'Kunne ikke laste opp bilde');
     } finally {
       setIsUploadingMainImage(false);
     }
@@ -91,7 +91,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
       await recipeService.deleteMainImage(id, token || undefined);
       setCurrentMainImageUrl(null);
     } catch (err) {
-      setMainImageError(err instanceof Error ? err.message : 'Failed to remove photo');
+      setMainImageError(err instanceof Error ? err.message : 'Kunne ikke fjerne bilde');
     } finally {
       setIsUploadingMainImage(false);
     }
@@ -104,7 +104,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
       await recipeService.updateRecipe(id, data, token || undefined);
       router.push(`/recipes/${id}`);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Failed to update recipe');
+      setSaveError(err instanceof Error ? err.message : 'Kunne ikke oppdatere oppskriften');
     } finally {
       setIsSaving(false);
     }
@@ -122,11 +122,11 @@ export default function EditRecipeClient({ id }: { id: string }) {
             href={`/recipes/${id}`}
             className="inline-flex items-center px-4 py-2 text-blue-600 hover:text-blue-800 mb-6"
           >
-            ← Back to Recipe
+            ← Tilbake til oppskrift
           </Link>
           <div className="bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-lg">
-            <p className="font-semibold">Error</p>
-            <p>{error || 'Recipe not found'}</p>
+            <p className="font-semibold">Feil</p>
+            <p>{error || 'Oppskrift ikke funnet'}</p>
           </div>
         </div>
       </div>
@@ -137,12 +137,12 @@ export default function EditRecipeClient({ id }: { id: string }) {
     <div className="min-h-screen p-8 pb-20 gap-16 sm:p-20">
       <main className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">Edit Recipe</h1>
+          <h1 className="text-4xl font-bold">Rediger oppskrift</h1>
           <Link
             href={`/recipes/${id}`}
             className="px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
           >
-            ← Back to Recipe
+            ← Tilbake til oppskrift
           </Link>
         </div>
 
@@ -165,7 +165,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
             onSave={handleSave}
             onCancel={() => router.push(`/recipes/${id}`)}
             isSaving={isSaving}
-            submitLabel="Save Changes"
+            submitLabel="Lagre endringer"
             availableCategories={availableCategories}
             onStepPhotoSelected={async (index, file) => {
               const updated = await recipeService.uploadStepImage(id, index, file, token || undefined);

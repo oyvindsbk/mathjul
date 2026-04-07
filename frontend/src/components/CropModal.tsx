@@ -12,7 +12,7 @@ interface CropBox {
 type Handle = 'nw' | 'ne' | 'sw' | 'se' | 'move' | null;
 
 const MIN_SIZE = 20;
-const HANDLE_RADIUS = 8;
+const HANDLE_RADIUS = 10;
 
 interface CropModalProps {
   file: File;
@@ -64,8 +64,8 @@ export default function CropModal({ file, onConfirm, onSkip }: CropModalProps) {
     const img = new Image();
     img.onload = () => {
       imgRef.current = img;
-      const MAX_W = Math.min(window.innerWidth - 64, 800);
-      const MAX_H = Math.min(window.innerHeight - 200, 600);
+      const MAX_W = Math.min(window.innerWidth - 48, 1100);
+      const MAX_H = Math.min(window.innerHeight - 160, 800);
       const scale = Math.min(MAX_W / img.naturalWidth, MAX_H / img.naturalHeight, 1);
       const dw = Math.round(img.naturalWidth * scale);
       const dh = Math.round(img.naturalHeight * scale);
@@ -97,27 +97,40 @@ export default function CropModal({ file, onConfirm, onSkip }: CropModalProps) {
     // Background image
     ctx.drawImage(img, 0, 0, canvasSize.w, canvasSize.h);
 
-    // Dim outside crop
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(0, 0, canvasSize.w, canvasSize.h);
-
-    // Clear crop area to show image
-    ctx.clearRect(crop.x, crop.y, crop.w, crop.h);
-    ctx.drawImage(img, 0, 0, canvasSize.w, canvasSize.h);
+    // Dim outside crop using composite approach for clean edge
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.72)';
+    // Top
+    ctx.fillRect(0, 0, canvasSize.w, crop.y);
+    // Bottom
+    ctx.fillRect(0, crop.y + crop.h, canvasSize.w, canvasSize.h - crop.y - crop.h);
+    // Left
+    ctx.fillRect(0, crop.y, crop.x, crop.h);
+    // Right
+    ctx.fillRect(crop.x + crop.w, crop.y, canvasSize.w - crop.x - crop.w, crop.h);
+    ctx.restore();
 
     // Crop border
-    ctx.strokeStyle = '#fff';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(crop.x + 0.5, crop.y + 0.5, crop.w - 1, crop.h - 1);
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(crop.x + 1, crop.y + 1, crop.w - 2, crop.h - 2);
 
-    // Rule-of-thirds lines
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-    ctx.lineWidth = 1;
+    // Rule-of-thirds lines — draw with a dark shadow then a bright line for contrast
     for (let i = 1; i <= 2; i++) {
       const rx = crop.x + (crop.w * i) / 3;
       const ry = crop.y + (crop.h * i) / 3;
+      // Shadow pass
+      ctx.strokeStyle = 'rgba(0,0,0,0.45)';
+      ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.moveTo(rx, crop.y); ctx.lineTo(rx, crop.y + crop.h); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(crop.x, ry); ctx.lineTo(crop.x + crop.w, ry); ctx.stroke();
+      // Bright pass
+      ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath(); ctx.moveTo(rx, crop.y); ctx.lineTo(rx, crop.y + crop.h); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(crop.x, ry); ctx.lineTo(crop.x + crop.w, ry); ctx.stroke();
+      ctx.setLineDash([]);
     }
 
     // Corner handles
@@ -281,7 +294,7 @@ export default function CropModal({ file, onConfirm, onSkip }: CropModalProps) {
       aria-label="Crop image"
     >
       <p className="text-white text-sm mb-3 select-none">
-        Drag the corners to adjust the crop area
+        Dra i hjørnene for å justere beskjæringsområdet
       </p>
 
       <canvas
@@ -301,14 +314,14 @@ export default function CropModal({ file, onConfirm, onSkip }: CropModalProps) {
           onClick={onSkip}
           className="px-4 py-2 text-sm bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
         >
-          Skip
+          Hopp over
         </button>
         <button
           type="button"
           onClick={handleCrop}
           className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
         >
-          Crop
+          Beskjær
         </button>
       </div>
     </div>
