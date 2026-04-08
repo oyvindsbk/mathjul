@@ -25,6 +25,9 @@ export default function UploadRecipe() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
+  // Provenance: original source URL or source image blob URL
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
+  const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
   // Main photo state for the extracted recipe
   const [currentMainImageUrl, setCurrentMainImageUrl] = useState<string | null>(null);
   const [pendingMainImageFile, setPendingMainImageFile] = useState<File | null>(null);
@@ -85,6 +88,8 @@ export default function UploadRecipe() {
     setInputMode(mode);
     setError(null);
     setExtractedRecipe(null);
+    setSourceUrl(null);
+    setSourceImageUrl(null);
   };
 
   const handleExtractFromImage = async () => {
@@ -123,8 +128,10 @@ export default function UploadRecipe() {
         throw new Error(data.errorMessage || 'Kunne ikke hente oppskriften');
       }
 
-      const { suggestedCategoryIds, mainImageUrl, instructionSteps, ...rest } = data.extractedRecipe;
+      const { suggestedCategoryIds, mainImageUrl, sourceImageUrl: extractedSourceImageUrl, instructionSteps, ...rest } = data.extractedRecipe;
       setCurrentMainImageUrl(mainImageUrl ?? null);
+      setSourceImageUrl(extractedSourceImageUrl ?? null);
+      setSourceUrl(null);
       setPendingMainImageFile(null);
       setExtractedRecipe({
         ...rest,
@@ -182,8 +189,10 @@ export default function UploadRecipe() {
         throw new Error(data.errorMessage || 'Kunne ikke hente oppskriften');
       }
 
-      const { suggestedCategoryIds, mainImageUrl, instructionSteps, ...rest } = data.extractedRecipe;
+      const { suggestedCategoryIds, mainImageUrl, sourceUrl: extractedSourceUrl, instructionSteps, ...rest } = data.extractedRecipe;
       setCurrentMainImageUrl(mainImageUrl ?? null);
+      setSourceUrl(extractedSourceUrl ?? recipeUrl.trim() ?? null);
+      setSourceImageUrl(null);
       setPendingMainImageFile(null);
       setExtractedRecipe({
         ...rest,
@@ -218,8 +227,14 @@ export default function UploadRecipe() {
         ...s,
         imageUrl: s.imageUrl?.startsWith('blob:') ? null : (s.imageUrl ?? null),
       }));
-      // Include the current main image URL (AI-extracted or removed by user)
-      const payload: RecipeFormData = { ...data, instructionSteps: cleanedSteps, mainImageUrl: currentMainImageUrl };
+      // Include the current main image URL and provenance fields
+      const payload: RecipeFormData = {
+        ...data,
+        instructionSteps: cleanedSteps,
+        mainImageUrl: currentMainImageUrl,
+        sourceUrl: sourceUrl ?? undefined,
+        sourceImageUrl: sourceImageUrl ?? undefined,
+      };
       const response = await fetch(`${apiBaseUrl}/api/recipes/save-extracted`, {
         method: 'POST',
         headers: {

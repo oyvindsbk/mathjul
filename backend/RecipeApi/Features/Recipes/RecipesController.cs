@@ -172,8 +172,24 @@ public class RecipesController : ControllerBase
             _logger.LogWarning(ex, "Dish photo extraction failed, continuing without main image");
         }
 
+        // Upload original source image to blob storage for provenance
+        string? sourceImageUrl = null;
+        try
+        {
+            var ext = Path.GetExtension(image.FileName).ToLowerInvariant();
+            if (string.IsNullOrEmpty(ext)) ext = ".jpg";
+            var sourceBlobPath = $"recipes/pending/source-{Guid.NewGuid()}{ext}";
+            using var sourceStream = image.OpenReadStream();
+            sourceImageUrl = await _blobStorage.UploadAsync(sourceStream, sourceBlobPath, image.ContentType);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Source image upload failed, continuing without sourceImageUrl");
+        }
+
         var extracted = MapToExtractedResponse(result.Recipe!);
         extracted.MainImageUrl = mainImageUrl;
+        extracted.SourceImageUrl = sourceImageUrl;
 
         return Ok(new RecipeExtractionResponse { Success = true, ExtractedRecipe = extracted });
     }
@@ -204,10 +220,13 @@ public class RecipesController : ControllerBase
             });
         }
 
+        var extractedFromUrl = MapToExtractedResponse(result.Recipe!);
+        extractedFromUrl.SourceUrl = request.Url;
+
         return Ok(new RecipeExtractionResponse
         {
             Success = true,
-            ExtractedRecipe = MapToExtractedResponse(result.Recipe!)
+            ExtractedRecipe = extractedFromUrl
         });
     }
 
@@ -251,6 +270,8 @@ public class RecipesController : ControllerBase
             Servings = request.Servings,
             Difficulty = request.Difficulty ?? "Medium",
             ImageUrl = request.MainImageUrl,
+            SourceUrl = request.SourceUrl,
+            SourceImageUrl = request.SourceImageUrl,
             Categories = categories,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -624,6 +645,10 @@ public class ExtractedRecipeResponse
     public List<int> SuggestedCategoryIds { get; set; } = new();
     /// <summary>Blob URL of the AI-extracted dish photo, if detected.</summary>
     public string? MainImageUrl { get; set; }
+    /// <summary>Blob URL of the original uploaded source image.</summary>
+    public string? SourceImageUrl { get; set; }
+    /// <summary>Original URL the recipe was extracted from (URL mode).</summary>
+    public string? SourceUrl { get; set; }
 }
 
 public class ExtractFromUrlRequest
@@ -646,6 +671,10 @@ public class SaveExtractedRecipeRequest
     public List<int>? CategoryIds { get; set; }
     /// <summary>Pre-uploaded blob URL from AI dish extraction (pending blob path will be renamed on save).</summary>
     public string? MainImageUrl { get; set; }
+    /// <summary>Original URL the recipe was extracted from (URL mode).</summary>
+    public string? SourceUrl { get; set; }
+    /// <summary>Blob URL of the original uploaded source image (image mode).</summary>
+    public string? SourceImageUrl { get; set; }
 }
 
 public class UpdateRecipeRequest

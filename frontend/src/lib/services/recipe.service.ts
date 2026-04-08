@@ -21,6 +21,8 @@ export interface RecipeFormData {
   difficulty?: string;
   categoryIds?: number[];
   mainImageUrl?: string | null;
+  sourceUrl?: string | null;
+  sourceImageUrl?: string | null;
 }
 
 class RecipeService {

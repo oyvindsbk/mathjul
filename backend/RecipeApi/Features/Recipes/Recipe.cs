@@ -73,7 +73,11 @@ public class Recipe
     public string Difficulty { get; set; } = string.Empty;
     
     public string? ImageUrl { get; set; }
-    
+
+    public string? SourceUrl { get; set; }
+
+    public string? SourceImageUrl { get; set; }
+
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
