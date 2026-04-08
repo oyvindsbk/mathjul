@@ -194,6 +194,79 @@ public class RecipesController : ControllerBase
         return Ok(new RecipeExtractionResponse { Success = true, ExtractedRecipe = extracted });
     }
 
+    [HttpPost("from-images")]
+    [RequestSizeLimit(50 * 1024 * 1024)] // 50MB for up to 5 images
+    public async Task<ActionResult<RecipeExtractionResponse>> ExtractRecipeFromImages(IFormFileCollection images)
+    {
+        _logger.LogInformation("Received multi-image upload request: {Count} files", images?.Count ?? 0);
+
+        if (images == null || images.Count == 0)
+        {
+            return BadRequest(new RecipeExtractionResponse { Success = false, ErrorMessage = "No image files provided" });
+        }
+
+        if (images.Count > 5)
+        {
+            return BadRequest(new RecipeExtractionResponse { Success = false, ErrorMessage = "Maximum 5 images allowed" });
+        }
+
+        var categoryListJson = await BuildCategoryListJsonAsync();
+        var result = await _imageProcessor.ExtractRecipeFromImagesAsync(images.ToList().AsReadOnly(), categoryListJson);
+
+        if (!result.IsSuccess)
+        {
+            return BadRequest(new RecipeExtractionResponse { Success = false, ErrorMessage = result.ErrorMessage });
+        }
+
+        // Dish photo: iterate images, use first positive detection
+        string? mainImageUrl = null;
+        try
+        {
+            foreach (var imageFile in images)
+            {
+                using var ms = new MemoryStream();
+                await imageFile.CopyToAsync(ms);
+                var dishBytes = await _imageProcessor.TryExtractDishPhotoAsync(ms.ToArray());
+                if (dishBytes != null)
+                {
+                    var blobPath = $"recipes/pending/{Guid.NewGuid()}.jpg";
+                    using var dishStream = new MemoryStream(dishBytes);
+                    mainImageUrl = await _blobStorage.UploadAsync(dishStream, blobPath, "image/jpeg");
+                    break;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Dish photo extraction failed, continuing without main image");
+        }
+
+        // Source provenance: store all source images, keep first URL as primary
+        string? sourceImageUrl = null;
+        try
+        {
+            foreach (var imageFile in images)
+            {
+                var ext = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
+                if (string.IsNullOrEmpty(ext)) ext = ".jpg";
+                var sourceBlobPath = $"recipes/pending/source-{Guid.NewGuid()}{ext}";
+                using var sourceStream = imageFile.OpenReadStream();
+                var url = await _blobStorage.UploadAsync(sourceStream, sourceBlobPath, imageFile.ContentType);
+                sourceImageUrl ??= url;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Source image upload failed, continuing without sourceImageUrl");
+        }
+
+        var extracted = MapToExtractedResponse(result.Recipe!);
+        extracted.MainImageUrl = mainImageUrl;
+        extracted.SourceImageUrl = sourceImageUrl;
+
+        return Ok(new RecipeExtractionResponse { Success = true, ExtractedRecipe = extracted });
+    }
+
     [HttpPost("from-url")]
     public async Task<ActionResult<RecipeExtractionResponse>> ExtractRecipeFromUrl([FromBody] ExtractFromUrlRequest request)
     {

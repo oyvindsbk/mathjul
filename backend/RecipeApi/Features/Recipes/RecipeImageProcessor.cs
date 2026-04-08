@@ -10,6 +10,7 @@ namespace RecipeApi.Features.Recipes;
 public interface IRecipeImageProcessor
 {
     Task<RecipeExtractionResult> ExtractRecipeFromImageAsync(IFormFile imageFile, string? categoryListJson = null, CancellationToken cancellationToken = default);
+    Task<RecipeExtractionResult> ExtractRecipeFromImagesAsync(IReadOnlyList<IFormFile> imageFiles, string? categoryListJson = null, CancellationToken cancellationToken = default);
     Task<byte[]?> TryExtractDishPhotoAsync(byte[] imageBytes, CancellationToken cancellationToken = default);
 }
 
@@ -114,6 +115,82 @@ public class RecipeImageProcessor : IRecipeImageProcessor
         {
             _logger.LogError(ex, "Error extracting recipe from image");
             return RecipeExtractionResult.Failure($"Error processing image: {ex.Message}");
+        }
+    }
+
+    public async Task<RecipeExtractionResult> ExtractRecipeFromImagesAsync(
+        IReadOnlyList<IFormFile> imageFiles,
+        string? categoryListJson = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (imageFiles == null || imageFiles.Count == 0)
+            return RecipeExtractionResult.Failure("No image files provided");
+
+        foreach (var file in imageFiles)
+        {
+            if (file.Length == 0)
+                return RecipeExtractionResult.Failure("One or more image files are empty");
+            if (file.Length > MaxFileSizeBytes)
+                return RecipeExtractionResult.Failure($"Image '{file.FileName}' exceeds the maximum allowed size of {MaxFileSizeBytes / 1024 / 1024}MB");
+            if (!AllowedContentTypes.Contains(file.ContentType.ToLowerInvariant()))
+                return RecipeExtractionResult.Failure($"Invalid file type for '{file.FileName}'. Allowed types: {string.Join(", ", AllowedContentTypes)}");
+        }
+
+        try
+        {
+            var imageParts = new List<ChatMessageContentPart>();
+            foreach (var file in imageFiles)
+            {
+                byte[] imageBytes;
+                using (var ms = new MemoryStream())
+                {
+                    await file.CopyToAsync(ms, cancellationToken);
+                    imageBytes = ms.ToArray();
+                }
+                imageBytes = ResizeImageIfNeeded(imageBytes);
+                imageParts.Add(ChatMessageContentPart.CreateImagePart(BinaryData.FromBytes(imageBytes), "image/jpeg"));
+            }
+
+            _logger.LogInformation("Extracting recipe from {Count} images", imageFiles.Count);
+
+            var systemPrompt = RecipeExtractionPrompt.BuildSystemPrompt(categoryListJson);
+            var userParts = new List<ChatMessageContentPart>
+            {
+                ChatMessageContentPart.CreateTextPart(
+                    "The following images are all parts of the same recipe. " +
+                    "They may be provided in any order — some may show ingredients, others instructions, others the finished dish. " +
+                    "Please extract one complete, coherent recipe by combining information from all images:")
+            };
+            userParts.AddRange(imageParts);
+
+            var messages = new List<ChatMessage>
+            {
+                new SystemChatMessage(systemPrompt),
+                new UserChatMessage(userParts.ToArray())
+            };
+
+            var options = new ChatCompletionOptions
+            {
+                Temperature = 0.2f,
+                MaxOutputTokenCount = 4096
+            };
+
+            var response = await _chatClient.CompleteChatAsync(messages, options, cancellationToken);
+            var finishReason = response.Value.FinishReason;
+            _logger.LogInformation("AI finish reason: {FinishReason}", finishReason);
+
+            if (finishReason == ChatFinishReason.Length)
+                return RecipeExtractionResult.Failure("The recipe was too complex to extract. Please try fewer or simpler images.");
+            if (finishReason == ChatFinishReason.ContentFilter)
+                return RecipeExtractionResult.Failure("The images were blocked by the content filter. Please try different images.");
+
+            var content = response.Value.Content[0].Text;
+            return RecipeExtractionPrompt.ParseResponseContent(content, _logger);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error extracting recipe from images");
+            return RecipeExtractionResult.Failure($"Error processing images: {ex.Message}");
         }
     }
 

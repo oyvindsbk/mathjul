@@ -16,8 +16,8 @@ type InputMode = 'image' | 'url';
 
 export default function UploadRecipe() {
   const [inputMode, setInputMode] = useState<InputMode>('image');
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [recipeUrl, setRecipeUrl] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractedRecipe, setExtractedRecipe] = useState<ExtractedRecipe | null>(null);
@@ -43,31 +43,41 @@ export default function UploadRecipe() {
     recipeService.getAllCategories(token || undefined).then(setAvailableCategories).catch(() => {});
   }, [tokenLoading, token]);
 
-  const handleFileSelect = (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      setError('Velg en bildefil');
-      return;
+  const handleFilesSelect = (files: File[]) => {
+    const validFiles: File[] = [];
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) {
+        setError('Alle filer må være bilder');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setError(`Filen "${file.name}" er større enn 10 MB`);
+        return;
+      }
+      validFiles.push(file);
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      setError('Filstørrelsen må være under 10 MB');
-      return;
-    }
-
-    setSelectedFile(file);
+    const combined = [...selectedFiles, ...validFiles].slice(0, 5);
+    setSelectedFiles(combined);
     setError(null);
     setExtractedRecipe(null);
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreviewUrl(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    const newUrls = combined.map((f) => URL.createObjectURL(f));
+    previewUrls.forEach((u) => URL.revokeObjectURL(u));
+    setPreviewUrls(newUrls);
+  };
+
+  const handleRemoveFile = (index: number) => {
+    URL.revokeObjectURL(previewUrls[index]);
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+    setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) handleFileSelect(file);
+    const files = Array.from(e.target.files ?? []);
+    if (files.length > 0) handleFilesSelect(files);
+    // Reset input so the same file can be re-selected
+    e.target.value = '';
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -80,8 +90,8 @@ export default function UploadRecipe() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFileSelect(file);
+    const files = Array.from(e.dataTransfer.files);
+    if (files.length > 0) handleFilesSelect(files);
   };
 
   const handleSwitchMode = (mode: InputMode) => {
@@ -90,10 +100,13 @@ export default function UploadRecipe() {
     setExtractedRecipe(null);
     setSourceUrl(null);
     setSourceImageUrl(null);
+    previewUrls.forEach((u) => URL.revokeObjectURL(u));
+    setSelectedFiles([]);
+    setPreviewUrls([]);
   };
 
   const handleExtractFromImage = async () => {
-    if (!selectedFile) return;
+    if (selectedFiles.length === 0) return;
 
     if (!token) {
       setError('Autentiseringstoken ikke tilgjengelig. Prøv å logge inn igjen.');
@@ -105,13 +118,15 @@ export default function UploadRecipe() {
 
     try {
       const formData = new FormData();
-      formData.append('image', selectedFile);
+      for (const file of selectedFiles) {
+        formData.append('images', file);
+      }
 
       const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
       if (!apiBaseUrl) {
         throw new Error('API base URL is not set. Please define NEXT_PUBLIC_API_BASE_URL in your environment variables.');
       }
-      const response = await fetch(`${apiBaseUrl}/api/recipes/from-image`, {
+      const response = await fetch(`${apiBaseUrl}/api/recipes/from-images`, {
         method: 'POST',
         body: formData,
         headers: { 'Authorization': `Bearer ${token}` },
@@ -338,11 +353,12 @@ export default function UploadRecipe() {
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              multiple
               onChange={handleFileInputChange}
               className="hidden"
             />
 
-            {!previewUrl ? (
+            {previewUrls.length === 0 ? (
               <div>
                 <svg
                   className="mx-auto h-12 w-12 text-gray-400"
@@ -359,31 +375,46 @@ export default function UploadRecipe() {
                   />
                 </svg>
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                  Dra og slipp et bilde her, eller
+                  Dra og slipp bilder her, eller
                 </p>
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
                 >
-                  Velg fil
+                  Velg bilder
                 </button>
-                <p className="mt-2 text-xs text-gray-500">PNG, JPG, WEBP opptil 10 MB</p>
+                <p className="mt-2 text-xs text-gray-500">PNG, JPG, WEBP opptil 10 MB per bilde · maks 5 bilder</p>
               </div>
             ) : (
               <div>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={previewUrl}
-                  alt="Preview"
-                  className="max-h-96 mx-auto rounded-lg shadow-lg mb-4"
-                />
+                <div className="flex flex-wrap gap-3 justify-center mb-4">
+                  {previewUrls.map((url, i) => (
+                    <div key={url} className="relative">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={url}
+                        alt={`Bilde ${i + 1}`}
+                        className="h-32 w-32 object-cover rounded-lg shadow"
+                      />
+                      <button
+                        onClick={() => handleRemoveFile(i)}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                        aria-label={`Fjern bilde ${i + 1}`}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
                 <div className="flex gap-4 justify-center">
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    Bytt bilde
-                  </button>
+                  {selectedFiles.length < 5 && (
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      + Legg til bilde
+                    </button>
+                  )}
                   {!extractedRecipe && (
                     <button
                       onClick={handleExtractFromImage}
