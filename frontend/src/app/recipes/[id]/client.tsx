@@ -58,6 +58,19 @@ export default function RecipeDetailClient({ id }: { id: string }) {
   const [error, setError] = useState<string | null>(null);
   const [desiredServings, setDesiredServings] = useState<number>(0);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set());
+
+  const toggleStep = (index: number) => {
+    setCheckedSteps((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
   const { token, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -290,7 +303,17 @@ export default function RecipeDetailClient({ id }: { id: string }) {
 
           <div className="lg:col-span-2">
             <div className="bg-white rounded-lg shadow-md p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6" data-testid="instructions-heading">Instruksjoner</h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-900" data-testid="instructions-heading">Instruksjoner</h2>
+                {checkedSteps.size > 0 && (
+                  <button
+                    onClick={() => setCheckedSteps(new Set())}
+                    className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    Nullstill trinn
+                  </button>
+                )}
+              </div>
               {recipe.instructionSections && recipe.instructionSections.length > 0 ? (
                 <div className="space-y-8">
                   {(() => {
@@ -302,21 +325,36 @@ export default function RecipeDetailClient({ id }: { id: string }) {
                           {section.steps.map((step: InstructionStep) => {
                             stepCounter++;
                             const num = stepCounter;
+                            const checked = checkedSteps.has(num);
                             return (
-                              <li key={num} className="flex items-start gap-4">
-                                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-semibold flex-shrink-0 mt-0.5">
+                              <li
+                                key={num}
+                                className="flex items-start gap-4 cursor-pointer"
+                                onClick={() => toggleStep(num)}
+                              >
+                                <span className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold flex-shrink-0 mt-0.5 transition-colors ${checked ? 'bg-gray-200 text-gray-400' : 'bg-blue-600 text-white'}`}>
                                   {num}
                                 </span>
-                                <div className="flex-1">
-                                  <p className="text-gray-700">{step.text}</p>
-                                  {step.imageUrl && (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img
-                                      src={step.imageUrl}
-                                      alt={`Trinn ${num}`}
-                                      className="mt-3 rounded-lg max-h-48 object-cover border border-gray-200"
-                                    />
-                                  )}
+                                <div className="flex-1 flex items-start gap-3">
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => toggleStep(num)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="mt-1 w-4 h-4 text-blue-600 rounded cursor-pointer flex-shrink-0"
+                                    aria-label={`Trinn ${num}: ${step.text}`}
+                                  />
+                                  <div className="flex-1">
+                                    <p className={`transition-colors ${checked ? 'line-through text-gray-400' : 'text-gray-700'}`}>{step.text}</p>
+                                    {step.imageUrl && (
+                                      // eslint-disable-next-line @next/next/no-img-element
+                                      <img
+                                        src={step.imageUrl}
+                                        alt={`Trinn ${num}`}
+                                        className="mt-3 rounded-lg max-h-48 object-cover border border-gray-200"
+                                      />
+                                    )}
+                                  </div>
                                 </div>
                               </li>
                             );
@@ -329,24 +367,42 @@ export default function RecipeDetailClient({ id }: { id: string }) {
               ) : (
                 <ol className="space-y-6">
                   {recipe.instructionSteps && recipe.instructionSteps.length > 0 ? (
-                    recipe.instructionSteps.map((step: InstructionStep, index: number) => (
-                      <li key={index} className="flex items-start gap-4">
-                        <span className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600 text-white text-sm font-semibold flex-shrink-0 mt-0.5">
-                          {index + 1}
-                        </span>
-                        <div className="flex-1">
-                          <p className="text-gray-700">{step.text}</p>
-                          {step.imageUrl && (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={step.imageUrl}
-                              alt={`Trinn ${index + 1}`}
-                              className="mt-3 rounded-lg max-h-48 object-cover border border-gray-200"
+                    recipe.instructionSteps.map((step: InstructionStep, index: number) => {
+                      const num = index + 1;
+                      const checked = checkedSteps.has(num);
+                      return (
+                        <li
+                          key={index}
+                          className="flex items-start gap-4 cursor-pointer"
+                          onClick={() => toggleStep(num)}
+                        >
+                          <span className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold flex-shrink-0 mt-0.5 transition-colors ${checked ? 'bg-gray-200 text-gray-400' : 'bg-blue-600 text-white'}`}>
+                            {num}
+                          </span>
+                          <div className="flex-1 flex items-start gap-3">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleStep(num)}
+                              onClick={(e) => e.stopPropagation()}
+                              className="mt-1 w-4 h-4 text-blue-600 rounded cursor-pointer flex-shrink-0"
+                              aria-label={`Trinn ${num}: ${step.text}`}
                             />
-                          )}
-                        </div>
-                      </li>
-                    ))
+                            <div className="flex-1">
+                              <p className={`transition-colors ${checked ? 'line-through text-gray-400' : 'text-gray-700'}`}>{step.text}</p>
+                              {step.imageUrl && (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={step.imageUrl}
+                                  alt={`Trinn ${num}`}
+                                  className="mt-3 rounded-lg max-h-48 object-cover border border-gray-200"
+                                />
+                              )}
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })
                   ) : (
                     <li className="text-gray-500">Ingen instruksjoner tilgjengelig</li>
                   )}
