@@ -4,8 +4,78 @@ using OpenAI.Chat;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Processing;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace RecipeApi.Features.Recipes;
+
+/// <summary>
+/// Handles AI responses where quantity may be a JSON number, a numeric string ("4"),
+/// a fraction string ("1/2"), or a range string ("1/2-1"). Non-parseable values become null.
+/// </summary>
+internal sealed class FlexibleDecimalConverter : JsonConverter<decimal?>
+{
+    public override decimal? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.Null)
+            return null;
+
+        if (reader.TokenType == JsonTokenType.Number)
+            return reader.GetDecimal();
+
+        if (reader.TokenType == JsonTokenType.String)
+        {
+            var s = reader.GetString();
+            if (string.IsNullOrWhiteSpace(s)) return null;
+            if (decimal.TryParse(s, System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out var d))
+                return d;
+            // Fraction like "1/2" or range like "1/2-1" — return null (unparseable as decimal)
+            return null;
+        }
+
+        return null;
+    }
+
+    public override void Write(Utf8JsonWriter writer, decimal? value, JsonSerializerOptions options)
+    {
+        if (value.HasValue) writer.WriteNumberValue(value.Value);
+        else writer.WriteNullValue();
+    }
+}
+
+/// <summary>
+/// Handles AI responses where int fields (prepTime, cookTime, servings) may be returned as strings.
+/// </summary>
+internal sealed class FlexibleIntConverter : JsonConverter<int?>
+{
+    public override int? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.Null)
+            return null;
+
+        if (reader.TokenType == JsonTokenType.Number)
+            return reader.GetInt32();
+
+        if (reader.TokenType == JsonTokenType.String)
+        {
+            var s = reader.GetString();
+            if (string.IsNullOrWhiteSpace(s)) return null;
+            if (int.TryParse(s, out var i)) return i;
+            // e.g. "15 min" — try extracting leading digits
+            var digits = new string(s.TakeWhile(char.IsDigit).ToArray());
+            if (digits.Length > 0 && int.TryParse(digits, out var d)) return d;
+            return null;
+        }
+
+        return null;
+    }
+
+    public override void Write(Utf8JsonWriter writer, int? value, JsonSerializerOptions options)
+    {
+        if (value.HasValue) writer.WriteNumberValue(value.Value);
+        else writer.WriteNullValue();
+    }
+}
 
 public interface IRecipeImageProcessor
 {
@@ -453,6 +523,7 @@ Use the sectioned format ONLY when the source recipe has explicit labeled sectio
 
     /// <summary>
     /// If the AI returns ingredients as plain strings instead of objects, convert them.
+    /// Handles both the flat "ingredients" array and arrays nested inside "ingredientSections".
     /// </summary>
     internal static string NormalizeIngredients(string json, ILogger logger)
     {
@@ -461,42 +532,52 @@ Use the sectioned format ONLY when the source recipe has explicit labeled sectio
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
-            if (!root.TryGetProperty("ingredients", out var ingredients) &&
-                !root.TryGetProperty("Ingredients", out ingredients))
+            bool hasFlat = root.TryGetProperty("ingredients", out _) || root.TryGetProperty("Ingredients", out _);
+            bool hasSections = root.TryGetProperty("ingredientSections", out _) || root.TryGetProperty("IngredientSections", out _);
+
+            if (!hasFlat && !hasSections)
                 return json;
 
-            if (ingredients.ValueKind != JsonValueKind.Array || ingredients.GetArrayLength() == 0)
-                return json;
-
-            // Check if first element is a string (legacy format)
-            var first = ingredients[0];
-            if (first.ValueKind != JsonValueKind.String)
-                return json; // Already structured objects
-
-            logger.LogInformation("Converting plain string ingredients to structured format");
-
-            var structured = new List<StructuredIngredient>();
-            foreach (var item in ingredients.EnumerateArray())
-            {
-                structured.Add(new StructuredIngredient { Name = item.GetString() ?? string.Empty });
-            }
-
-            // Rebuild JSON with structured ingredients
             using var ms = new MemoryStream();
             using var writer = new Utf8JsonWriter(ms);
             writer.WriteStartObject();
+
             foreach (var prop in root.EnumerateObject())
             {
                 if (prop.Name.Equals("ingredients", StringComparison.OrdinalIgnoreCase))
                 {
                     writer.WritePropertyName(prop.Name);
-                    JsonSerializer.Serialize(writer, structured);
+                    WriteNormalizedIngredientArray(writer, prop.Value, logger);
+                }
+                else if (prop.Name.Equals("ingredientSections", StringComparison.OrdinalIgnoreCase))
+                {
+                    writer.WritePropertyName(prop.Name);
+                    writer.WriteStartArray();
+                    foreach (var section in prop.Value.EnumerateArray())
+                    {
+                        writer.WriteStartObject();
+                        foreach (var sectionProp in section.EnumerateObject())
+                        {
+                            if (sectionProp.Name.Equals("ingredients", StringComparison.OrdinalIgnoreCase))
+                            {
+                                writer.WritePropertyName(sectionProp.Name);
+                                WriteNormalizedIngredientArray(writer, sectionProp.Value, logger);
+                            }
+                            else
+                            {
+                                sectionProp.WriteTo(writer);
+                            }
+                        }
+                        writer.WriteEndObject();
+                    }
+                    writer.WriteEndArray();
                 }
                 else
                 {
                     prop.WriteTo(writer);
                 }
             }
+
             writer.WriteEndObject();
             writer.Flush();
 
@@ -507,6 +588,37 @@ Use the sectioned format ONLY when the source recipe has explicit labeled sectio
             logger.LogWarning(ex, "Failed to normalize ingredients, proceeding with original JSON");
             return json;
         }
+    }
+
+    private static void WriteNormalizedIngredientArray(Utf8JsonWriter writer, JsonElement ingredients, ILogger logger)
+    {
+        if (ingredients.ValueKind != JsonValueKind.Array || ingredients.GetArrayLength() == 0)
+        {
+            ingredients.WriteTo(writer);
+            return;
+        }
+
+        // Check if any element is a plain string (AI returned wrong format)
+        bool hasStringElements = false;
+        foreach (var item in ingredients.EnumerateArray())
+        {
+            if (item.ValueKind == JsonValueKind.String) { hasStringElements = true; break; }
+        }
+
+        if (!hasStringElements)
+        {
+            ingredients.WriteTo(writer);
+            return;
+        }
+
+        logger.LogInformation("Converting plain string ingredients to structured format");
+
+        var structured = new List<StructuredIngredient>();
+        foreach (var item in ingredients.EnumerateArray())
+        {
+            structured.Add(new StructuredIngredient { Name = item.GetString() ?? string.Empty });
+        }
+        JsonSerializer.Serialize(writer, structured);
     }
 
     internal static RecipeExtractionResult ParseResponse(Azure.AI.Inference.ChatCompletions chatCompletions, ILogger logger)
@@ -542,7 +654,11 @@ Use the sectioned format ONLY when the source recipe has explicit labeled sectio
 
         try
         {
-            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var options = new JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                Converters = { new FlexibleDecimalConverter(), new FlexibleIntConverter() }
+            };
 
             // Pre-process: if ingredients contains plain strings, convert to structured objects
             json = NormalizeIngredients(json, logger);
