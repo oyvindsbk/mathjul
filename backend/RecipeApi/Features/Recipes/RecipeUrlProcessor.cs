@@ -74,7 +74,7 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
             {
                 Model = _modelName,
                 Temperature = 0.2f,
-                MaxTokens = 2000,
+                MaxTokens = 4096,
                 Messages =
                 {
                     new ChatRequestSystemMessage(systemPrompt),
