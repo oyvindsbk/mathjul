@@ -49,7 +49,7 @@ public class RecipeDbContext : DbContext
             entity.Property(e => e.Ingredients)
                 .HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
-                    v => JsonSerializer.Deserialize<List<StructuredIngredient>>(v, (JsonSerializerOptions?)null) ?? new())
+                    v => string.IsNullOrWhiteSpace(v) ? new() : JsonSerializer.Deserialize<List<StructuredIngredient>>(v, (JsonSerializerOptions?)null) ?? new())
                 .HasColumnType("nvarchar(max)")
                 .Metadata.SetValueComparer(new ValueComparer<List<StructuredIngredient>>(
                     (c1, c2) => JsonSerializer.Serialize(c1, (JsonSerializerOptions?)null) == JsonSerializer.Serialize(c2, (JsonSerializerOptions?)null),
@@ -59,7 +59,7 @@ public class RecipeDbContext : DbContext
             entity.Property(e => e.InstructionSteps)
                 .HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
-                    v => JsonSerializer.Deserialize<List<InstructionStep>>(v, (JsonSerializerOptions?)null) ?? new())
+                    v => string.IsNullOrWhiteSpace(v) ? new() : JsonSerializer.Deserialize<List<InstructionStep>>(v, (JsonSerializerOptions?)null) ?? new())
                 .HasColumnType("nvarchar(max)")
                 .Metadata.SetValueComparer(new ValueComparer<List<InstructionStep>>(
                     (c1, c2) => JsonSerializer.Serialize(c1, (JsonSerializerOptions?)null) == JsonSerializer.Serialize(c2, (JsonSerializerOptions?)null),
@@ -69,7 +69,7 @@ public class RecipeDbContext : DbContext
             entity.Property(e => e.IngredientSections)
                 .HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
-                    v => JsonSerializer.Deserialize<List<IngredientSection>>(v, (JsonSerializerOptions?)null) ?? new())
+                    v => string.IsNullOrWhiteSpace(v) ? new() : JsonSerializer.Deserialize<List<IngredientSection>>(v, (JsonSerializerOptions?)null) ?? new())
                 .HasColumnType("nvarchar(max)")
                 .Metadata.SetValueComparer(new ValueComparer<List<IngredientSection>>(
                     (c1, c2) => JsonSerializer.Serialize(c1, (JsonSerializerOptions?)null) == JsonSerializer.Serialize(c2, (JsonSerializerOptions?)null),
@@ -79,7 +79,7 @@ public class RecipeDbContext : DbContext
             entity.Property(e => e.InstructionSections)
                 .HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
-                    v => JsonSerializer.Deserialize<List<InstructionSection>>(v, (JsonSerializerOptions?)null) ?? new())
+                    v => string.IsNullOrWhiteSpace(v) ? new() : JsonSerializer.Deserialize<List<InstructionSection>>(v, (JsonSerializerOptions?)null) ?? new())
                 .HasColumnType("nvarchar(max)")
                 .Metadata.SetValueComparer(new ValueComparer<List<InstructionSection>>(
                     (c1, c2) => JsonSerializer.Serialize(c1, (JsonSerializerOptions?)null) == JsonSerializer.Serialize(c2, (JsonSerializerOptions?)null),
