@@ -59,7 +59,11 @@ export default function MainPhotoUpload({
     setIsFetchingForCrop(true);
     setLocalError(null);
     try {
-      const response = await fetch(currentImageUrl);
+      // Fetch through the server-side proxy to avoid CORS issues with blob storage URLs.
+      const proxyUrl = currentImageUrl.startsWith('/')
+        ? currentImageUrl
+        : `/api/image-proxy?url=${encodeURIComponent(currentImageUrl)}`;
+      const response = await fetch(proxyUrl);
       if (!response.ok) throw new Error('Failed to fetch image');
       const blob = await response.blob();
       const ext = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
