@@ -178,7 +178,7 @@ export default function HomeClient() {
                   <img
                     src={recipe.imageUrl}
                     alt={recipe.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-contain bg-gray-100"
                   />
                 ) : (
                   <span className="text-gray-500">Oppskrift bilde</span>

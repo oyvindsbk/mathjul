@@ -175,7 +175,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
             <img
               src={recipe.imageUrl}
               alt={recipe.title}
-              className="w-full max-h-96 object-cover"
+              className="w-full max-h-96 object-contain bg-gray-100"
             />
           ) : null}
 
