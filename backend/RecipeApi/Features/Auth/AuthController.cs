@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using RecipeApi.Infrastructure;
 using System.Text.Json;
 
 namespace RecipeApi.Features.Auth;
@@ -12,12 +14,29 @@ public class AuthController : ControllerBase
     private readonly ITokenService _tokenService;
     private readonly ILogger<AuthController> _logger;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly RecipeDbContext _db;
 
-    public AuthController(ITokenService tokenService, ILogger<AuthController> logger, IHttpClientFactory httpClientFactory)
+    public AuthController(ITokenService tokenService, ILogger<AuthController> logger, IHttpClientFactory httpClientFactory, RecipeDbContext db)
     {
         _tokenService = tokenService;
         _logger = logger;
         _httpClientFactory = httpClientFactory;
+        _db = db;
+    }
+
+    /// <summary>
+    /// Returns a real signed JWT for dev@example.com. Only available in LocalDevelopment / Development environments.
+    /// </summary>
+    [HttpPost("dev-token")]
+    public IActionResult DevToken([FromServices] IHostEnvironment env)
+    {
+        var isLocalDev = env.IsDevelopment() || env.IsEnvironment("LocalDevelopment");
+        if (!isLocalDev)
+            return NotFound();
+
+        const string devEmail = "dev@example.com";
+        var token = _tokenService.GenerateToken(devEmail);
+        return Ok(new { token, email = devEmail });
     }
 
     [HttpPost("logout")]
@@ -26,6 +45,35 @@ public class AuthController : ControllerBase
         // Clear the auth token cookie
         Response.Cookies.Delete("auth_token");
         return Ok(new { message = "Logged out successfully" });
+    }
+
+    /// <summary>
+    /// Upserts a user row based on the email in the JWT. Call this after every login.
+    /// </summary>
+    [HttpPost("ensure-user")]
+    public async Task<IActionResult> EnsureUser()
+    {
+        var email = User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+                    ?? User.FindFirst("email")?.Value;
+
+        if (string.IsNullOrEmpty(email))
+            return Unauthorized(new { error = "No email claim in token" });
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user is null)
+        {
+            user = new User
+            {
+                Email = email,
+                DisplayName = email.Split('@')[0],
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.Users.Add(user);
+            await _db.SaveChangesAsync();
+            _logger.LogInformation("Created user record for {Email}", email);
+        }
+
+        return Ok(new { id = user.Id, email = user.Email, displayName = user.DisplayName });
     }
 
     /// <summary>

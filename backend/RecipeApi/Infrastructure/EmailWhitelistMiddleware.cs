@@ -50,7 +50,8 @@ public class EmailWhitelistMiddleware
         // Skip authentication for health checks and auth endpoints only
         var path = context.Request.Path.Value?.ToLower() ?? "";
         if (path.StartsWith("/health") ||
-            path == "/api/auth/google-token")   // Google OAuth callback
+            path == "/api/auth/google-token" ||  // Google OAuth callback
+            path == "/api/auth/dev-token")        // Dev fake login
         {
             await _next(context);
             return;
@@ -82,23 +83,27 @@ public class EmailWhitelistMiddleware
             return;
         }
 
-        // In development with AllowUnauthenticated, skip auth
+        // In development with AllowUnauthenticated, skip auth but still populate User if a valid token is present
         if (isDevelopment)
         {
             _logger.LogInformation("Development mode (AllowUnauthenticated=true): skipping authentication for {Path}", path);
+            var devPrincipal = GetPrincipalFromToken(context);
+            if (devPrincipal != null)
+                context.User = devPrincipal;
             await _next(context);
             return;
         }
 
-        // Get user email from JWT token
-        var email = GetUserEmailFromToken(context);
+        // Get and validate JWT token once
+        var principal = GetPrincipalFromToken(context);
+        var email = GetEmailFromPrincipal(principal);
 
         if (string.IsNullOrEmpty(email))
         {
             _logger.LogWarning("Unauthenticated access attempt to {Path}", path);
             context.Response.StatusCode = 401;
-            await context.Response.WriteAsJsonAsync(new 
-            { 
+            await context.Response.WriteAsJsonAsync(new
+            {
                 error = "Authentication required",
                 message = "Please log in to access this resource."
             });
@@ -113,8 +118,8 @@ public class EmailWhitelistMiddleware
         {
             _logger.LogWarning("Unauthorized access attempt by {Email} to {Path}", email, path);
             context.Response.StatusCode = 403;
-            await context.Response.WriteAsJsonAsync(new 
-            { 
+            await context.Response.WriteAsJsonAsync(new
+            {
                 error = "Access denied",
                 message = "Your account is not authorized to access this application. Please contact an administrator.",
                 email = email
@@ -122,34 +127,27 @@ public class EmailWhitelistMiddleware
             return;
         }
 
+        // Populate HttpContext.User so controllers can read claims via User.FindFirst(...)
+        context.User = principal!;
+
         _logger.LogInformation("Authorized access by {Email} to {Path}", email, path);
         await _next(context);
     }
 
-    private string? GetUserEmailFromToken(HttpContext context)
+    private ClaimsPrincipal? GetPrincipalFromToken(HttpContext context)
     {
-        // Check for JWT Bearer token in Authorization header
         var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
         if (string.IsNullOrEmpty(authHeader) || !authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-        {
             return null;
-        }
 
         var token = authHeader.Substring("Bearer ".Length).Trim();
-        var principal = _tokenService.ValidateToken(token);
-        
-        if (principal == null)
-        {
-            return null;
-        }
-
-        // Extract email from claims
-        var emailClaim = principal.Claims.FirstOrDefault(c => 
-            c.Type == ClaimTypes.Email || 
-            c.Type == "emails");
-
-        return emailClaim?.Value;
+        return _tokenService.ValidateToken(token);
     }
+
+    private static string? GetEmailFromPrincipal(ClaimsPrincipal? principal) =>
+        principal?.Claims.FirstOrDefault(c =>
+            c.Type == ClaimTypes.Email ||
+            c.Type == "emails")?.Value;
 
     private async Task RefreshWhitelistIfNeeded()
     {

@@ -1,9 +1,10 @@
-#!/usr/bin/env bash
+#!/usr/bin/env -S LC_ALL=C bash
 # Stop hook: hard gate before the agent stops.
 # Detects which stacks changed (last commit + uncommitted) and runs the
 # full verification suite for each. Exits 2 to block the stop on failure.
 
 set -uo pipefail
+export LC_ALL=C 2>/dev/null || true
 
 REPO_ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel 2>/dev/null || echo "/c/git/privat/mathjul")"
 cd "$REPO_ROOT"

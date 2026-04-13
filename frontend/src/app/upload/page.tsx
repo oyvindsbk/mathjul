@@ -6,6 +6,7 @@ import { AuthButton } from '@/components/AuthButton';
 import { useApiToken } from '@/hooks/useApiToken';
 import RecipeForm from '@/components/RecipeForm';
 import MainPhotoUpload from '@/components/MainPhotoUpload';
+import VisibilitySelector, { type Visibility } from '@/components/VisibilitySelector';
 import { recipeService } from '@/lib/services/recipe.service';
 import type { RecipeFormData } from '@/lib/services/recipe.service';
 import type { Category } from '@/lib/mock-data';
@@ -32,6 +33,8 @@ export default function UploadRecipe() {
   const [currentMainImageUrl, setCurrentMainImageUrl] = useState<string | null>(null);
   const [pendingMainImageFile, setPendingMainImageFile] = useState<File | null>(null);
   const [isUploadingMainImage, setIsUploadingMainImage] = useState(false);
+  const [visibility, setVisibility] = useState<Visibility>('Public');
+  const [groupIds, setGroupIds] = useState<number[]>([]);
   // Step photos: map from object URL → File, for pending upload after recipe creation
   const pendingStepPhotosRef = useRef<Map<string, File>>(new Map());
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -243,12 +246,14 @@ export default function UploadRecipe() {
         imageUrl: s.imageUrl?.startsWith('blob:') ? null : (s.imageUrl ?? null),
       }));
       // Include the current main image URL and provenance fields
-      const payload: RecipeFormData = {
+      const payload: RecipeFormData & { visibility: Visibility; groupIds: number[] } = {
         ...data,
         instructionSteps: cleanedSteps,
         mainImageUrl: currentMainImageUrl,
         sourceUrl: sourceUrl ?? undefined,
         sourceImageUrl: sourceImageUrl ?? undefined,
+        visibility,
+        groupIds,
       };
       const response = await fetch(`${apiBaseUrl}/api/recipes/save-extracted`, {
         method: 'POST',
@@ -492,6 +497,13 @@ export default function UploadRecipe() {
               }}
               isUploading={isUploadingMainImage}
             />
+            <div className="mb-6">
+              <VisibilitySelector
+                value={visibility}
+                groupIds={groupIds}
+                onChange={(v, ids) => { setVisibility(v); setGroupIds(ids); }}
+              />
+            </div>
             <RecipeForm
               initialData={extractedRecipe}
               onSave={handleSaveRecipe}

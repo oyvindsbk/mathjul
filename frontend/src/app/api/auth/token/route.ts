@@ -2,30 +2,40 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-// Fake JWT token for local development
-const FAKE_DEV_TOKEN =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkZXYtdXNlciIsImVtYWlsIjoiZGV2QGV4YW1wbGUuY29tIiwibmFtZSI6IkRldmVsb3BlciJ9.fake-signature";
-
 export async function POST() {
   try {
-    // In development with NEXT_PUBLIC_ALLOW_UNAUTHENTICATED, return a fake token
     if (
       process.env.NODE_ENV === "development" &&
       process.env.NEXT_PUBLIC_ALLOW_UNAUTHENTICATED === "true"
     ) {
+      // Fetch a real signed JWT from the backend dev-token endpoint
+      const apiBase =
+        process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5238";
+      const backendRes = await fetch(`${apiBase}/api/auth/dev-token`, {
+        method: "POST",
+      });
+
+      if (!backendRes.ok) {
+        return NextResponse.json(
+          { error: "Backend dev-token endpoint failed" },
+          { status: 502 }
+        );
+      }
+
+      const { token, email } = (await backendRes.json()) as {
+        token: string;
+        email: string;
+      };
+
       return NextResponse.json(
         {
-          token: FAKE_DEV_TOKEN,
-          user: {
-            id: "dev-user",
-            email: "dev@example.com",
-            name: "Developer",
-          },
+          token,
+          user: { id: "dev-user", email, name: "Developer" },
         },
         {
           status: 200,
           headers: {
-            "Set-Cookie": `auth_token=${FAKE_DEV_TOKEN}; Path=/; HttpOnly; SameSite=Strict`,
+            "Set-Cookie": `auth_token=${token}; Path=/; HttpOnly; SameSite=Strict`,
           },
         }
       );

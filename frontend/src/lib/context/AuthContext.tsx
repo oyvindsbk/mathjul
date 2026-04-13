@@ -16,12 +16,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setTokenState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const ensureUser = (t: string) => {
+    const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5238";
+    fetch(`${apiBase}/api/auth/ensure-user`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${t}` },
+      credentials: "include",
+    }).catch(() => {
+      // Non-critical — ignore errors
+    });
+  };
+
   // Load token from localStorage on mount; fall back to server session cookie (set by Google OAuth)
   useEffect(() => {
     const init = async () => {
       const stored = localStorage.getItem("jwt_token");
       if (stored) {
         setTokenState(stored);
+        ensureUser(stored);
         setIsLoading(false);
         return;
       }
@@ -34,6 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (data.token) {
             setTokenState(data.token);
             localStorage.setItem("jwt_token", data.token);
+            ensureUser(data.token);
           }
         }
       } catch {
@@ -49,12 +62,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const setToken = (newToken: string) => {
     setTokenState(newToken);
     localStorage.setItem("jwt_token", newToken);
-    
+
     // Also set as HTTP-only cookie so middleware can see it
-    // Set to expire in 7 days
     const expiresDate = new Date();
     expiresDate.setDate(expiresDate.getDate() + 7);
     document.cookie = `auth_token=${newToken}; path=/; expires=${expiresDate.toUTCString()}; SameSite=Lax`;
+
+    ensureUser(newToken);
   };
 
   const logout = () => {

@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
+using RecipeApi.Features.Auth;
+using RecipeApi.Features.Groups;
 using RecipeApi.Features.Recipes;
 
 namespace RecipeApi.Infrastructure;
@@ -13,10 +15,64 @@ public class RecipeDbContext : DbContext
 
     public DbSet<Recipe> Recipes { get; set; }
     public DbSet<Category> Categories { get; set; }
+    public DbSet<User> Users { get; set; }
+    public DbSet<Group> Groups { get; set; }
+    public DbSet<GroupMember> GroupMembers { get; set; }
+    public DbSet<RecipeGroup> RecipeGroups { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // Configure User entity
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(100);
+            entity.HasIndex(e => e.Email).IsUnique();
+        });
+
+        // Configure Group entity
+        modelBuilder.Entity<Group>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.HasOne(e => e.Owner)
+                  .WithMany()
+                  .HasForeignKey(e => e.OwnerId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Configure GroupMember join table
+        modelBuilder.Entity<GroupMember>(entity =>
+        {
+            entity.HasKey(e => new { e.GroupId, e.UserId });
+            entity.HasOne(e => e.Group)
+                  .WithMany(g => g.Members)
+                  .HasForeignKey(e => e.GroupId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.User)
+                  .WithMany()
+                  .HasForeignKey(e => e.UserId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure RecipeGroup join table
+        modelBuilder.Entity<RecipeGroup>(entity =>
+        {
+            entity.HasKey(e => new { e.RecipeId, e.GroupId });
+            entity.HasOne(e => e.Recipe)
+                  .WithMany(r => r.Groups)
+                  .HasForeignKey(e => e.RecipeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Group)
+                  .WithMany()
+                  .HasForeignKey(e => e.GroupId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
 
         // Configure Category entity
         modelBuilder.Entity<Category>(entity =>
@@ -45,6 +101,8 @@ public class RecipeDbContext : DbContext
             entity.Property(e => e.Difficulty).HasMaxLength(20);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
+            entity.Property(e => e.Visibility).IsRequired().HasMaxLength(20).HasDefaultValue("Public");
+            entity.Property(e => e.OwnerEmail).HasMaxLength(200);
 
             entity.Property(e => e.Ingredients)
                 .HasConversion(
