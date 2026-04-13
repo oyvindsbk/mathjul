@@ -45,6 +45,7 @@ export interface Recipe {
   difficulty?: string;
   imageUrl?: string | null;
   categories?: Category[];
+  tips?: string[];
 }
 
 export const mockCategories: Category[] = [

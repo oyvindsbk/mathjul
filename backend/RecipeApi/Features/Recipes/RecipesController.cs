@@ -155,6 +155,7 @@ public class RecipesController : ControllerBase
             }).ToList(),
             Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
             Groups = recipe.Groups.Select(rg => new GroupRefDto { Id = rg.GroupId, Name = rg.Group.Name }).ToList(),
+            Tips = recipe.Tips,
             CreatedAt = recipe.CreatedAt,
             UpdatedAt = recipe.UpdatedAt
         };
@@ -400,6 +401,7 @@ public class RecipesController : ControllerBase
             Categories = categories,
             Visibility = visibility,
             OwnerEmail = callerEmail,
+            Tips = request.Tips ?? new List<string>(),
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
@@ -478,6 +480,7 @@ public class RecipesController : ControllerBase
         recipe.CookTime = request.CookTime.HasValue ? $"{request.CookTime} min" : string.Empty;
         recipe.Servings = request.Servings;
         recipe.Difficulty = request.Difficulty ?? "Medium";
+        recipe.Tips = request.Tips ?? new List<string>();
         recipe.UpdatedAt = DateTime.UtcNow;
 
         var newCategories = request.CategoryIds?.Count > 0
@@ -535,6 +538,7 @@ public class RecipesController : ControllerBase
             }).ToList(),
             Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
             Groups = recipe.Groups.Select(rg => new GroupRefDto { Id = rg.GroupId, Name = rg.Group.Name }).ToList(),
+            Tips = recipe.Tips,
             CreatedAt = recipe.CreatedAt,
             UpdatedAt = recipe.UpdatedAt
         };
@@ -720,7 +724,8 @@ public class RecipesController : ControllerBase
         CookTime = dto.CookTime,
         Servings = dto.Servings,
         Difficulty = dto.Difficulty,
-        SuggestedCategoryIds = dto.SuggestedCategoryIds
+        SuggestedCategoryIds = dto.SuggestedCategoryIds,
+        Tips = dto.Tips
     };
 }
 
@@ -788,6 +793,7 @@ public class RecipeDetailDto
     public List<InstructionSectionDto> InstructionSections { get; set; } = new();
     public List<CategoryDto> Categories { get; set; } = new();
     public List<GroupRefDto> Groups { get; set; } = new();
+    public List<string> Tips { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
@@ -819,6 +825,7 @@ public class ExtractedRecipeResponse
     public int? Servings { get; set; }
     public string? Difficulty { get; set; }
     public List<int> SuggestedCategoryIds { get; set; } = new();
+    public List<string> Tips { get; set; } = new();
     /// <summary>Blob URL of the AI-extracted dish photo, if detected.</summary>
     public string? MainImageUrl { get; set; }
     /// <summary>Blob URL of the original uploaded source image.</summary>
@@ -845,6 +852,7 @@ public class SaveExtractedRecipeRequest
     public int? Servings { get; set; }
     public string? Difficulty { get; set; }
     public List<int>? CategoryIds { get; set; }
+    public List<string>? Tips { get; set; }
     /// <summary>Pre-uploaded blob URL from AI dish extraction (pending blob path will be renamed on save).</summary>
     public string? MainImageUrl { get; set; }
     /// <summary>Original URL the recipe was extracted from (URL mode).</summary>
@@ -868,6 +876,7 @@ public class UpdateRecipeRequest
     public int? Servings { get; set; }
     public string? Difficulty { get; set; }
     public List<int>? CategoryIds { get; set; }
+    public List<string>? Tips { get; set; }
     public string? Visibility { get; set; }
     public List<int>? GroupIds { get; set; }
 }

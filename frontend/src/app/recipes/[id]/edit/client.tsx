@@ -54,6 +54,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
           imageUrl?: string | null;
           visibility?: string;
           groups?: { id: number; name: string }[];
+          tips?: string[];
         };
         setCurrentMainImageUrl(detail.imageUrl ?? null);
         setVisibility((detail.visibility as Visibility) ?? 'Public');
@@ -70,6 +71,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
           servings: detail.servings ?? null,
           difficulty: detail.difficulty ?? 'Medium',
           categoryIds: detail.categories?.map((c) => c.id) ?? [],
+          tips: detail.tips ?? [],
         });
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Kunne ikke hente oppskriften');

@@ -20,6 +20,7 @@ export interface RecipeFormData {
   servings?: number | null;
   difficulty?: string;
   categoryIds?: number[];
+  tips?: string[];
   mainImageUrl?: string | null;
   sourceUrl?: string | null;
   sourceImageUrl?: string | null;

@@ -92,6 +92,8 @@ public class Recipe
     public string? OwnerEmail { get; set; }
 
     public List<RecipeGroup> Groups { get; set; } = new();
+
+    public List<string> Tips { get; set; } = new();
 }
 
 public class RecipeGroup

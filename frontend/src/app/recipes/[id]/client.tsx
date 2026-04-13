@@ -20,6 +20,7 @@ interface RecipeDetail extends Recipe {
   ingredientSections?: IngredientSection[];
   instructionSections?: InstructionSection[];
   categories?: Category[];
+  tips?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -412,6 +413,25 @@ export default function RecipeDetailClient({ id }: { id: string }) {
           </div>
         </div>
       </div>
+
+      {recipe.tips && recipe.tips.length > 0 && (
+        <div className="mt-8">
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="text-2xl">👨‍🍳</span>
+              <h2 className="text-lg font-semibold text-amber-800">Tips fra kokken</h2>
+            </div>
+            <ul className="space-y-3">
+              {recipe.tips.map((tip, index) => (
+                <li key={index} className="flex items-start gap-3">
+                  <span className="text-amber-500 mt-0.5 flex-shrink-0">•</span>
+                  <p className="text-amber-900 text-sm leading-relaxed">{tip}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

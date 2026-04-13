@@ -958,6 +958,42 @@ export default function RecipeForm({
         )}
       </div>
 
+      {/* Tips */}
+      <div>
+        <label className="block text-sm font-medium mb-2">Tips fra kokken</label>
+        <div className="space-y-2">
+          {(formData.tips ?? []).map((tip, index) => (
+            <div key={index} className="flex gap-2 items-start">
+              <textarea
+                value={tip}
+                onChange={(e) => {
+                  const newTips = [...(formData.tips ?? [])];
+                  newTips[index] = e.target.value;
+                  handleField('tips', newTips);
+                }}
+                placeholder="Skriv et tips..."
+                rows={2}
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 resize-none"
+              />
+              <button
+                type="button"
+                onClick={() => handleField('tips', (formData.tips ?? []).filter((_, i) => i !== index))}
+                className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => handleField('tips', [...(formData.tips ?? []), ''])}
+            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+          >
+            + Legg til tips
+          </button>
+        </div>
+      </div>
+
       {/* Categories */}
       {availableCategories.length > 0 && (() => {
         const groups = Array.from(new Set(availableCategories.map((c) => c.group)));

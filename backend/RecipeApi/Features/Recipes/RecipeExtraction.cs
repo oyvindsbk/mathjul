@@ -110,6 +110,7 @@ public class ExtractedRecipeDto
     public int? Servings { get; set; }
     public string? Difficulty { get; set; }
     public List<int> SuggestedCategoryIds { get; set; } = new();
+    public List<string> Tips { get; set; } = new();
 }
 
 internal static class RecipeExtractionPrompt
@@ -141,6 +142,7 @@ Extract the following fields:
   - ""Middels"": moderate ingredient count, some technique required (e.g., making a sauce, folding, timing multiple components)
   - ""Avansert"": many ingredients or steps, advanced techniques (e.g., tempering chocolate, making pastry dough, precise temperatures, long fermentation)
   If the recipe content is ambiguous, prefer ""Middels"".
+- tips: Array of strings with practical tips, substitutions, serving suggestions, or cook's notes from the recipe. Each tip is a standalone sentence in Norwegian. Use an empty array if no tips are present in the source.
 
 SECTIONS RULE: Only use ingredientSections/instructionSections if the source recipe explicitly has labeled sections or component headings. Do NOT invent section headings. For a simple recipe with one list of ingredients and one list of steps, use the flat ingredients/instructions fields.
 
@@ -167,6 +169,7 @@ Respond with ONLY valid JSON. Use the flat format for simple recipes:
   ""cookTime"": 30,
   ""servings"": 4,
   ""difficulty"": ""Middels"",
+  ""tips"": [""Tip 1"", ""Tip 2""],
   ""suggestedCategoryIds"": []
 }
 
@@ -198,6 +201,7 @@ Use the sectioned format ONLY when the source recipe has explicit labeled sectio
   ""cookTime"": 30,
   ""servings"": 4,
   ""difficulty"": ""Middels"",
+  ""tips"": [],
   ""suggestedCategoryIds"": []
 }";
         }
@@ -224,6 +228,7 @@ Respond with ONLY valid JSON. Use the flat format for simple recipes:
   ""cookTime"": 30,
   ""servings"": 4,
   ""difficulty"": ""Middels"",
+  ""tips"": [""Tip 1"", ""Tip 2""],
   ""suggestedCategoryIds"": [1, 3]
 }}
 
@@ -247,6 +252,7 @@ Use the sectioned format ONLY when the source recipe has explicit labeled sectio
   ""cookTime"": 30,
   ""servings"": 4,
   ""difficulty"": ""Middels"",
+  ""tips"": [],
   ""suggestedCategoryIds"": [1, 3]
 }}";
     }

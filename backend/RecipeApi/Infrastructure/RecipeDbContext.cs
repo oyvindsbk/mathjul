@@ -143,6 +143,16 @@ public class RecipeDbContext : DbContext
                     (c1, c2) => JsonSerializer.Serialize(c1, (JsonSerializerOptions?)null) == JsonSerializer.Serialize(c2, (JsonSerializerOptions?)null),
                     c => c == null ? 0 : JsonSerializer.Serialize(c, (JsonSerializerOptions?)null).GetHashCode(),
                     c => JsonSerializer.Deserialize<List<InstructionSection>>(JsonSerializer.Serialize(c, (JsonSerializerOptions?)null), (JsonSerializerOptions?)null)!));
+
+            entity.Property(e => e.Tips)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                    v => string.IsNullOrWhiteSpace(v) ? new() : JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new())
+                .HasColumnType("nvarchar(max)")
+                .Metadata.SetValueComparer(new ValueComparer<List<string>>(
+                    (c1, c2) => JsonSerializer.Serialize(c1, (JsonSerializerOptions?)null) == JsonSerializer.Serialize(c2, (JsonSerializerOptions?)null),
+                    c => c == null ? 0 : JsonSerializer.Serialize(c, (JsonSerializerOptions?)null).GetHashCode(),
+                    c => JsonSerializer.Deserialize<List<string>>(JsonSerializer.Serialize(c, (JsonSerializerOptions?)null), (JsonSerializerOptions?)null)!));
         });
 
         // Seed initial data
