@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using RecipeApi.Features.Groups;
 
 namespace RecipeApi.Features.Recipes;
 
@@ -83,4 +84,21 @@ public class Recipe
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     public List<Category> Categories { get; set; } = new();
+
+    [StringLength(20)]
+    public string Visibility { get; set; } = "Public";
+
+    [StringLength(200)]
+    public string? OwnerEmail { get; set; }
+
+    public List<RecipeGroup> Groups { get; set; } = new();
+}
+
+public class RecipeGroup
+{
+    public int RecipeId { get; set; }
+    public Recipe Recipe { get; set; } = null!;
+
+    public int GroupId { get; set; }
+    public Group Group { get; set; } = null!;
 }

@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RecipeApi.Features.Auth;
+using RecipeApi.Features.Groups;
 using RecipeApi.Infrastructure;
 
 namespace RecipeApi.Features.Recipes;
@@ -15,6 +17,7 @@ public class RecipesController : ControllerBase
     private readonly IRecipeImageProcessor _imageProcessor;
     private readonly IRecipeUrlProcessor _urlProcessor;
     private readonly IBlobStorageService _blobStorage;
+    private readonly IAdminService _adminService;
     private readonly ILogger<RecipesController> _logger;
 
     public RecipesController(
@@ -22,19 +25,48 @@ public class RecipesController : ControllerBase
         IRecipeImageProcessor imageProcessor,
         IRecipeUrlProcessor urlProcessor,
         IBlobStorageService blobStorage,
+        IAdminService adminService,
         ILogger<RecipesController> logger)
     {
         _context = context;
         _imageProcessor = imageProcessor;
         _urlProcessor = urlProcessor;
         _blobStorage = blobStorage;
+        _adminService = adminService;
         _logger = logger;
     }
 
-    [HttpGet]
-    public async Task<ActionResult<List<RecipeDto>>> GetAllRecipes([FromQuery] string? categories = null)
+    private string? GetCallerEmail() =>
+        User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
+        ?? User.FindFirst("email")?.Value;
+
+    private IQueryable<Recipe> ApplyVisibilityFilter(IQueryable<Recipe> query, string? callerEmail)
     {
-        IQueryable<Recipe> query = _context.Recipes.Include(r => r.Categories);
+        if (callerEmail != null && _adminService.IsAdmin(callerEmail))
+            return query;
+
+        return query.Where(r =>
+            r.Visibility == "Public" ||
+            (r.Visibility == "Private" && r.OwnerEmail == callerEmail) ||
+            (r.Visibility == "Group" && r.Groups.Any(rg =>
+                rg.Group.Members.Any(m => m.User.Email == callerEmail))));
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<List<RecipeDto>>> GetAllRecipes(
+        [FromQuery] string? categories = null,
+        [FromQuery] int? groupId = null)
+    {
+        var callerEmail = GetCallerEmail();
+
+        IQueryable<Recipe> query = _context.Recipes
+            .Include(r => r.Categories)
+            .Include(r => r.Groups).ThenInclude(rg => rg.Group).ThenInclude(g => g.Members).ThenInclude(m => m.User);
+
+        query = ApplyVisibilityFilter(query, callerEmail);
+
+        if (groupId.HasValue)
+            query = query.Where(r => r.Groups.Any(rg => rg.GroupId == groupId.Value));
 
         if (!string.IsNullOrWhiteSpace(categories))
         {
@@ -45,9 +77,7 @@ public class RecipesController : ControllerBase
                 .ToList();
 
             foreach (var categoryId in ids)
-            {
                 query = query.Where(r => r.Categories.Any(c => c.Id == categoryId));
-            }
         }
 
         var recipes = await query
@@ -59,7 +89,10 @@ public class RecipesController : ControllerBase
                 CookTime = r.CookTime,
                 Difficulty = r.Difficulty,
                 ImageUrl = r.ImageUrl,
-                Categories = r.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList()
+                Visibility = r.Visibility,
+                OwnerEmail = r.OwnerEmail,
+                Categories = r.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
+                Groups = r.Groups.Select(rg => new GroupRefDto { Id = rg.GroupId, Name = rg.Group.Name }).ToList()
             })
             .ToListAsync();
 
@@ -69,14 +102,26 @@ public class RecipesController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<ActionResult<RecipeDetailDto>> GetRecipeById(int id)
     {
+        var callerEmail = GetCallerEmail();
+
         var recipe = await _context.Recipes
             .Include(r => r.Categories)
+            .Include(r => r.Groups).ThenInclude(rg => rg.Group).ThenInclude(g => g.Members).ThenInclude(m => m.User)
             .FirstOrDefaultAsync(r => r.Id == id);
 
         if (recipe == null)
-        {
             return NotFound(new { message = "Recipe not found" });
-        }
+
+        // Visibility check
+        var isAdmin = callerEmail != null && _adminService.IsAdmin(callerEmail);
+        var canView = isAdmin
+            || recipe.Visibility == "Public"
+            || (recipe.Visibility == "Private" && recipe.OwnerEmail == callerEmail)
+            || (recipe.Visibility == "Group" && recipe.Groups.Any(rg =>
+                rg.Group.Members.Any(m => m.User.Email == callerEmail)));
+
+        if (!canView)
+            return StatusCode(403, new { message = "You do not have access to this recipe" });
 
         var recipeDetail = new RecipeDetailDto
         {
@@ -89,6 +134,8 @@ public class RecipesController : ControllerBase
             Difficulty = recipe.Difficulty,
             ImageUrl = recipe.ImageUrl,
             Servings = recipe.Servings,
+            Visibility = recipe.Visibility,
+            OwnerEmail = recipe.OwnerEmail,
             Ingredients = recipe.Ingredients.Select(i => new StructuredIngredientDto
             {
                 Quantity = i.Quantity,
@@ -107,6 +154,7 @@ public class RecipesController : ControllerBase
                 Steps = s.Steps.Select(st => new InstructionStepDto { Text = st.Text, ImageUrl = st.ImageUrl }).ToList()
             }).ToList(),
             Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
+            Groups = recipe.Groups.Select(rg => new GroupRefDto { Id = rg.GroupId, Name = rg.Group.Name }).ToList(),
             CreatedAt = recipe.CreatedAt,
             UpdatedAt = recipe.UpdatedAt
         };
@@ -308,9 +356,13 @@ public class RecipesController : ControllerBase
     {
         _logger.LogInformation("Saving extracted recipe: {Title}", request.Title);
 
+        var callerEmail = GetCallerEmail();
+
         var categories = request.CategoryIds?.Count > 0
             ? await _context.Categories.Where(c => request.CategoryIds.Contains(c.Id)).ToListAsync()
             : new List<Category>();
+
+        var visibility = request.Visibility ?? "Public";
 
         var recipe = new Recipe
         {
@@ -346,12 +398,24 @@ public class RecipesController : ControllerBase
             SourceUrl = request.SourceUrl,
             SourceImageUrl = request.SourceImageUrl,
             Categories = categories,
+            Visibility = visibility,
+            OwnerEmail = callerEmail,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
 
         _context.Recipes.Add(recipe);
         await _context.SaveChangesAsync();
+
+        // Associate groups after recipe is saved (need recipe.Id)
+        if (visibility == "Group" && request.GroupIds?.Count > 0)
+        {
+            foreach (var gid in request.GroupIds)
+            {
+                _context.RecipeGroups.Add(new RecipeGroup { RecipeId = recipe.Id, GroupId = gid });
+            }
+            await _context.SaveChangesAsync();
+        }
 
         var recipeDto = new RecipeDto
         {
@@ -361,6 +425,8 @@ public class RecipesController : ControllerBase
             CookTime = recipe.CookTime,
             Difficulty = recipe.Difficulty,
             ImageUrl = recipe.ImageUrl,
+            Visibility = recipe.Visibility,
+            OwnerEmail = recipe.OwnerEmail,
             Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList()
         };
 
@@ -370,14 +436,19 @@ public class RecipesController : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<ActionResult<RecipeDetailDto>> UpdateRecipe(int id, [FromBody] UpdateRecipeRequest request)
     {
+        var callerEmail = GetCallerEmail();
+
         var recipe = await _context.Recipes
             .Include(r => r.Categories)
+            .Include(r => r.Groups)
             .FirstOrDefaultAsync(r => r.Id == id);
 
         if (recipe == null)
-        {
             return NotFound(new { message = "Recipe not found" });
-        }
+
+        var isAdmin = callerEmail != null && _adminService.IsAdmin(callerEmail);
+        if (!isAdmin && recipe.OwnerEmail != callerEmail)
+            return StatusCode(403, new { message = "You do not have permission to edit this recipe" });
 
         recipe.Title = request.Title;
         recipe.Description = request.Description ?? string.Empty;
@@ -416,7 +487,21 @@ public class RecipesController : ControllerBase
         foreach (var cat in newCategories)
             recipe.Categories.Add(cat);
 
+        // Update visibility and groups
+        recipe.Visibility = request.Visibility ?? recipe.Visibility;
+        recipe.Groups.Clear();
+        if (recipe.Visibility == "Group" && request.GroupIds?.Count > 0)
+        {
+            foreach (var gid in request.GroupIds)
+                recipe.Groups.Add(new RecipeGroup { RecipeId = recipe.Id, GroupId = gid });
+        }
+
         await _context.SaveChangesAsync();
+
+        // Reload groups with names for the response
+        await _context.Entry(recipe).Collection(r => r.Groups).Query()
+            .Include(rg => rg.Group)
+            .LoadAsync();
 
         var recipeDetail = new RecipeDetailDto
         {
@@ -429,6 +514,8 @@ public class RecipesController : ControllerBase
             Difficulty = recipe.Difficulty,
             ImageUrl = recipe.ImageUrl,
             Servings = recipe.Servings,
+            Visibility = recipe.Visibility,
+            OwnerEmail = recipe.OwnerEmail,
             Ingredients = recipe.Ingredients.Select(i => new StructuredIngredientDto
             {
                 Quantity = i.Quantity,
@@ -447,6 +534,7 @@ public class RecipesController : ControllerBase
                 Steps = s.Steps.Select(st => new InstructionStepDto { Text = st.Text, ImageUrl = st.ImageUrl }).ToList()
             }).ToList(),
             Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
+            Groups = recipe.Groups.Select(rg => new GroupRefDto { Id = rg.GroupId, Name = rg.Group.Name }).ToList(),
             CreatedAt = recipe.CreatedAt,
             UpdatedAt = recipe.UpdatedAt
         };
@@ -560,12 +648,15 @@ public class RecipesController : ControllerBase
     [HttpDelete("{id:int}")]
     public async Task<IActionResult> DeleteRecipe(int id)
     {
+        var callerEmail = GetCallerEmail();
         var recipe = await _context.Recipes.FindAsync(id);
 
         if (recipe == null)
-        {
             return NotFound(new { message = "Recipe not found" });
-        }
+
+        var isAdmin = callerEmail != null && _adminService.IsAdmin(callerEmail);
+        if (!isAdmin && recipe.OwnerEmail != callerEmail)
+            return StatusCode(403, new { message = "You do not have permission to delete this recipe" });
 
         // Delete all blobs for this recipe (main image + all step images)
         await _blobStorage.DeleteByPrefixAsync($"recipes/{id}/");
@@ -640,6 +731,12 @@ public class CategoryDto
     public string Group { get; set; } = string.Empty;
 }
 
+public class GroupRefDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
 public class RecipeDto
 {
     public int Id { get; set; }
@@ -648,7 +745,10 @@ public class RecipeDto
     public string CookTime { get; set; } = string.Empty;
     public string Difficulty { get; set; } = string.Empty;
     public string? ImageUrl { get; set; }
+    public string Visibility { get; set; } = "Public";
+    public string? OwnerEmail { get; set; }
     public List<CategoryDto> Categories { get; set; } = new();
+    public List<GroupRefDto> Groups { get; set; } = new();
 }
 
 public class InstructionStepDto
@@ -680,11 +780,14 @@ public class RecipeDetailDto
     public string Difficulty { get; set; } = string.Empty;
     public string? ImageUrl { get; set; }
     public int? Servings { get; set; }
+    public string Visibility { get; set; } = "Public";
+    public string? OwnerEmail { get; set; }
     public List<StructuredIngredientDto> Ingredients { get; set; } = new();
     public List<InstructionStepDto> InstructionSteps { get; set; } = new();
     public List<IngredientSectionDto> IngredientSections { get; set; } = new();
     public List<InstructionSectionDto> InstructionSections { get; set; } = new();
     public List<CategoryDto> Categories { get; set; } = new();
+    public List<GroupRefDto> Groups { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
@@ -748,6 +851,8 @@ public class SaveExtractedRecipeRequest
     public string? SourceUrl { get; set; }
     /// <summary>Blob URL of the original uploaded source image (image mode).</summary>
     public string? SourceImageUrl { get; set; }
+    public string? Visibility { get; set; }
+    public List<int>? GroupIds { get; set; }
 }
 
 public class UpdateRecipeRequest
@@ -763,4 +868,6 @@ public class UpdateRecipeRequest
     public int? Servings { get; set; }
     public string? Difficulty { get; set; }
     public List<int>? CategoryIds { get; set; }
+    public string? Visibility { get; set; }
+    public List<int>? GroupIds { get; set; }
 }

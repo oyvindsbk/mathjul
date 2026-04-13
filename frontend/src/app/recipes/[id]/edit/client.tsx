@@ -9,6 +9,7 @@ import type { Category } from '@/lib/mock-data';
 import { useAuth } from '@/lib/context/AuthContext';
 import RecipeForm from '@/components/RecipeForm';
 import MainPhotoUpload from '@/components/MainPhotoUpload';
+import VisibilitySelector, { type Visibility } from '@/components/VisibilitySelector';
 import EditRecipeLoading from './loading';
 
 export default function EditRecipeClient({ id }: { id: string }) {
@@ -21,6 +22,8 @@ export default function EditRecipeClient({ id }: { id: string }) {
   const [currentMainImageUrl, setCurrentMainImageUrl] = useState<string | null>(null);
   const [isUploadingMainImage, setIsUploadingMainImage] = useState(false);
   const [mainImageError, setMainImageError] = useState<string | null>(null);
+  const [visibility, setVisibility] = useState<Visibility>('Public');
+  const [groupIds, setGroupIds] = useState<number[]>([]);
   const { token, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -49,8 +52,12 @@ export default function EditRecipeClient({ id }: { id: string }) {
           difficulty?: string;
           categories?: Category[];
           imageUrl?: string | null;
+          visibility?: string;
+          groups?: { id: number; name: string }[];
         };
         setCurrentMainImageUrl(detail.imageUrl ?? null);
+        setVisibility((detail.visibility as Visibility) ?? 'Public');
+        setGroupIds(detail.groups?.map((g) => g.id) ?? []);
         setInitialData({
           title: detail.title,
           description: detail.description,
@@ -105,7 +112,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
     setSaveError(null);
     setIsSaving(true);
     try {
-      await recipeService.updateRecipe(id, data, token || undefined);
+      await recipeService.updateRecipe(id, { ...data, visibility, groupIds } as RecipeFormData & { visibility: Visibility; groupIds: number[] }, token || undefined);
       router.push(`/recipes/${id}`);
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : 'Kunne ikke oppdatere oppskriften');
@@ -164,6 +171,13 @@ export default function EditRecipeClient({ id }: { id: string }) {
             isUploading={isUploadingMainImage}
             error={mainImageError}
           />
+          <div className="mb-6 mt-4">
+            <VisibilitySelector
+              value={visibility}
+              groupIds={groupIds}
+              onChange={(v, ids) => { setVisibility(v); setGroupIds(ids); }}
+            />
+          </div>
           <RecipeForm
             initialData={initialData}
             onSave={handleSave}

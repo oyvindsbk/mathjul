@@ -110,6 +110,7 @@ if (!string.IsNullOrEmpty(aiEndpoint) && !string.IsNullOrEmpty(aiApiKey))
 else
     builder.Services.AddScoped<IRecipeUrlProcessor, DisabledRecipeUrlProcessor>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
+builder.Services.AddSingleton<IAdminService, AdminService>();
 
 // Register Blob Storage service
 var blobOptions = new BlobStorageOptions

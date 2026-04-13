@@ -5,14 +5,18 @@ import Link from "next/link";
 import { AuthButton } from "@/components/AuthButton";
 import { useAuth } from "@/lib/context/AuthContext";
 import { recipeService } from "@/lib/services/recipe.service";
+import { groupsService } from "@/lib/services/groups.service";
 import { appConfig } from "@/lib/config";
 import type { Category, Recipe } from "@/lib/mock-data";
 import HomeLoading from "./loading";
+
+type VisibilityTab = "all" | "public" | "myGroups" | "private";
 
 export default function HomeClient() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
+  const [visibilityTab, setVisibilityTab] = useState<VisibilityTab>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -31,6 +35,7 @@ export default function HomeClient() {
   useEffect(() => {
     if (authLoading) return;
     recipeService.getAllCategories(token || undefined).then(setAvailableCategories).catch(() => {});
+    groupsService.getMyGroups(token || undefined).catch(() => {});
   }, [authLoading, token]);
 
   // Wait for auth to resolve before fetching — avoids a spurious 401 on first render
@@ -39,6 +44,8 @@ export default function HomeClient() {
 
     const fetchRecipes = async () => {
       try {
+        // For "My groups", fetch per group and merge (or use first group as filter)
+        // Simple approach: fetch all and filter client-side by visibility field
         const data = await recipeService.getAllRecipes(token || undefined, selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined);
         setRecipes(data);
         setError(null);
@@ -52,6 +59,15 @@ export default function HomeClient() {
 
     fetchRecipes();
   }, [authLoading, token, selectedCategoryIds]);
+
+  const filteredRecipes = recipes.filter((r) => {
+    const rec = r as Recipe & { visibility?: string };
+    if (visibilityTab === "all") return true;
+    if (visibilityTab === "public") return rec.visibility === "Public" || !rec.visibility;
+    if (visibilityTab === "private") return rec.visibility === "Private";
+    if (visibilityTab === "myGroups") return rec.visibility === "Group";
+    return true;
+  });
 
   const handleToggleFilter = (id: number) => {
     setSelectedCategoryIds((prev) =>
@@ -100,6 +116,30 @@ export default function HomeClient() {
             </div>
           )}
 
+        </div>
+
+        {/* Visibility filter tabs */}
+        <div className="flex gap-2 mb-6 flex-wrap">
+          {(
+            [
+              { key: "all", label: "Alle" },
+              { key: "public", label: "🌍 Offentlig" },
+              { key: "myGroups", label: "👥 Mine grupper" },
+              { key: "private", label: "🔒 Privat" },
+            ] as { key: VisibilityTab; label: string }[]
+          ).map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => setVisibilityTab(key)}
+              className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
+                visibilityTab === key
+                  ? "bg-emerald-600 text-white border-emerald-600"
+                  : "bg-white text-gray-600 border-gray-300 hover:border-gray-400"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {availableCategories.length > 0 && (() => {
@@ -170,7 +210,7 @@ export default function HomeClient() {
         })()}
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" data-testid="recipe-grid">
-          {recipes.map((recipe) => (
+          {filteredRecipes.map((recipe) => (
             <div key={recipe.id} data-testid={`recipe-card-${recipe.id}`} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col">
               <div className="h-48 bg-gray-200 flex items-center justify-center overflow-hidden">
                 {recipe.imageUrl ? (

@@ -29,7 +29,7 @@ class RecipeService {
   /**
    * Fetch all recipes, optionally filtered by category IDs (AND-logic)
    */
-  async getAllRecipes(token?: string, categoryIds?: number[]): Promise<Recipe[]> {
+  async getAllRecipes(token?: string, categoryIds?: number[], groupId?: number): Promise<Recipe[]> {
     if (appConfig.mocking.enabled) {
       return mockRecipes;
     }
@@ -38,6 +38,9 @@ class RecipeService {
       const url = new URL(`${appConfig.api.baseUrl}/api/recipes`);
       if (categoryIds && categoryIds.length > 0) {
         url.searchParams.set('categories', categoryIds.join(','));
+      }
+      if (groupId !== undefined) {
+        url.searchParams.set('groupId', String(groupId));
       }
 
       const response = await this.fetchWithTimeout(
