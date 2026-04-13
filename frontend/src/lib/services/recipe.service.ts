@@ -126,6 +126,9 @@ class RecipeService {
       if (response.status === 404) {
         throw new Error('Recipe not found');
       }
+      if (response.status === 403) {
+        throw new Error('Du har ikke tilgang til å redigere denne oppskriften');
+      }
       throw new Error(`Failed to update recipe: ${response.statusText}`);
     }
 

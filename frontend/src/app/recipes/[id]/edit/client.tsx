@@ -115,7 +115,9 @@ export default function EditRecipeClient({ id }: { id: string }) {
       await recipeService.updateRecipe(id, { ...data, visibility, groupIds } as RecipeFormData & { visibility: Visibility; groupIds: number[] }, token || undefined);
       router.push(`/recipes/${id}`);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Kunne ikke oppdatere oppskriften');
+      const message = err instanceof Error ? err.message : 'Kunne ikke oppdatere oppskriften';
+      setSaveError(message);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setIsSaving(false);
     }
@@ -159,7 +161,8 @@ export default function EditRecipeClient({ id }: { id: string }) {
 
         {saveError && (
           <div className="mb-6 p-4 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400">
-            {saveError}
+            <p className="font-semibold mb-1">Kunne ikke lagre</p>
+            <p>{saveError}</p>
           </div>
         )}
 
