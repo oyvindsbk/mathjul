@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using RecipeApi.Features.Auth;
 using RecipeApi.Features.Groups;
+using RecipeApi.Features.MealPlans;
 using RecipeApi.Features.Recipes;
 
 namespace RecipeApi.Infrastructure;
@@ -20,6 +21,7 @@ public class RecipeDbContext : DbContext
     public DbSet<GroupMember> GroupMembers { get; set; }
     public DbSet<RecipeGroup> RecipeGroups { get; set; }
     public DbSet<RecipeLike> RecipeLikes { get; set; }
+    public DbSet<MealPlan> MealPlans { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -166,6 +168,26 @@ public class RecipeDbContext : DbContext
                     (c1, c2) => JsonSerializer.Serialize(c1, (JsonSerializerOptions?)null) == JsonSerializer.Serialize(c2, (JsonSerializerOptions?)null),
                     c => c == null ? 0 : JsonSerializer.Serialize(c, (JsonSerializerOptions?)null).GetHashCode(),
                     c => JsonSerializer.Deserialize<List<string>>(JsonSerializer.Serialize(c, (JsonSerializerOptions?)null), (JsonSerializerOptions?)null)!));
+        });
+
+        // Configure MealPlan entity
+        modelBuilder.Entity<MealPlan>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.Date).IsRequired().HasColumnType("date");
+            entity.Property(e => e.CreatedByEmail).HasMaxLength(200);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
+            entity.HasIndex(e => new { e.GroupId, e.Date }).IsUnique();
+            entity.HasOne(e => e.Group)
+                  .WithMany()
+                  .HasForeignKey(e => e.GroupId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.Recipe)
+                  .WithMany()
+                  .HasForeignKey(e => e.RecipeId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Seed initial data
