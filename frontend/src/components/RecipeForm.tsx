@@ -674,7 +674,7 @@ export default function RecipeForm({
   };
 
   const handleSubmit = async () => {
-    await onSave(formData);
+    await onSave({ ...formData, tips: (formData.tips ?? []).filter(t => t.trim() !== '') });
   };
 
   const usingSectionedIngredients = formData.ingredientSections.length > 0;

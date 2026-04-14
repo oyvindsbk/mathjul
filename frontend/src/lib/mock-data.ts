@@ -94,6 +94,10 @@ export const mockRecipes: Recipe[] = [
       { id: 10, name: 'Middels', group: 'Vanskelighetsgrad' },
       { id: 13, name: 'Under 30 min', group: 'Tilberedningstid' },
     ],
+    tips: [
+      'Bruk romtempererte egg for en kremere saus.',
+      'Ta pannen av varmen før du rører inn eggeblandingen – da unngår du eggerøre.',
+    ],
   },
   {
     id: 2,
