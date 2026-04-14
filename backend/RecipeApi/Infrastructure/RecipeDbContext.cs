@@ -19,6 +19,7 @@ public class RecipeDbContext : DbContext
     public DbSet<Group> Groups { get; set; }
     public DbSet<GroupMember> GroupMembers { get; set; }
     public DbSet<RecipeGroup> RecipeGroups { get; set; }
+    public DbSet<RecipeLike> RecipeLikes { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -71,6 +72,18 @@ public class RecipeDbContext : DbContext
             entity.HasOne(e => e.Group)
                   .WithMany()
                   .HasForeignKey(e => e.GroupId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure RecipeLike join table
+        modelBuilder.Entity<RecipeLike>(entity =>
+        {
+            entity.HasKey(e => new { e.RecipeId, e.UserEmail });
+            entity.Property(e => e.UserEmail).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.LikedAt).IsRequired();
+            entity.HasOne(e => e.Recipe)
+                  .WithMany()
+                  .HasForeignKey(e => e.RecipeId)
                   .OnDelete(DeleteBehavior.Cascade);
         });
 

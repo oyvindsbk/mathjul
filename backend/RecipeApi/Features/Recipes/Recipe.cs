@@ -104,3 +104,14 @@ public class RecipeGroup
     public int GroupId { get; set; }
     public Group Group { get; set; } = null!;
 }
+
+public class RecipeLike
+{
+    public int RecipeId { get; set; }
+    public Recipe Recipe { get; set; } = null!;
+
+    [System.ComponentModel.DataAnnotations.StringLength(200)]
+    public string UserEmail { get; set; } = string.Empty;
+
+    public DateTime LikedAt { get; set; } = DateTime.UtcNow;
+}

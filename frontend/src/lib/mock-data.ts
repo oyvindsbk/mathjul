@@ -46,6 +46,7 @@ export interface Recipe {
   imageUrl?: string | null;
   categories?: Category[];
   tips?: string[];
+  isLikedByMe?: boolean;
 }
 
 export const mockCategories: Category[] = [

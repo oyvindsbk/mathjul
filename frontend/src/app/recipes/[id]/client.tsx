@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { recipeService } from "@/lib/services/recipe.service";
+import { HeartButton } from "@/components/HeartButton";
 import { useAuth } from "@/lib/context/AuthContext";
 import type { Category, IngredientSection, InstructionSection, InstructionStep, Recipe, StructuredIngredient } from "@/lib/mock-data";
 import RecipeDetailLoading from "./loading";
@@ -182,7 +183,15 @@ export default function RecipeDetailClient({ id }: { id: string }) {
 
           <div className="p-8">
             <div className="flex items-start justify-between mb-4">
-              <h1 className="text-4xl font-bold text-gray-900">{recipe.title}</h1>
+              <div className="flex items-center gap-3">
+                <h1 className="text-4xl font-bold text-gray-900">{recipe.title}</h1>
+                <HeartButton
+                  recipeId={recipe.id}
+                  initialLiked={recipe.isLikedByMe ?? false}
+                  token={token}
+                  className="mt-1"
+                />
+              </div>
               <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
                 recipe.difficulty === 'Easy'
                   ? 'bg-green-100 text-green-800'

@@ -80,6 +80,13 @@ public class RecipesController : ControllerBase
                 query = query.Where(r => r.Categories.Any(c => c.Id == categoryId));
         }
 
+        var likedIds = callerEmail != null
+            ? await _context.RecipeLikes
+                .Where(l => l.UserEmail == callerEmail)
+                .Select(l => l.RecipeId)
+                .ToHashSetAsync()
+            : new HashSet<int>();
+
         var recipes = await query
             .Select(r => new RecipeDto
             {
@@ -95,6 +102,9 @@ public class RecipesController : ControllerBase
                 Groups = r.Groups.Select(rg => new GroupRefDto { Id = rg.GroupId, Name = rg.Group.Name }).ToList()
             })
             .ToListAsync();
+
+        foreach (var r in recipes)
+            r.IsLikedByMe = likedIds.Contains(r.Id);
 
         return Ok(recipes);
     }
@@ -122,6 +132,9 @@ public class RecipesController : ControllerBase
 
         if (!canView)
             return StatusCode(403, new { message = "You do not have access to this recipe" });
+
+        var isLikedByMe = callerEmail != null
+            && await _context.RecipeLikes.AnyAsync(l => l.RecipeId == id && l.UserEmail == callerEmail);
 
         var recipeDetail = new RecipeDetailDto
         {
@@ -157,7 +170,8 @@ public class RecipesController : ControllerBase
             Groups = recipe.Groups.Select(rg => new GroupRefDto { Id = rg.GroupId, Name = rg.Group.Name }).ToList(),
             Tips = recipe.Tips,
             CreatedAt = recipe.CreatedAt,
-            UpdatedAt = recipe.UpdatedAt
+            UpdatedAt = recipe.UpdatedAt,
+            IsLikedByMe = isLikedByMe
         };
 
         return Ok(recipeDetail);
@@ -671,6 +685,89 @@ public class RecipesController : ControllerBase
         return NoContent();
     }
 
+    // ── Like / Favourite endpoints ─────────────────────────────────────────
+
+    [HttpGet("liked")]
+    public async Task<ActionResult<List<RecipeDto>>> GetLikedRecipes()
+    {
+        var callerEmail = GetCallerEmail();
+        if (callerEmail == null)
+            return Unauthorized(new { message = "Authentication required" });
+
+        var likedRecipeIds = await _context.RecipeLikes
+            .Where(l => l.UserEmail == callerEmail)
+            .Select(l => l.RecipeId)
+            .ToListAsync();
+
+        IQueryable<Recipe> query = _context.Recipes
+            .Include(r => r.Categories)
+            .Include(r => r.Groups).ThenInclude(rg => rg.Group).ThenInclude(g => g.Members).ThenInclude(m => m.User)
+            .Where(r => likedRecipeIds.Contains(r.Id));
+
+        query = ApplyVisibilityFilter(query, callerEmail);
+
+        var recipes = await query
+            .Select(r => new RecipeDto
+            {
+                Id = r.Id,
+                Title = r.Title,
+                Description = r.Description,
+                CookTime = r.CookTime,
+                Difficulty = r.Difficulty,
+                ImageUrl = r.ImageUrl,
+                Visibility = r.Visibility,
+                OwnerEmail = r.OwnerEmail,
+                Categories = r.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
+                Groups = r.Groups.Select(rg => new GroupRefDto { Id = rg.GroupId, Name = rg.Group.Name }).ToList(),
+                IsLikedByMe = true
+            })
+            .ToListAsync();
+
+        return Ok(recipes);
+    }
+
+    [HttpPost("{id:int}/like")]
+    public async Task<IActionResult> LikeRecipe(int id)
+    {
+        var callerEmail = GetCallerEmail();
+        if (callerEmail == null)
+            return Unauthorized(new { message = "Authentication required" });
+
+        var recipe = await _context.Recipes.FindAsync(id);
+        if (recipe == null)
+            return NotFound(new { message = "Recipe not found" });
+
+        var existing = await _context.RecipeLikes
+            .FirstOrDefaultAsync(l => l.RecipeId == id && l.UserEmail == callerEmail);
+
+        if (existing == null)
+        {
+            _context.RecipeLikes.Add(new RecipeLike { RecipeId = id, UserEmail = callerEmail, LikedAt = DateTime.UtcNow });
+            await _context.SaveChangesAsync();
+        }
+
+        return Ok();
+    }
+
+    [HttpDelete("{id:int}/like")]
+    public async Task<IActionResult> UnlikeRecipe(int id)
+    {
+        var callerEmail = GetCallerEmail();
+        if (callerEmail == null)
+            return Unauthorized(new { message = "Authentication required" });
+
+        var existing = await _context.RecipeLikes
+            .FirstOrDefaultAsync(l => l.RecipeId == id && l.UserEmail == callerEmail);
+
+        if (existing != null)
+        {
+            _context.RecipeLikes.Remove(existing);
+            await _context.SaveChangesAsync();
+        }
+
+        return NoContent();
+    }
+
     private string? ValidateImageFile(IFormFile? file)
     {
         if (file == null || file.Length == 0) return "No image file provided";
@@ -754,6 +851,7 @@ public class RecipeDto
     public string? OwnerEmail { get; set; }
     public List<CategoryDto> Categories { get; set; } = new();
     public List<GroupRefDto> Groups { get; set; } = new();
+    public bool IsLikedByMe { get; set; }
 }
 
 public class InstructionStepDto
@@ -796,6 +894,7 @@ public class RecipeDetailDto
     public List<string> Tips { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public bool IsLikedByMe { get; set; }
 }
 
 public class StructuredIngredientDto

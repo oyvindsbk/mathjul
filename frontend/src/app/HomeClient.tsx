@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { AuthButton } from "@/components/AuthButton";
+import { HeartButton } from "@/components/HeartButton";
 import { useAuth } from "@/lib/context/AuthContext";
 import { recipeService } from "@/lib/services/recipe.service";
 import { groupsService } from "@/lib/services/groups.service";
@@ -10,7 +11,7 @@ import { appConfig } from "@/lib/config";
 import type { Category, Recipe } from "@/lib/mock-data";
 import HomeLoading from "./loading";
 
-type VisibilityTab = "all" | "public" | "myGroups" | "private";
+type VisibilityTab = "all" | "public" | "myGroups" | "private" | "favoritter";
 
 export default function HomeClient() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -66,6 +67,7 @@ export default function HomeClient() {
     if (visibilityTab === "public") return rec.visibility === "Public" || !rec.visibility;
     if (visibilityTab === "private") return rec.visibility === "Private";
     if (visibilityTab === "myGroups") return rec.visibility === "Group";
+    if (visibilityTab === "favoritter") return rec.isLikedByMe === true;
     return true;
   });
 
@@ -126,6 +128,7 @@ export default function HomeClient() {
               { key: "public", label: "🌍 Offentlig" },
               { key: "myGroups", label: "👥 Mine grupper" },
               { key: "private", label: "🔒 Privat" },
+              { key: "favoritter", label: "❤️ Favoritter" },
             ] as { key: VisibilityTab; label: string }[]
           ).map(({ key, label }) => (
             <button
@@ -212,7 +215,7 @@ export default function HomeClient() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" data-testid="recipe-grid">
           {filteredRecipes.map((recipe) => (
             <div key={recipe.id} data-testid={`recipe-card-${recipe.id}`} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col">
-              <div className="h-48 bg-gray-200 flex items-center justify-center overflow-hidden">
+              <div className="h-48 bg-gray-200 flex items-center justify-center overflow-hidden relative">
                 {recipe.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -223,6 +226,13 @@ export default function HomeClient() {
                 ) : (
                   <span className="text-gray-500">Oppskrift bilde</span>
                 )}
+                <div className="absolute top-2 right-2 bg-white/80 rounded-full p-1 shadow">
+                  <HeartButton
+                    recipeId={recipe.id}
+                    initialLiked={recipe.isLikedByMe ?? false}
+                    token={token}
+                  />
+                </div>
               </div>
               <div className="p-6 flex flex-col flex-1">
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
