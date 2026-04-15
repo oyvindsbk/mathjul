@@ -201,19 +201,14 @@ public class RecipeDbContext : DbContext
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
         });
 
-        // Configure FeatureCard entity
+        // Configure FeatureCard TPH hierarchy
         modelBuilder.Entity<FeatureCard>(entity =>
         {
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).ValueGeneratedOnAdd();
             entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Summary).IsRequired().HasColumnType("nvarchar(max)");
-            entity.Property(e => e.Motivation).IsRequired().HasColumnType("nvarchar(max)");
             entity.Property(e => e.Requirements).IsRequired().HasColumnType("nvarchar(max)");
-            entity.Property(e => e.OutOfScope).HasColumnType("nvarchar(max)");
-            entity.Property(e => e.OpenQuestions).HasColumnType("nvarchar(max)");
-            entity.Property(e => e.DataModel).HasColumnType("nvarchar(max)");
-            entity.Property(e => e.ApiSketch).HasColumnType("nvarchar(max)");
             entity.Property(e => e.UiSketch).HasColumnType("nvarchar(max)");
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
@@ -221,12 +216,29 @@ public class RecipeDbContext : DbContext
                   .WithMany(c => c.Cards)
                   .HasForeignKey(e => e.ColumnId)
                   .OnDelete(DeleteBehavior.Cascade);
+            entity.HasDiscriminator<string>("CardType")
+                  .HasValue<FeatureOnlyCard>("Feature")
+                  .HasValue<BugCard>("Bug");
+        });
+
+        modelBuilder.Entity<FeatureOnlyCard>(entity =>
+        {
+            entity.Property(e => e.Motivation).IsRequired().HasColumnType("nvarchar(max)");
+            entity.Property(e => e.OutOfScope).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.OpenQuestions).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.DataModel).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.ApiSketch).HasColumnType("nvarchar(max)");
+        });
+
+        modelBuilder.Entity<BugCard>(entity =>
+        {
+            entity.Property(e => e.BugUrl).IsRequired().HasColumnType("nvarchar(max)");
         });
 
         // Seed default feature columns
         modelBuilder.Entity<FeatureColumn>().HasData(
-            new FeatureColumn { Id = 1, Name = "New Feature", SortOrder = 0 },
-            new FeatureColumn { Id = 2, Name = "Planned Feature", SortOrder = 1 },
+            new FeatureColumn { Id = 1, Name = "New", SortOrder = 0 },
+            new FeatureColumn { Id = 2, Name = "Planned", SortOrder = 1 },
             new FeatureColumn { Id = 3, Name = "In Progress", SortOrder = 2 },
             new FeatureColumn { Id = 4, Name = "Done", SortOrder = 3 }
         );

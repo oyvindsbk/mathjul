@@ -188,7 +188,8 @@ function KanbanCard({ card, onClick }: KanbanCardProps) {
     opacity: isDragging ? 0.4 : 1,
   };
 
-  const hasTechnical = card.stacksFrontend || card.stacksBackend || card.stacksInfrastructure;
+  const isBug = card.cardType === 'Bug';
+  const hasTechnical = !isBug && (card.stacksFrontend || card.stacksBackend || card.stacksInfrastructure);
 
   return (
     <div
@@ -197,9 +198,20 @@ function KanbanCard({ card, onClick }: KanbanCardProps) {
       {...attributes}
       {...listeners}
       onClick={() => onClick(card)}
-      className="bg-slate-800 hover:bg-slate-750 border border-slate-700 hover:border-slate-600 rounded-lg p-3 cursor-pointer transition-all group"
+      className={`bg-slate-800 hover:bg-slate-750 border rounded-lg p-3 cursor-pointer transition-all group border-l-4 ${
+        isBug
+          ? 'border-slate-700 border-l-red-500 hover:border-l-red-400'
+          : 'border-slate-700 border-l-blue-500 hover:border-l-blue-400'
+      }`}
     >
-      <div className="font-medium text-white text-sm mb-1 leading-snug">{card.title}</div>
+      <div className="flex items-start justify-between gap-2 mb-1">
+        <div className="font-medium text-white text-sm leading-snug">{card.title}</div>
+        <span className={`shrink-0 text-xs px-1.5 py-0.5 rounded font-medium ${
+          isBug ? 'bg-red-900/50 text-red-300' : 'bg-blue-900/50 text-blue-300'
+        }`}>
+          {isBug ? 'Bug' : 'Feature'}
+        </span>
+      </div>
       {card.summary && (
         <div className="text-slate-400 text-xs leading-relaxed line-clamp-2">{card.summary}</div>
       )}
@@ -221,8 +233,9 @@ function KanbanCard({ card, onClick }: KanbanCardProps) {
 }
 
 function CardDragOverlay({ card }: { card: FeatureCardData }) {
+  const isBug = card.cardType === 'Bug';
   return (
-    <div className="bg-slate-800 border border-blue-500 rounded-lg p-3 w-72 shadow-2xl rotate-2">
+    <div className={`bg-slate-800 border rounded-lg p-3 w-72 shadow-2xl rotate-2 border-l-4 ${isBug ? 'border-red-500 border-l-red-500' : 'border-blue-500 border-l-blue-500'}`}>
       <div className="font-medium text-white text-sm mb-1">{card.title}</div>
       {card.summary && (
         <div className="text-slate-400 text-xs line-clamp-2">{card.summary}</div>

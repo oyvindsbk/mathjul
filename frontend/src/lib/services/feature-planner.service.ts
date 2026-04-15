@@ -1,5 +1,7 @@
 import { appConfig } from '../config';
 
+export type CardType = 'Feature' | 'Bug';
+
 export interface FeatureCardData {
   id: number;
   columnId: number;
@@ -15,9 +17,15 @@ export interface FeatureCardData {
   dataModel: string | null;
   apiSketch: string | null;
   uiSketch: string | null;
+  cardType: CardType;
   sortOrder: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface BugCardData extends FeatureCardData {
+  cardType: 'Bug';
+  bugUrl: string;
 }
 
 export interface FeatureColumnData {
@@ -45,6 +53,17 @@ export interface CreateCardPayload {
   dataModel?: string;
   apiSketch?: string;
   uiSketch?: string;
+  cardType?: CardType;
+}
+
+export interface CreateBugCardPayload {
+  columnId: number;
+  title: string;
+  summary: string;
+  requirements: string;
+  uiSketch?: string;
+  bugUrl: string;
+  cardType: 'Bug';
 }
 
 export interface UpdateCardPayload {
@@ -60,6 +79,7 @@ export interface UpdateCardPayload {
   dataModel?: string;
   apiSketch?: string;
   uiSketch?: string;
+  cardType?: CardType;
 }
 
 export interface GeneratedPrd {
@@ -75,6 +95,7 @@ export interface GeneratedPrd {
   dataModel: string | null;
   apiSketch: string | null;
   uiSketch: string | null;
+  cardType: CardType;
 }
 
 class FeaturePlannerService {
@@ -116,7 +137,7 @@ class FeaturePlannerService {
     return this.request<void>(`/columns/${id}`, { method: 'DELETE' }, token);
   }
 
-  async createCard(payload: CreateCardPayload, token?: string): Promise<FeatureCardData> {
+  async createCard(payload: CreateCardPayload | CreateBugCardPayload, token?: string): Promise<FeatureCardData> {
     return this.request<FeatureCardData>('/cards', {
       method: 'POST',
       body: JSON.stringify(payload),

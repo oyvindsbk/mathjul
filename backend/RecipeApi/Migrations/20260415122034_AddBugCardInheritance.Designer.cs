@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using RecipeApi.Infrastructure;
 
@@ -11,9 +12,11 @@ using RecipeApi.Infrastructure;
 namespace RecipeApi.Migrations
 {
     [DbContext(typeof(RecipeDbContext))]
-    partial class RecipeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260415122034_AddBugCardInheritance")]
+    partial class AddBugCardInheritance
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -142,13 +145,13 @@ namespace RecipeApi.Migrations
                         new
                         {
                             Id = 1,
-                            Name = "New",
+                            Name = "New Feature",
                             SortOrder = 0
                         },
                         new
                         {
                             Id = 2,
-                            Name = "Planned",
+                            Name = "Planned Feature",
                             SortOrder = 1
                         },
                         new

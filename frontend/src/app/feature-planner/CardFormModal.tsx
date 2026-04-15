@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { featurePlannerService, type FeatureCardData, type GeneratedPrd } from '@/lib/services/feature-planner.service';
+import { featurePlannerService, type FeatureCardData, type GeneratedPrd, type CardType } from '@/lib/services/feature-planner.service';
 
 interface CardFormModalProps {
   columnId: number;
@@ -26,6 +26,7 @@ interface FormState {
   dataModel: string;
   apiSketch: string;
   uiSketch: string;
+  cardType: CardType;
 }
 
 function emptyForm(card?: FeatureCardData): FormState {
@@ -42,11 +43,13 @@ function emptyForm(card?: FeatureCardData): FormState {
     dataModel: card?.dataModel ?? '',
     apiSketch: card?.apiSketch ?? '',
     uiSketch: card?.uiSketch ?? '',
+    cardType: card?.cardType ?? 'Feature',
   };
 }
 
 export function CardFormModal({ columnId, card, onSaved, onClose, token }: CardFormModalProps) {
   const isEdit = !!card;
+  const isEditingBug = isEdit && card.cardType === 'Bug';
   const [tab, setTab] = useState<Tab>(isEdit ? 'manual' : 'ai');
   const [form, setForm] = useState<FormState>(emptyForm(card));
   const [showTechnical, setShowTechnical] = useState(
@@ -82,6 +85,7 @@ export function CardFormModal({ columnId, card, onSaved, onClose, token }: CardF
         dataModel: prd.dataModel ?? '',
         apiSketch: prd.apiSketch ?? '',
         uiSketch: prd.uiSketch ?? '',
+        cardType: 'Feature',
       });
       const hasTech = prd.stacksFrontend || prd.stacksBackend || prd.stacksInfrastructure || prd.dataModel || prd.apiSketch || prd.uiSketch;
       if (hasTech) setShowTechnical(true);
@@ -118,6 +122,7 @@ export function CardFormModal({ columnId, card, onSaved, onClose, token }: CardF
         dataModel: form.dataModel.trim() || undefined,
         apiSketch: form.apiSketch.trim() || undefined,
         uiSketch: form.uiSketch.trim() || undefined,
+        cardType: form.cardType,
       };
       if (isEdit) {
         await featurePlannerService.updateCard(card.id, payload, token);
@@ -140,7 +145,9 @@ export function CardFormModal({ columnId, card, onSaved, onClose, token }: CardF
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 shrink-0">
-          <h2 className="text-lg font-bold text-white">{isEdit ? 'Rediger funksjon' : 'Ny funksjon'}</h2>
+          <h2 className="text-lg font-bold text-white">
+            {isEdit ? (isEditingBug ? 'Rediger bug' : 'Rediger funksjon') : 'Ny funksjon'}
+          </h2>
           <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -194,7 +201,39 @@ export function CardFormModal({ columnId, card, onSaved, onClose, token }: CardF
             </div>
           ) : (
             <div className="space-y-4">
-              <Field label="Navn på funksjonen" required error={errors.title}>
+              {/* Card type toggle — hidden when editing an existing bug */}
+              {!isEditingBug && <div className="flex rounded-xl overflow-hidden border border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setField('cardType', 'Feature')}
+                  className={`flex-1 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                    form.cardType === 'Feature'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-800 text-slate-400 hover:text-slate-300'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  Feature
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setField('cardType', 'Bug')}
+                  className={`flex-1 py-2 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+                    form.cardType === 'Bug'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-slate-800 text-slate-400 hover:text-slate-300'
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Bug
+                </button>
+              </div>}
+
+              <Field label={form.cardType === 'Bug' ? 'Navn på buggen' : 'Navn på funksjonen'} required error={errors.title}>
                 <input
                   value={form.title}
                   onChange={e => setField('title', e.target.value)}
@@ -203,58 +242,64 @@ export function CardFormModal({ columnId, card, onSaved, onClose, token }: CardF
                 />
               </Field>
 
-              <Field label="Hva gjør denne funksjonen?" required error={errors.summary}>
+              <Field label={form.cardType === 'Bug' ? 'Beskrivelse' : 'Hva gjør denne funksjonen?'} required error={errors.summary}>
                 <textarea
                   value={form.summary}
                   onChange={e => setField('summary', e.target.value)}
-                  placeholder="1-2 setninger om hva funksjonen gjør og hvilken verdi den gir"
+                  placeholder={form.cardType === 'Bug' ? 'Hva skjer? Hva forventet du skulle skje?' : '1-2 setninger om hva funksjonen gjør og hvilken verdi den gir'}
                   rows={2}
                   className={`${inputClass(!!errors.summary)} resize-none`}
                 />
               </Field>
 
-              <Field label="Hvorfor trenger vi det?">
-                <textarea
-                  value={form.motivation}
-                  onChange={e => setField('motivation', e.target.value)}
-                  placeholder="Hvilket problem løser dette for brukerne?"
-                  rows={2}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm resize-none focus:outline-none focus:border-blue-500"
-                />
-              </Field>
-
-              <Field label="Hva må det gjøre?">
+              <Field label={form.cardType === 'Bug' ? 'Steg for å reprodusere' : 'Hva må det gjøre?'}>
                 <textarea
                   value={form.requirements}
                   onChange={e => setField('requirements', e.target.value)}
-                  placeholder="- Brukere kan generere en handleliste fra en valgt uke&#10;- Varer grupperes etter kategori&#10;- Brukere kan huke av varer"
+                  placeholder={form.cardType === 'Bug'
+                    ? '1. Gå til siden\n2. Klikk på knappen\n3. Se feilen'
+                    : '- Brukere kan generere en handleliste fra en valgt uke\n- Varer grupperes etter kategori\n- Brukere kan huke av varer'}
                   rows={4}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm resize-none focus:outline-none focus:border-blue-500 font-mono"
                 />
               </Field>
 
-              <Field label="Hva er IKKE inkludert?">
-                <textarea
-                  value={form.outOfScope}
-                  onChange={e => setField('outOfScope', e.target.value)}
-                  placeholder="- Dele handlelister med andre&#10;- Synkronisering med eksterne apper"
-                  rows={3}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm resize-none focus:outline-none focus:border-blue-500 font-mono"
-                />
-              </Field>
+              {form.cardType === 'Feature' && (
+                <>
+                  <Field label="Hvorfor trenger vi det?">
+                    <textarea
+                      value={form.motivation}
+                      onChange={e => setField('motivation', e.target.value)}
+                      placeholder="Hvilket problem løser dette for brukerne?"
+                      rows={2}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm resize-none focus:outline-none focus:border-blue-500"
+                    />
+                  </Field>
 
-              <Field label="Åpne spørsmål">
-                <textarea
-                  value={form.openQuestions}
-                  onChange={e => setField('openQuestions', e.target.value)}
-                  placeholder="- Skal brukere kunne redigere varer etter generering?&#10;- Én liste per uke eller per ukesplan?"
-                  rows={3}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm resize-none focus:outline-none focus:border-blue-500 font-mono"
-                />
-              </Field>
+                  <Field label="Hva er IKKE inkludert?">
+                    <textarea
+                      value={form.outOfScope}
+                      onChange={e => setField('outOfScope', e.target.value)}
+                      placeholder="- Dele handlelister med andre&#10;- Synkronisering med eksterne apper"
+                      rows={3}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm resize-none focus:outline-none focus:border-blue-500 font-mono"
+                    />
+                  </Field>
 
-              {/* Technical section */}
-              <div className="border border-slate-700 rounded-xl overflow-hidden">
+                  <Field label="Åpne spørsmål">
+                    <textarea
+                      value={form.openQuestions}
+                      onChange={e => setField('openQuestions', e.target.value)}
+                      placeholder="- Skal brukere kunne redigere varer etter generering?&#10;- Én liste per uke eller per ukesplan?"
+                      rows={3}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm resize-none focus:outline-none focus:border-blue-500 font-mono"
+                    />
+                  </Field>
+                </>
+              )}
+
+              {/* Technical section — Features only */}
+              {form.cardType === 'Feature' && <div className="border border-slate-700 rounded-xl overflow-hidden">
                 <button
                   type="button"
                   onClick={() => setShowTechnical(v => !v)}
@@ -316,7 +361,7 @@ export function CardFormModal({ columnId, card, onSaved, onClose, token }: CardF
                     </Field>
                   </div>
                 )}
-              </div>
+              </div>}
             </div>
           )}
         </div>

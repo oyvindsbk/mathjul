@@ -6,6 +6,7 @@ import { AuthProvider } from "@/lib/context/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { appConfig } from "@/lib/config";
+import { BugReporter } from "@/components/BugReporter";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,6 +52,7 @@ export default function RootLayout({
               </div>
             </div>
           </ProtectedRoute>
+          <BugReporter />
         </AuthProvider>
       </body>
     </html>

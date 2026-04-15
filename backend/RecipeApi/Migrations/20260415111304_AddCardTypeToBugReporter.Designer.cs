@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using RecipeApi.Infrastructure;
 
@@ -11,9 +12,11 @@ using RecipeApi.Infrastructure;
 namespace RecipeApi.Migrations
 {
     [DbContext(typeof(RecipeDbContext))]
-    partial class RecipeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260415111304_AddCardTypeToBugReporter")]
+    partial class AddCardTypeToBugReporter
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -74,10 +77,15 @@ namespace RecipeApi.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<string>("ApiSketch")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("CardType")
                         .IsRequired()
-                        .HasMaxLength(13)
-                        .HasColumnType("nvarchar(13)");
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)")
+                        .HasDefaultValue("Feature");
 
                     b.Property<int>("ColumnId")
                         .HasColumnType("int");
@@ -85,12 +93,34 @@ namespace RecipeApi.Migrations
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<string>("DataModel")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Motivation")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OpenQuestions")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("OutOfScope")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Requirements")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("int");
+
+                    b.Property<bool>("StacksBackend")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("StacksFrontend")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("StacksInfrastructure")
+                        .HasColumnType("bit");
 
                     b.Property<string>("Summary")
                         .IsRequired()
@@ -112,10 +142,6 @@ namespace RecipeApi.Migrations
                     b.HasIndex("ColumnId");
 
                     b.ToTable("FeatureCards");
-
-                    b.HasDiscriminator<string>("CardType").HasValue("FeatureCard");
-
-                    b.UseTphMappingStrategy();
                 });
 
             modelBuilder.Entity("RecipeApi.Features.FeaturePlanner.FeatureColumn", b =>
@@ -142,13 +168,13 @@ namespace RecipeApi.Migrations
                         new
                         {
                             Id = 1,
-                            Name = "New",
+                            Name = "New Feature",
                             SortOrder = 0
                         },
                         new
                         {
                             Id = 2,
-                            Name = "Planned",
+                            Name = "Planned Feature",
                             SortOrder = 1
                         },
                         new
@@ -554,49 +580,6 @@ namespace RecipeApi.Migrations
                     b.HasKey("RecipeId", "UserEmail");
 
                     b.ToTable("RecipeLikes");
-                });
-
-            modelBuilder.Entity("RecipeApi.Features.FeaturePlanner.BugCard", b =>
-                {
-                    b.HasBaseType("RecipeApi.Features.FeaturePlanner.FeatureCard");
-
-                    b.Property<string>("BugUrl")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasDiscriminator().HasValue("Bug");
-                });
-
-            modelBuilder.Entity("RecipeApi.Features.FeaturePlanner.FeatureOnlyCard", b =>
-                {
-                    b.HasBaseType("RecipeApi.Features.FeaturePlanner.FeatureCard");
-
-                    b.Property<string>("ApiSketch")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("DataModel")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Motivation")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("OpenQuestions")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("OutOfScope")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<bool>("StacksBackend")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("StacksFrontend")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("StacksInfrastructure")
-                        .HasColumnType("bit");
-
-                    b.HasDiscriminator().HasValue("Feature");
                 });
 
             modelBuilder.Entity("CategoryRecipe", b =>

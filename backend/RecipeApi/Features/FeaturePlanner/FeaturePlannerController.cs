@@ -101,7 +101,6 @@ public class FeaturePlannerController : ControllerBase
             .FirstOrDefaultAsync(c => c.Id == id);
         if (column == null) return NotFound();
 
-        // Move cards to the first remaining column
         var firstColumn = await _db.FeatureColumns
             .Where(c => c.Id != id)
             .OrderBy(c => c.SortOrder)
@@ -132,7 +131,6 @@ public class FeaturePlannerController : ControllerBase
         if (string.IsNullOrWhiteSpace(request.Title))
             return BadRequest(new { error = "Title is required" });
 
-        // Default to the first column (lowest SortOrder) if columnId not specified
         int columnId = request.ColumnId;
         if (columnId == 0)
         {
@@ -151,25 +149,40 @@ public class FeaturePlannerController : ControllerBase
             .MaxAsync(c => (int?)c.SortOrder) ?? -1;
 
         var now = DateTimeOffset.UtcNow;
-        var card = new FeatureCard
-        {
-            ColumnId = columnId,
-            Title = request.Title.Trim(),
-            Summary = request.Summary ?? string.Empty,
-            Motivation = request.Motivation ?? string.Empty,
-            Requirements = request.Requirements ?? string.Empty,
-            OutOfScope = request.OutOfScope,
-            OpenQuestions = request.OpenQuestions,
-            StacksFrontend = request.StacksFrontend,
-            StacksBackend = request.StacksBackend,
-            StacksInfrastructure = request.StacksInfrastructure,
-            DataModel = request.DataModel,
-            ApiSketch = request.ApiSketch,
-            UiSketch = request.UiSketch,
-            SortOrder = maxOrder + 1,
-            CreatedAt = now,
-            UpdatedAt = now
-        };
+
+        FeatureCard card = request.CardType == "Bug"
+            ? new BugCard
+            {
+                ColumnId = columnId,
+                Title = request.Title.Trim(),
+                Summary = request.Summary ?? string.Empty,
+                Requirements = request.Requirements ?? string.Empty,
+                UiSketch = request.UiSketch,
+                BugUrl = request.BugUrl ?? string.Empty,
+                SortOrder = maxOrder + 1,
+                CreatedAt = now,
+                UpdatedAt = now
+            }
+            : new FeatureOnlyCard
+            {
+                ColumnId = columnId,
+                Title = request.Title.Trim(),
+                Summary = request.Summary ?? string.Empty,
+                Motivation = request.Motivation ?? string.Empty,
+                Requirements = request.Requirements ?? string.Empty,
+                OutOfScope = request.OutOfScope,
+                OpenQuestions = request.OpenQuestions,
+                StacksFrontend = request.StacksFrontend,
+                StacksBackend = request.StacksBackend,
+                StacksInfrastructure = request.StacksInfrastructure,
+                DataModel = request.DataModel,
+                ApiSketch = request.ApiSketch,
+                UiSketch = request.UiSketch,
+                SortOrder = maxOrder + 1,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
         _db.FeatureCards.Add(card);
         await _db.SaveChangesAsync();
 
@@ -185,18 +198,27 @@ public class FeaturePlannerController : ControllerBase
 
         if (request.Title != null) card.Title = request.Title.Trim();
         if (request.Summary != null) card.Summary = request.Summary;
-        if (request.Motivation != null) card.Motivation = request.Motivation;
         if (request.Requirements != null) card.Requirements = request.Requirements;
-        if (request.OutOfScope != null) card.OutOfScope = request.OutOfScope;
-        if (request.OpenQuestions != null) card.OpenQuestions = request.OpenQuestions;
-        if (request.StacksFrontend.HasValue) card.StacksFrontend = request.StacksFrontend.Value;
-        if (request.StacksBackend.HasValue) card.StacksBackend = request.StacksBackend.Value;
-        if (request.StacksInfrastructure.HasValue) card.StacksInfrastructure = request.StacksInfrastructure.Value;
-        if (request.DataModel != null) card.DataModel = request.DataModel;
-        if (request.ApiSketch != null) card.ApiSketch = request.ApiSketch;
         if (request.UiSketch != null) card.UiSketch = request.UiSketch;
-        card.UpdatedAt = DateTimeOffset.UtcNow;
 
+        if (card is FeatureOnlyCard feature && request is UpdateFeatureCardRequest featureReq)
+        {
+            if (featureReq.Motivation != null) feature.Motivation = featureReq.Motivation;
+            if (featureReq.OutOfScope != null) feature.OutOfScope = featureReq.OutOfScope;
+            if (featureReq.OpenQuestions != null) feature.OpenQuestions = featureReq.OpenQuestions;
+            if (featureReq.StacksFrontend.HasValue) feature.StacksFrontend = featureReq.StacksFrontend.Value;
+            if (featureReq.StacksBackend.HasValue) feature.StacksBackend = featureReq.StacksBackend.Value;
+            if (featureReq.StacksInfrastructure.HasValue) feature.StacksInfrastructure = featureReq.StacksInfrastructure.Value;
+            if (featureReq.DataModel != null) feature.DataModel = featureReq.DataModel;
+            if (featureReq.ApiSketch != null) feature.ApiSketch = featureReq.ApiSketch;
+        }
+
+        if (card is BugCard bug && request is UpdateBugCardRequest bugReq)
+        {
+            if (bugReq.BugUrl != null) bug.BugUrl = bugReq.BugUrl;
+        }
+
+        card.UpdatedAt = DateTimeOffset.UtcNow;
         await _db.SaveChangesAsync();
         return Ok(MapCardToDto(card));
     }
@@ -245,25 +267,44 @@ public class FeaturePlannerController : ControllerBase
         return Ok(result.Prd);
     }
 
-    private static FeatureCardDto MapCardToDto(FeatureCard card) => new()
+    private static FeatureCardDto MapCardToDto(FeatureCard card) => card switch
     {
-        Id = card.Id,
-        ColumnId = card.ColumnId,
-        Title = card.Title,
-        Summary = card.Summary,
-        Motivation = card.Motivation,
-        Requirements = card.Requirements,
-        OutOfScope = card.OutOfScope,
-        OpenQuestions = card.OpenQuestions,
-        StacksFrontend = card.StacksFrontend,
-        StacksBackend = card.StacksBackend,
-        StacksInfrastructure = card.StacksInfrastructure,
-        DataModel = card.DataModel,
-        ApiSketch = card.ApiSketch,
-        UiSketch = card.UiSketch,
-        SortOrder = card.SortOrder,
-        CreatedAt = card.CreatedAt,
-        UpdatedAt = card.UpdatedAt
+        BugCard bug => new BugCardDto
+        {
+            Id = bug.Id,
+            ColumnId = bug.ColumnId,
+            Title = bug.Title,
+            Summary = bug.Summary,
+            Requirements = bug.Requirements,
+            UiSketch = bug.UiSketch,
+            BugUrl = bug.BugUrl,
+            CardType = "Bug",
+            SortOrder = bug.SortOrder,
+            CreatedAt = bug.CreatedAt,
+            UpdatedAt = bug.UpdatedAt
+        },
+        FeatureOnlyCard feature => new FeatureCardDto
+        {
+            Id = feature.Id,
+            ColumnId = feature.ColumnId,
+            Title = feature.Title,
+            Summary = feature.Summary,
+            Motivation = feature.Motivation,
+            Requirements = feature.Requirements,
+            OutOfScope = feature.OutOfScope,
+            OpenQuestions = feature.OpenQuestions,
+            StacksFrontend = feature.StacksFrontend,
+            StacksBackend = feature.StacksBackend,
+            StacksInfrastructure = feature.StacksInfrastructure,
+            DataModel = feature.DataModel,
+            ApiSketch = feature.ApiSketch,
+            UiSketch = feature.UiSketch,
+            CardType = "Feature",
+            SortOrder = feature.SortOrder,
+            CreatedAt = feature.CreatedAt,
+            UpdatedAt = feature.UpdatedAt
+        },
+        _ => throw new InvalidOperationException($"Unknown card type: {card.GetType().Name}")
     };
 }
 
@@ -297,9 +338,15 @@ public class FeatureCardDto
     public string? DataModel { get; set; }
     public string? ApiSketch { get; set; }
     public string? UiSketch { get; set; }
+    public string CardType { get; set; } = "Feature";
     public int SortOrder { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
+}
+
+public class BugCardDto : FeatureCardDto
+{
+    public string BugUrl { get; set; } = string.Empty;
 }
 
 // Request models
@@ -329,14 +376,21 @@ public class CreateCardRequest
     public string? DataModel { get; set; }
     public string? ApiSketch { get; set; }
     public string? UiSketch { get; set; }
+    public string CardType { get; set; } = "Feature";
+    public string? BugUrl { get; set; }
 }
 
 public class UpdateCardRequest
 {
     public string? Title { get; set; }
     public string? Summary { get; set; }
-    public string? Motivation { get; set; }
     public string? Requirements { get; set; }
+    public string? UiSketch { get; set; }
+}
+
+public class UpdateFeatureCardRequest : UpdateCardRequest
+{
+    public string? Motivation { get; set; }
     public string? OutOfScope { get; set; }
     public string? OpenQuestions { get; set; }
     public bool? StacksFrontend { get; set; }
@@ -344,7 +398,11 @@ public class UpdateCardRequest
     public bool? StacksInfrastructure { get; set; }
     public string? DataModel { get; set; }
     public string? ApiSketch { get; set; }
-    public string? UiSketch { get; set; }
+}
+
+public class UpdateBugCardRequest : UpdateCardRequest
+{
+    public string? BugUrl { get; set; }
 }
 
 public class MoveCardRequest
