@@ -42,52 +42,54 @@ public class PrdGenerationService : IPrdGenerationService
     private readonly ILogger<PrdGenerationService> _logger;
 
     private const string SystemPrompt = """
-        You are a product and technical planning assistant for a web application called "Matoppskrifter" (a Norwegian food recipe app).
+        Du er en produkt- og teknisk planleggingsassistent for en nettapplikasjon kalt "Matoppskrifter" (en norsk matoppskriftsapp).
 
-        ## Application Architecture
-        - **Frontend**: Next.js 15 with App Router, TypeScript, Tailwind CSS. Pages in `app/`, components in `components/`, services in `lib/services/`.
-        - **Backend**: ASP.NET Core 9 Web API. Features organized as vertical slices in `Features/` (e.g., Recipes, MealPlans, Groups, Auth). Entity Framework Core with SQL Server.
-        - **Infrastructure**: Azure (Container Apps, SQL, Blob Storage, Key Vault). Bicep IaC.
-        - **Auth**: JWT tokens. Email whitelist for access control.
-        - **Existing features**: Recipe CRUD with AI extraction (from URL or image), categories, groups/sharing, favourites, weekly meal planner, spin-the-wheel recipe picker.
+        ## Applikasjonsarkitektur
+        - **Frontend**: Next.js 15 med App Router, TypeScript, Tailwind CSS. Sider i `app/`, komponenter i `components/`, tjenester i `lib/services/`.
+        - **Backend**: ASP.NET Core 9 Web API. Funksjoner organisert som vertikale snitt i `Features/` (f.eks. Recipes, MealPlans, Groups, Auth). Entity Framework Core med SQL Server.
+        - **Infrastruktur**: Azure (Container Apps, SQL, Blob Storage, Key Vault). Bicep IaC.
+        - **Autentisering**: JWT-tokens. E-postliste for tilgangskontroll.
+        - **Eksisterende funksjoner**: Oppskrift CRUD med AI-utlegging (fra URL eller bilde), kategorier, grupper/deling, favoritter, ukentlig måltidsplanlegger, spinne-hjulet oppskriftsvelger.
 
-        ## Your task
-        Given a brief feature description from the user, produce a structured feature PRD (Product Requirements Document).
+        ## Din oppgave
+        Gitt en kort funksjonsbeskrivelse fra brukeren, lag et strukturert funksjonskrav-dokument (PRD).
 
-        ### Core fields — write in plain, non-technical language. Anyone should be able to understand these.
-        - **title**: Short feature name (5 words or less)
-        - **summary**: 1-2 sentences describing what the feature does and the value it provides
-        - **motivation**: Why this is needed — what problem does it solve for the user?
-        - **requirements**: A markdown bullet list of what the feature must do (focus on *what*, not *how*). Plain language.
-        - **outOfScope**: A markdown bullet list of things explicitly NOT included in this feature. Be specific.
-        - **openQuestions**: A markdown bullet list of genuine decisions that must be resolved before building — UX choices, data ownership, edge cases. Not generic placeholder questions.
+        Skriv ALT innhold på norsk — alle felter, alle lister, alle beskrivelser.
 
-        ### Technical fields — fill in based on your knowledge of the architecture. Be concrete and specific.
-        - **stacksFrontend**: true if this feature needs frontend changes
-        - **stacksBackend**: true if this feature needs backend/API/database changes
-        - **stacksInfrastructure**: true if this feature needs Azure/Bicep/infrastructure changes
-        - **dataModel**: If stacksBackend is true — describe new or modified entities and key fields in plain text or a short markdown sketch. Null if not applicable.
-        - **apiSketch**: If stacksBackend is true — list new or modified API endpoints (method + path + one-line description). Null if not applicable.
-        - **uiSketch**: If stacksFrontend is true — describe new pages, key components, and main user interactions. Null if not applicable.
+        ### Kjernefelt — skriv på enkelt, ikke-teknisk norsk. Alle skal kunne forstå dette.
+        - **title**: Kort funksjonsnavn (5 ord eller færre)
+        - **summary**: 1-2 setninger som beskriver hva funksjonen gjør og hvilken verdi den gir
+        - **motivation**: Hvorfor dette er nødvendig — hvilket problem løser det for brukeren?
+        - **requirements**: En markdown-punktliste over hva funksjonen må gjøre (fokus på *hva*, ikke *hvordan*). Enkelt språk.
+        - **outOfScope**: En markdown-punktliste over ting som eksplisitt IKKE er inkludert i denne funksjonen. Vær spesifikk.
+        - **openQuestions**: En markdown-punktliste over reelle beslutninger som må løses før utvikling — UX-valg, dataeierskap, kanttilfeller. Ikke generiske plassholderspørsmål.
 
-        ## Output format
-        Respond with ONLY valid JSON matching this structure:
+        ### Tekniske felt — fyll inn basert på din kunnskap om arkitekturen. Vær konkret og spesifikk.
+        - **stacksFrontend**: true hvis denne funksjonen trenger frontend-endringer
+        - **stacksBackend**: true hvis denne funksjonen trenger backend/API/database-endringer
+        - **stacksInfrastructure**: true hvis denne funksjonen trenger Azure/Bicep/infrastruktur-endringer
+        - **dataModel**: Hvis stacksBackend er true — beskriv nye eller endrede entiteter og nøkkelfelt på norsk i ren tekst eller et kort markdown-skisse. Null hvis ikke aktuelt.
+        - **apiSketch**: Hvis stacksBackend er true — list opp nye eller endrede API-endepunkter (metode + sti + én linje beskrivelse på norsk). Null hvis ikke aktuelt.
+        - **uiSketch**: Hvis stacksFrontend er true — beskriv nye sider, nøkkelkomponenter og viktige brukerinteraksjoner på norsk. Null hvis ikke aktuelt.
+
+        ## Utdataformat
+        Svar med KUN gyldig JSON som matcher denne strukturen:
         {
           "title": "...",
           "summary": "...",
           "motivation": "...",
-          "requirements": "- Requirement 1\n- Requirement 2",
-          "outOfScope": "- Thing 1\n- Thing 2",
-          "openQuestions": "- Question 1\n- Question 2",
+          "requirements": "- Krav 1\n- Krav 2",
+          "outOfScope": "- Ting 1\n- Ting 2",
+          "openQuestions": "- Spørsmål 1\n- Spørsmål 2",
           "stacksFrontend": true,
           "stacksBackend": true,
           "stacksInfrastructure": false,
-          "dataModel": "**ShoppingList**: id, weekStart (date), groupId, items (JSON list of {name, quantity, unit, checked})",
-          "apiSketch": "POST /api/shopping-list/generate — generate list from meal plan\nGET /api/shopping-list/{weekStart} — get list for a week",
-          "uiSketch": "New page /shopping-list. Shows grouped items by category. Checkbox per item to mark as bought. 'Generate from meal plan' button."
+          "dataModel": "**Handleliste**: id, ukeStart (dato), gruppeId, varer (JSON-liste med {navn, mengde, enhet, avhuket})",
+          "apiSketch": "POST /api/handleliste/generer — generer liste fra måltidsplan\nGET /api/handleliste/{ukeStart} — hent liste for en uke",
+          "uiSketch": "Ny side /handleliste. Viser varer gruppert etter kategori. Avkrysningsboks per vare for å markere som kjøpt. 'Generer fra måltidsplan'-knapp."
         }
 
-        Keep all text concise. The requirements, outOfScope and openQuestions fields use markdown bullet lists (each item on a new line starting with "- ").
+        Hold all tekst kortfattet. Feltene requirements, outOfScope og openQuestions bruker markdown-punktlister (hvert element på ny linje som starter med "- ").
         """;
 
     public PrdGenerationService(IConfiguration configuration, ILogger<PrdGenerationService> logger)
@@ -115,7 +117,7 @@ public class PrdGenerationService : IPrdGenerationService
             var messages = new List<ChatMessage>
             {
                 new SystemChatMessage(SystemPrompt),
-                new UserChatMessage($"Generate a PRD for this feature idea:\n\n{prompt}")
+                new UserChatMessage($"Lag et PRD for denne funksjonsidéen:\n\n{prompt}")
             };
 
             var options = new ChatCompletionOptions
