@@ -108,6 +108,7 @@ public class GroupsController : ControllerBase
             Name = group.Name,
             OwnerEmail = group.Owner.Email,
             CreatedAt = group.CreatedAt,
+            MealPlanEnabled = group.MealPlanEnabled,
             Members = group.Members.Select(m => new GroupMemberDto
             {
                 UserId = m.UserId,
@@ -186,6 +187,27 @@ public class GroupsController : ControllerBase
         });
     }
 
+    // PATCH /api/groups/{id}/settings
+    [HttpPatch("{id:int}/settings")]
+    public async Task<IActionResult> UpdateGroupSettings(int id, [FromBody] UpdateGroupSettingsRequest request)
+    {
+        var email = GetCallerEmail();
+        if (email == null) return Unauthorized();
+
+        var group = await _db.Groups
+            .Include(g => g.Members).ThenInclude(m => m.User)
+            .FirstOrDefaultAsync(g => g.Id == id);
+        if (group == null) return NotFound();
+
+        var isMember = group.Members.Any(m => m.User.Email == email);
+        if (!isMember) return StatusCode(403, new { error = "You are not a member of this group" });
+
+        group.MealPlanEnabled = request.MealPlanEnabled;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
     // DELETE /api/groups/{id}/members/{userId}
     [HttpDelete("{id:int}/members/{userId:int}")]
     public async Task<IActionResult> RemoveMember(int id, int userId)
@@ -229,6 +251,7 @@ public class GroupDetailDto
     public string Name { get; set; } = string.Empty;
     public string OwnerEmail { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+    public bool MealPlanEnabled { get; set; }
     public List<GroupMemberDto> Members { get; set; } = new();
     public List<GroupRecipeDto> Recipes { get; set; } = new();
 }
@@ -260,4 +283,9 @@ public class RenameGroupRequest
 public class AddMemberRequest
 {
     public string Email { get; set; } = string.Empty;
+}
+
+public class UpdateGroupSettingsRequest
+{
+    public bool MealPlanEnabled { get; set; }
 }

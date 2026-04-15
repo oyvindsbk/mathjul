@@ -1,43 +1,92 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/context/AuthContext";
 import { groupsService, type GroupOption } from "@/lib/services/groups.service";
 import { mealPlanService, type MealPlan } from "@/lib/services/mealplan.service";
 import { WeekCalendar } from "@/components/ukesplanlegger/WeekCalendar";
-import { RecipePickerModal } from "@/components/ukesplanlegger/RecipePickerModal";
+import { MealTypeFilter, type MealType } from "@/components/ukesplanlegger/MealTypeFilter";
+import { RecipePickerPanel, RecipePickerSidebar } from "@/components/ukesplanlegger/RecipePickerPanel";
 import type { Recipe } from "@/lib/mock-data";
 import { formatDate } from "@/components/ukesplanlegger/DayCell";
 
 export function UkesplanleggerClient() {
   const { token, isLoading: authLoading } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [groups, setGroups] = useState<GroupOption[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const [mealPlanEnabled, setMealPlanEnabled] = useState(true);
   const [plans, setPlans] = useState<MealPlan[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(true);
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [pickingDate, setPickingDate] = useState<Date | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-
   const today = new Date();
   const [viewYear] = useState(today.getFullYear());
   const [viewMonth] = useState(today.getMonth());
 
+  const [activeDayDate, setActiveDayDate] = useState<Date | null>(today);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [aiLoading, setAiLoading] = useState(false);
+
+  // URL param: mealType
+  const mealTypeParam = (searchParams.get("mealType") as MealType) ?? "Middag";
+  const [activeMealType, setActiveMealType] = useState<MealType>(mealTypeParam);
+
+  // Sync groupId URL param → state on mount
+  useEffect(() => {
+    const groupIdParam = searchParams.get("groupId");
+    if (groupIdParam) {
+      setSelectedGroupId(Number(groupIdParam));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Load groups
   useEffect(() => {
     if (authLoading || !token) return;
     groupsService
       .getMyGroups(token)
       .then((gs) => {
         setGroups(gs);
-        if (gs.length > 0) setSelectedGroupId(gs[0].id);
+        // Only auto-select if no groupId in URL
+        const groupIdParam = searchParams.get("groupId");
+        if (!groupIdParam && gs.length > 0) {
+          setSelectedGroupId(gs[0].id);
+        }
       })
       .catch((e: unknown) => setError(e instanceof Error ? e.message : "Kunne ikke laste grupper"))
       .finally(() => setLoadingGroups(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [authLoading, token]);
+
+  // Fetch mealPlanEnabled when group changes
+  useEffect(() => {
+    if (!token || !selectedGroupId) return;
+    groupsService.getGroup(selectedGroupId, token)
+      .then((g) => setMealPlanEnabled(g.mealPlanEnabled))
+      .catch(() => setMealPlanEnabled(true));
+  }, [token, selectedGroupId]);
+
+  // Sync selectedGroupId to URL
+  const handleGroupChange = useCallback((id: number) => {
+    setSelectedGroupId(id);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("groupId", String(id));
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
+
+  // Sync mealType to URL
+  const handleMealTypeChange = useCallback((type: MealType) => {
+    setActiveMealType(type);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("mealType", type);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
 
   const fetchPlans = useCallback(async () => {
     if (!token || !selectedGroupId) return;
@@ -59,29 +108,60 @@ export function UkesplanleggerClient() {
   }, [fetchPlans]);
 
   async function handleRecipePicked(recipe: Recipe) {
-    if (!pickingDate || !token || !selectedGroupId) return;
-    const dateStr = formatDate(pickingDate);
-    setPickingDate(null);
+    if (!activeDayDate || !token || !selectedGroupId) return;
+    const dateStr = formatDate(activeDayDate);
 
     try {
-      const updated = await mealPlanService.setMealPlan(selectedGroupId, dateStr, recipe.id, token);
-      setPlans((prev) => {
-        const filtered = prev.filter((p) => p.date !== dateStr);
-        return [...filtered, updated];
-      });
+      const created = await mealPlanService.createMealPlan(selectedGroupId, dateStr, recipe.id, token);
+      // Use the active meal type filter as a fallback icon hint when the recipe has no category
+      const hasCat = created.recipe.mealTypeCategories?.length > 0;
+      const fallbackType = !hasCat && activeMealType !== "Alle" ? activeMealType : null;
+      const withCategory = hasCat || !fallbackType
+        ? created
+        : {
+            ...created,
+            recipe: {
+              ...created.recipe,
+              mealTypeCategory: fallbackType,
+              mealTypeCategories: [fallbackType],
+            },
+          };
+      setPlans((prev) => [...prev, withCategory]);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Kunne ikke lagre middag");
     }
   }
 
-  async function handleClearDay(date: Date) {
+  async function handleDeleteEntry(entryId: number) {
+    if (!token || !selectedGroupId) return;
+    try {
+      await mealPlanService.deleteMealPlan(selectedGroupId, entryId, token);
+      setPlans((prev) => prev.filter((p) => p.id !== entryId));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Kunne ikke fjerne middag");
+    }
+  }
+
+  async function handleDrop(date: Date, recipeId: number) {
     if (!token || !selectedGroupId) return;
     const dateStr = formatDate(date);
     try {
-      await mealPlanService.deleteMealPlan(selectedGroupId, dateStr, token);
-      setPlans((prev) => prev.filter((p) => p.date !== dateStr));
+      const created = await mealPlanService.createMealPlan(selectedGroupId, dateStr, recipeId, token);
+      const hasCat = created.recipe.mealTypeCategories?.length > 0;
+      const fallbackType = !hasCat && activeMealType !== "Alle" ? activeMealType : null;
+      const withCategory = hasCat || !fallbackType
+        ? created
+        : {
+            ...created,
+            recipe: {
+              ...created.recipe,
+              mealTypeCategory: fallbackType,
+              mealTypeCategories: [fallbackType],
+            },
+          };
+      setPlans((prev) => [...prev, withCategory]);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Kunne ikke fjerne middag");
+      setError(e instanceof Error ? e.message : "Kunne ikke legge til middag");
     }
   }
 
@@ -101,6 +181,11 @@ export function UkesplanleggerClient() {
     } finally {
       setAiLoading(false);
     }
+  }
+
+  function handleDayClick(date: Date) {
+    setActiveDayDate(date);
+    setSidebarOpen(true);
   }
 
   if (authLoading || loadingGroups) {
@@ -130,14 +215,22 @@ export function UkesplanleggerClient() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Ukesplanlegger</h1>
-            <p className="text-gray-500 text-sm mt-1">
-              Planlegg middager for uken. Høyreklikk på ukenummeret for å planlegge en hel uke.
-            </p>
+            {selectedGroup && (
+              <p className="text-gray-500 text-sm mt-1">
+                Gruppe:{" "}
+                <Link
+                  href={`/groups/${selectedGroup.id}`}
+                  className="font-medium text-blue-600 hover:underline"
+                >
+                  {selectedGroup.name}
+                </Link>
+              </p>
+            )}
           </div>
 
           {groups.length > 1 && (
@@ -145,19 +238,13 @@ export function UkesplanleggerClient() {
               <label className="text-sm text-gray-600 font-medium">Gruppe:</label>
               <select
                 value={selectedGroupId ?? ""}
-                onChange={(e) => setSelectedGroupId(Number(e.target.value))}
+                onChange={(e) => handleGroupChange(Number(e.target.value))}
                 className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {groups.map((g) => (
                   <option key={g.id} value={g.id}>{g.name}</option>
                 ))}
               </select>
-            </div>
-          )}
-
-          {groups.length === 1 && selectedGroup && (
-            <div className="text-sm text-gray-600">
-              Gruppe: <span className="font-medium">{selectedGroup.name}</span>
             </div>
           )}
         </div>
@@ -179,26 +266,66 @@ export function UkesplanleggerClient() {
           </div>
         )}
 
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-          {loadingPlans ? (
-            <div className="flex items-center justify-center py-16 text-gray-400">Laster plan...</div>
-          ) : (
-            <WeekCalendar
-              plans={plans}
-              onDayClick={setPickingDate}
-              onClearDay={handleClearDay}
-              onAiPlan={handleAiPlan}
-              highlightedDays={new Set()}
-            />
-          )}
-        </div>
+        {!mealPlanEnabled ? (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+            <p className="text-gray-500 text-lg mb-2">Ukesplanleggeren er deaktivert for denne gruppen.</p>
+            <p className="text-gray-400 text-sm">Gå til gruppeinnstillingene for å aktivere den.</p>
+            {selectedGroup && (
+              <Link
+                href={`/groups/${selectedGroup.id}`}
+                className="inline-block mt-4 px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+              >
+                Åpne gruppeinnstillinger
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="flex gap-6 items-start">
+            {/* Calendar */}
+            <div className="flex-1 min-w-0 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <MealTypeFilter value={activeMealType} onChange={handleMealTypeChange} />
+
+              {loadingPlans ? (
+                <div className="flex items-center justify-center py-16 text-gray-400">Laster plan...</div>
+              ) : (
+                <WeekCalendar
+                  plans={plans}
+                  selectedDate={activeDayDate}
+                  onDayClick={handleDayClick}
+                  onDeleteEntry={handleDeleteEntry}
+                  onAiPlan={handleAiPlan}
+                  onDrop={handleDrop}
+                  highlightedDays={new Set()}
+                />
+              )}
+            </div>
+
+            {/* Desktop sidebar */}
+            {sidebarOpen && token && (
+              <RecipePickerSidebar
+                token={token}
+                activeMealType={activeMealType}
+                onSelect={async (recipe) => {
+                  await handleRecipePicked(recipe);
+                }}
+                onClose={() => { setSidebarOpen(false); setActiveDayDate(null); }}
+              />
+            )}
+          </div>
+        )}
       </div>
 
-      {pickingDate && token && (
-        <RecipePickerModal
+      {/* Mobile modal */}
+      {sidebarOpen && token && (
+        <RecipePickerPanel
           token={token}
-          onSelect={handleRecipePicked}
-          onClose={() => setPickingDate(null)}
+          activeMealType={activeMealType}
+          onSelect={async (recipe) => {
+            await handleRecipePicked(recipe);
+            setSidebarOpen(false);
+            setActiveDayDate(null);
+          }}
+          onClose={() => { setSidebarOpen(false); setActiveDayDate(null); }}
         />
       )}
     </div>

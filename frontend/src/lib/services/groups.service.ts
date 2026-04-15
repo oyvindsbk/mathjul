@@ -25,6 +25,7 @@ export interface GroupDetail {
   name: string;
   ownerEmail: string;
   createdAt: string;
+  mealPlanEnabled: boolean;
   members: GroupMember[];
   recipes: GroupRecipe[];
 }
@@ -108,6 +109,16 @@ class GroupsService {
       credentials: 'include',
     });
     if (!res.ok) throw new Error(`Failed to remove member: ${res.statusText}`);
+  }
+
+  async updateGroupSettings(groupId: number, settings: { mealPlanEnabled: boolean }, token?: string): Promise<void> {
+    const res = await fetch(`${this.baseUrl}/api/groups/${groupId}/settings`, {
+      method: 'PATCH',
+      headers: this.headers(token),
+      credentials: 'include',
+      body: JSON.stringify(settings),
+    });
+    if (!res.ok) throw new Error(`Failed to update group settings: ${res.statusText}`);
   }
 }
 

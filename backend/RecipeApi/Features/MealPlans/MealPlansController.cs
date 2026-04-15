@@ -24,6 +24,17 @@ public class MealPlansController : ControllerBase
         await _db.GroupMembers
             .AnyAsync(m => m.GroupId == groupId && m.User.Email == email);
 
+    private static string? ResolveMealTypeCategory(Recipe recipe) =>
+        recipe.Categories
+            .FirstOrDefault(c => c.Group == "Måltidstype")
+            ?.Name;
+
+    private static List<string> ResolveMealTypeCategories(Recipe recipe) =>
+        recipe.Categories
+            .Where(c => c.Group == "Måltidstype")
+            .Select(c => c.Name)
+            .ToList();
+
     // GET /api/groups/{groupId}/mealplans?from=2026-04-14&to=2026-04-20
     [HttpGet]
     public async Task<ActionResult<List<MealPlanDto>>> GetMealPlans(
@@ -42,7 +53,7 @@ public class MealPlansController : ControllerBase
 
         var plans = await _db.MealPlans
             .Where(p => p.GroupId == groupId && p.Date >= fromDate && p.Date <= toDate)
-            .Include(p => p.Recipe)
+            .Include(p => p.Recipe).ThenInclude(r => r.Categories)
             .Select(p => new MealPlanDto
             {
                 Id = p.Id,
@@ -53,7 +64,15 @@ public class MealPlansController : ControllerBase
                 {
                     Id = p.Recipe.Id,
                     Title = p.Recipe.Title,
-                    ImageUrl = p.Recipe.ImageUrl
+                    ImageUrl = p.Recipe.ImageUrl,
+                    MealTypeCategory = p.Recipe.Categories
+                        .Where(c => c.Group == "Måltidstype")
+                        .Select(c => c.Name)
+                        .FirstOrDefault(),
+                    MealTypeCategories = p.Recipe.Categories
+                        .Where(c => c.Group == "Måltidstype")
+                        .Select(c => c.Name)
+                        .ToList()
                 },
                 CreatedByEmail = p.CreatedByEmail
             })
@@ -62,9 +81,9 @@ public class MealPlansController : ControllerBase
         return Ok(plans);
     }
 
-    // PUT /api/groups/{groupId}/mealplans/{date}
-    [HttpPut("{date}")]
-    public async Task<ActionResult<MealPlanDto>> SetMealPlan(int groupId, string date, [FromBody] SetMealPlanRequest request)
+    // POST /api/groups/{groupId}/mealplans
+    [HttpPost]
+    public async Task<ActionResult<MealPlanDto>> CreateMealPlan(int groupId, [FromBody] CreateMealPlanRequest request)
     {
         var email = GetCallerEmail();
         if (email == null) return Unauthorized();
@@ -72,55 +91,47 @@ public class MealPlansController : ControllerBase
         if (!await IsGroupMemberAsync(groupId, email))
             return StatusCode(403, new { error = "You are not a member of this group" });
 
-        if (!DateOnly.TryParse(date, out var parsedDate))
+        if (!DateOnly.TryParse(request.Date, out var parsedDate))
             return BadRequest(new { error = "Invalid date format. Use yyyy-MM-dd." });
 
-        var recipe = await _db.Recipes.FindAsync(request.RecipeId);
+        var recipe = await _db.Recipes
+            .Include(r => r.Categories)
+            .FirstOrDefaultAsync(r => r.Id == request.RecipeId);
         if (recipe == null) return NotFound(new { error = "Recipe not found" });
 
-        var existing = await _db.MealPlans
-            .FirstOrDefaultAsync(p => p.GroupId == groupId && p.Date == parsedDate);
-
-        if (existing != null)
+        var entry = new MealPlan
         {
-            existing.RecipeId = request.RecipeId;
-            existing.UpdatedAt = DateTime.UtcNow;
-        }
-        else
-        {
-            existing = new MealPlan
-            {
-                GroupId = groupId,
-                Date = parsedDate,
-                RecipeId = request.RecipeId,
-                CreatedByEmail = email,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
-            };
-            _db.MealPlans.Add(existing);
-        }
-
+            GroupId = groupId,
+            Date = parsedDate,
+            RecipeId = request.RecipeId,
+            CreatedByEmail = email,
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
+        };
+        _db.MealPlans.Add(entry);
         await _db.SaveChangesAsync();
 
         return Ok(new MealPlanDto
         {
-            Id = existing.Id,
-            GroupId = existing.GroupId,
-            Date = existing.Date.ToString("yyyy-MM-dd"),
-            RecipeId = existing.RecipeId,
+            Id = entry.Id,
+            GroupId = entry.GroupId,
+            Date = entry.Date.ToString("yyyy-MM-dd"),
+            RecipeId = entry.RecipeId,
             Recipe = new MealPlanRecipeDto
             {
                 Id = recipe.Id,
                 Title = recipe.Title,
-                ImageUrl = recipe.ImageUrl
+                ImageUrl = recipe.ImageUrl,
+                MealTypeCategory = ResolveMealTypeCategory(recipe),
+                MealTypeCategories = ResolveMealTypeCategories(recipe)
             },
-            CreatedByEmail = existing.CreatedByEmail
+            CreatedByEmail = entry.CreatedByEmail
         });
     }
 
-    // DELETE /api/groups/{groupId}/mealplans/{date}
-    [HttpDelete("{date}")]
-    public async Task<IActionResult> DeleteMealPlan(int groupId, string date)
+    // DELETE /api/groups/{groupId}/mealplans/{entryId}
+    [HttpDelete("{entryId:int}")]
+    public async Task<IActionResult> DeleteMealPlan(int groupId, int entryId)
     {
         var email = GetCallerEmail();
         if (email == null) return Unauthorized();
@@ -128,11 +139,8 @@ public class MealPlansController : ControllerBase
         if (!await IsGroupMemberAsync(groupId, email))
             return StatusCode(403, new { error = "You are not a member of this group" });
 
-        if (!DateOnly.TryParse(date, out var parsedDate))
-            return BadRequest(new { error = "Invalid date format. Use yyyy-MM-dd." });
-
         var plan = await _db.MealPlans
-            .FirstOrDefaultAsync(p => p.GroupId == groupId && p.Date == parsedDate);
+            .FirstOrDefaultAsync(p => p.GroupId == groupId && p.Id == entryId);
 
         if (plan == null) return NotFound();
 
@@ -157,6 +165,7 @@ public class MealPlansController : ControllerBase
 
         // Get all recipes visible to this group or public
         var recipes = await _db.Recipes
+            .Include(r => r.Categories)
             .Where(r => r.Visibility == "Public"
                 || (r.Visibility == "Group" && r.Groups.Any(rg => rg.GroupId == groupId)))
             .ToListAsync();
@@ -164,54 +173,44 @@ public class MealPlansController : ControllerBase
         if (recipes.Count == 0)
             return BadRequest(new { error = "No recipes available to plan with." });
 
-        // Pick 7 distinct recipes (or fewer if not enough)
-        var shuffled = recipes.OrderBy(_ => Guid.NewGuid()).Take(7).ToList();
+        // Shuffle recipes and cycle if fewer than 7 available
+        var shuffled = recipes.OrderBy(_ => Guid.NewGuid()).ToList();
 
         var result = new List<MealPlanDto>();
         var now = DateTime.UtcNow;
 
-        for (int i = 0; i < shuffled.Count; i++)
+        for (int i = 0; i < 7; i++)
         {
             var day = weekStart.AddDays(i);
-            var recipe = shuffled[i];
+            var recipe = shuffled[i % shuffled.Count];
 
-            var existing = await _db.MealPlans
-                .FirstOrDefaultAsync(p => p.GroupId == groupId && p.Date == day);
-
-            if (existing != null)
+            var entry = new MealPlan
             {
-                existing.RecipeId = recipe.Id;
-                existing.UpdatedAt = now;
-            }
-            else
-            {
-                existing = new MealPlan
-                {
-                    GroupId = groupId,
-                    Date = day,
-                    RecipeId = recipe.Id,
-                    CreatedByEmail = email,
-                    CreatedAt = now,
-                    UpdatedAt = now
-                };
-                _db.MealPlans.Add(existing);
-            }
-
+                GroupId = groupId,
+                Date = day,
+                RecipeId = recipe.Id,
+                CreatedByEmail = email,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+            _db.MealPlans.Add(entry);
             await _db.SaveChangesAsync();
 
             result.Add(new MealPlanDto
             {
-                Id = existing.Id,
-                GroupId = existing.GroupId,
-                Date = existing.Date.ToString("yyyy-MM-dd"),
+                Id = entry.Id,
+                GroupId = entry.GroupId,
+                Date = entry.Date.ToString("yyyy-MM-dd"),
                 RecipeId = recipe.Id,
                 Recipe = new MealPlanRecipeDto
                 {
                     Id = recipe.Id,
                     Title = recipe.Title,
-                    ImageUrl = recipe.ImageUrl
+                    ImageUrl = recipe.ImageUrl,
+                    MealTypeCategory = ResolveMealTypeCategory(recipe),
+                    MealTypeCategories = ResolveMealTypeCategories(recipe)
                 },
-                CreatedByEmail = existing.CreatedByEmail
+                CreatedByEmail = entry.CreatedByEmail
             });
         }
 
@@ -235,10 +234,13 @@ public class MealPlanRecipeDto
     public int Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? ImageUrl { get; set; }
+    public string? MealTypeCategory { get; set; }
+    public List<string> MealTypeCategories { get; set; } = new();
 }
 
-public class SetMealPlanRequest
+public class CreateMealPlanRequest
 {
+    public string Date { get; set; } = string.Empty;
     public int RecipeId { get; set; }
 }
 

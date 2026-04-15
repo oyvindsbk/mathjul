@@ -4,6 +4,8 @@ export interface MealPlanRecipe {
   id: number;
   title: string;
   imageUrl: string | null;
+  mealTypeCategory: string | null;
+  mealTypeCategories: string[];
 }
 
 export interface MealPlan {
@@ -32,23 +34,23 @@ class MealPlanService {
     return response.json();
   }
 
-  async setMealPlan(groupId: number, date: string, recipeId: number, token: string): Promise<MealPlan> {
-    const response = await fetch(`${appConfig.api.baseUrl}/api/groups/${groupId}/mealplans/${date}`, {
-      method: 'PUT',
+  async createMealPlan(groupId: number, date: string, recipeId: number, token: string): Promise<MealPlan> {
+    const response = await fetch(`${appConfig.api.baseUrl}/api/groups/${groupId}/mealplans`, {
+      method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ recipeId }),
+      body: JSON.stringify({ date, recipeId }),
     });
 
-    if (!response.ok) throw new Error(`Failed to set meal plan: ${response.statusText}`);
+    if (!response.ok) throw new Error(`Failed to create meal plan: ${response.statusText}`);
     return response.json();
   }
 
-  async deleteMealPlan(groupId: number, date: string, token: string): Promise<void> {
-    const response = await fetch(`${appConfig.api.baseUrl}/api/groups/${groupId}/mealplans/${date}`, {
+  async deleteMealPlan(groupId: number, entryId: number, token: string): Promise<void> {
+    const response = await fetch(`${appConfig.api.baseUrl}/api/groups/${groupId}/mealplans/${entryId}`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${token}`,

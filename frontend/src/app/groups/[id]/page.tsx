@@ -199,6 +199,52 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
           </section>
         )}
 
+        {/* Ukesplanlegger */}
+        <section className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold">Ukesplanlegger</h2>
+            <Link
+              href={`/ukesplanlegger?groupId=${group.id}`}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+            >
+              Åpne ukesplanlegger
+            </Link>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Ukesplanlegger aktiv</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {group.mealPlanEnabled
+                  ? "Ukesplanleggeren er aktivert for denne gruppen."
+                  : "Ukesplanleggeren er deaktivert for denne gruppen."}
+              </p>
+            </div>
+            <button
+              onClick={async () => {
+                if (!group) return;
+                const newValue = !group.mealPlanEnabled;
+                try {
+                  await groupsService.updateGroupSettings(group.id, { mealPlanEnabled: newValue }, token ?? undefined);
+                  setGroup((prev) => prev ? { ...prev, mealPlanEnabled: newValue } : prev);
+                } catch (e: unknown) {
+                  alert(e instanceof Error ? e.message : "Kunne ikke oppdatere innstilling");
+                }
+              }}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                group.mealPlanEnabled ? "bg-blue-600" : "bg-gray-300"
+              }`}
+              role="switch"
+              aria-checked={group.mealPlanEnabled}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  group.mealPlanEnabled ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+        </section>
+
         {/* Danger zone */}
         <section className="border border-red-200 rounded-lg p-6">
           <h2 className="text-lg font-semibold text-red-700 mb-3">Faresone</h2>

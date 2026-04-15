@@ -16,6 +16,8 @@ public class Group
 
     public DateTime CreatedAt { get; set; }
 
+    public bool MealPlanEnabled { get; set; } = true;
+
     public List<GroupMember> Members { get; set; } = new();
 }
 

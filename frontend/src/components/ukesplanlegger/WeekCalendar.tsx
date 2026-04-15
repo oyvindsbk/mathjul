@@ -19,9 +19,11 @@ interface ContextMenuState {
 
 interface WeekCalendarProps {
   plans: MealPlan[];
+  selectedDate: Date | null;
   onDayClick: (date: Date) => void;
-  onClearDay: (date: Date) => void;
+  onDeleteEntry: (entryId: number) => void;
   onAiPlan: (weekStart: Date) => void;
+  onDrop: (date: Date, recipeId: number) => void;
   highlightedDays: Set<string>;
 }
 
@@ -57,9 +59,11 @@ function getWeeksInMonth(year: number, month: number): Date[][] {
 
 export function WeekCalendar({
   plans,
+  selectedDate,
   onDayClick,
-  onClearDay,
+  onDeleteEntry,
   onAiPlan,
+  onDrop,
   highlightedDays,
 }: WeekCalendarProps) {
   const today = new Date();
@@ -68,8 +72,17 @@ export function WeekCalendar({
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null);
 
-  const plansByDate = new Map(plans.map((p) => [p.date, p]));
+  // Group plans by date — show all entries regardless of active filter
+  const plansByDate = new Map<string, MealPlan[]>();
+  for (const plan of plans) {
+    const existing = plansByDate.get(plan.date) ?? [];
+    plansByDate.set(plan.date, [...existing, plan]);
+  }
+
+  const selectedDateKey = selectedDate ? formatDate(selectedDate) : null;
+
   const weeks = getWeeksInMonth(viewYear, viewMonth);
 
   function prevMonth() {
@@ -85,6 +98,20 @@ export function WeekCalendar({
   function handleWeekContextMenu(e: React.MouseEvent, weekStart: Date) {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, weekStart });
+  }
+
+  function handleDragOver(e: React.DragEvent, date: Date) {
+    e.preventDefault();
+    setDragOverDate(formatDate(date));
+  }
+
+  function handleDrop(e: React.DragEvent, date: Date) {
+    e.preventDefault();
+    setDragOverDate(null);
+    const recipeId = parseInt(e.dataTransfer.getData("recipeId"), 10);
+    if (!isNaN(recipeId)) {
+      onDrop(date, recipeId);
+    }
   }
 
   return (
@@ -158,11 +185,16 @@ export function WeekCalendar({
                 <DayCell
                   key={key}
                   date={day}
-                  plan={plansByDate.get(key)}
+                  plans={plansByDate.get(key) ?? []}
                   isToday={isToday}
+                  isSelected={selectedDateKey === key}
                   isHighlighted={highlightedDays.has(key)}
+                  isDragOver={dragOverDate === key}
                   onClick={onDayClick}
-                  onClear={onClearDay}
+                  onDeleteEntry={onDeleteEntry}
+                  onDragOver={handleDragOver}
+                  onDragLeave={() => setDragOverDate(null)}
+                  onDrop={handleDrop}
                 />
               );
             })}

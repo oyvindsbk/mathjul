@@ -179,7 +179,7 @@ public class RecipeDbContext : DbContext
             entity.Property(e => e.CreatedByEmail).HasMaxLength(200);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
-            entity.HasIndex(e => new { e.GroupId, e.Date }).IsUnique();
+            entity.HasIndex(e => new { e.GroupId, e.Date });
             entity.HasOne(e => e.Group)
                   .WithMany()
                   .HasForeignKey(e => e.GroupId)
