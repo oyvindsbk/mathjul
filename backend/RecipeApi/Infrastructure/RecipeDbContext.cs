@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using RecipeApi.Features.Auth;
+using RecipeApi.Features.FeaturePlanner;
 using RecipeApi.Features.Groups;
 using RecipeApi.Features.MealPlans;
 using RecipeApi.Features.Recipes;
@@ -22,6 +23,8 @@ public class RecipeDbContext : DbContext
     public DbSet<RecipeGroup> RecipeGroups { get; set; }
     public DbSet<RecipeLike> RecipeLikes { get; set; }
     public DbSet<MealPlan> MealPlans { get; set; }
+    public DbSet<FeatureColumn> FeatureColumns { get; set; }
+    public DbSet<FeatureCard> FeatureCards { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -189,6 +192,44 @@ public class RecipeDbContext : DbContext
                   .HasForeignKey(e => e.RecipeId)
                   .OnDelete(DeleteBehavior.Restrict);
         });
+
+        // Configure FeatureColumn entity
+        modelBuilder.Entity<FeatureColumn>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+        });
+
+        // Configure FeatureCard entity
+        modelBuilder.Entity<FeatureCard>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Summary).IsRequired().HasColumnType("nvarchar(max)");
+            entity.Property(e => e.Motivation).IsRequired().HasColumnType("nvarchar(max)");
+            entity.Property(e => e.Requirements).IsRequired().HasColumnType("nvarchar(max)");
+            entity.Property(e => e.OutOfScope).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.OpenQuestions).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.DataModel).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.ApiSketch).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.UiSketch).HasColumnType("nvarchar(max)");
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
+            entity.HasOne(e => e.Column)
+                  .WithMany(c => c.Cards)
+                  .HasForeignKey(e => e.ColumnId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Seed default feature columns
+        modelBuilder.Entity<FeatureColumn>().HasData(
+            new FeatureColumn { Id = 1, Name = "New Feature", SortOrder = 0 },
+            new FeatureColumn { Id = 2, Name = "Planned Feature", SortOrder = 1 },
+            new FeatureColumn { Id = 3, Name = "In Progress", SortOrder = 2 },
+            new FeatureColumn { Id = 4, Name = "Done", SortOrder = 3 }
+        );
 
         // Seed initial data
         var seedDate = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc);

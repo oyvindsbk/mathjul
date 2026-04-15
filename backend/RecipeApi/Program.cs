@@ -109,6 +109,13 @@ if (!string.IsNullOrEmpty(aiEndpoint) && !string.IsNullOrEmpty(aiApiKey))
     builder.Services.AddScoped<IRecipeUrlProcessor, RecipeUrlProcessor>();
 else
     builder.Services.AddScoped<IRecipeUrlProcessor, DisabledRecipeUrlProcessor>();
+
+var prdEndpoint = builder.Configuration["AiFoundry:ImageEndpoint"] ?? aiEndpoint;
+var prdApiKey = builder.Configuration["AiFoundry:ImageApiKey"] ?? aiApiKey;
+if (!string.IsNullOrEmpty(prdEndpoint) && !string.IsNullOrEmpty(prdApiKey))
+    builder.Services.AddScoped<RecipeApi.Features.FeaturePlanner.IPrdGenerationService, RecipeApi.Features.FeaturePlanner.PrdGenerationService>();
+else
+    builder.Services.AddScoped<RecipeApi.Features.FeaturePlanner.IPrdGenerationService, RecipeApi.Features.FeaturePlanner.DisabledPrdGenerationService>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddSingleton<IAdminService, AdminService>();
 
