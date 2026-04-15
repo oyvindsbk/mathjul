@@ -19,7 +19,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useState } from 'react';
-import type { FeatureBoardData, FeatureCardData, FeatureColumnData } from '@/lib/services/feature-planner.service';
+import type { BugCardData, FeatureBoardData, FeatureCardData, FeatureColumnData } from '@/lib/services/feature-planner.service';
 
 interface KanbanBoardProps {
   board: FeatureBoardData;
@@ -214,6 +214,16 @@ function KanbanCard({ card, onClick }: KanbanCardProps) {
       </div>
       {card.summary && (
         <div className="text-slate-400 text-xs leading-relaxed line-clamp-2">{card.summary}</div>
+      )}
+      {isBug && (card as BugCardData).bugUrl && (
+        <div className="mt-1.5 flex items-center gap-1 min-w-0">
+          <svg className="w-3 h-3 text-slate-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          <span className="text-slate-500 text-xs truncate">
+            {(() => { try { return new URL((card as BugCardData).bugUrl).pathname; } catch { return (card as BugCardData).bugUrl; } })()}
+          </span>
+        </div>
       )}
       {hasTechnical && (
         <div className="flex gap-1 mt-2">
