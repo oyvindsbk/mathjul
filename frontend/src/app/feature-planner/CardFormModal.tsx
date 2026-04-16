@@ -137,8 +137,24 @@ export function CardFormModal({ columnId, card, onSaved, onClose, token }: CardF
     }
   }
 
+  const hasContent =
+    form.title.trim() !== '' ||
+    form.summary.trim() !== '' ||
+    form.motivation.trim() !== '' ||
+    form.requirements.trim() !== '' ||
+    form.outOfScope.trim() !== '' ||
+    form.openQuestions.trim() !== '' ||
+    form.dataModel.trim() !== '' ||
+    form.apiSketch.trim() !== '' ||
+    form.uiSketch.trim() !== '' ||
+    aiPrompt.trim() !== '';
+
+  function handleBackdropClick() {
+    if (!hasContent) onClose();
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={handleBackdropClick}>
       <div
         className="bg-slate-900 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl border border-slate-700"
         onClick={e => e.stopPropagation()}
