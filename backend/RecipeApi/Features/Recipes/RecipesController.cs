@@ -679,6 +679,10 @@ public class RecipesController : ControllerBase
         // Delete all blobs for this recipe (main image + all step images)
         await _blobStorage.DeleteByPrefixAsync($"recipes/{id}/");
 
+        // Remove meal plan entries referencing this recipe before deleting
+        var mealPlanEntries = await _context.MealPlans.Where(mp => mp.RecipeId == id).ToListAsync();
+        _context.MealPlans.RemoveRange(mealPlanEntries);
+
         _context.Recipes.Remove(recipe);
         await _context.SaveChangesAsync();
 
