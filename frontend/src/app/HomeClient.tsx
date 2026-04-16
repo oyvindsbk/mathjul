@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { AuthButton } from "@/components/AuthButton";
 import { HeartButton } from "@/components/HeartButton";
 import { useAuth } from "@/lib/context/AuthContext";
 import { recipeService } from "@/lib/services/recipe.service";
@@ -100,10 +99,6 @@ export default function HomeClient() {
             )}
           </div>
         )}
-
-        <div className="flex justify-end mb-8">
-          <AuthButton />
-        </div>
 
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">

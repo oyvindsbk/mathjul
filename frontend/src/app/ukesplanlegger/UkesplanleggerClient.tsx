@@ -202,7 +202,7 @@ export function UkesplanleggerClient() {
         <p className="text-gray-600 mb-4">Du er ikke med i noen grupper.</p>
         <p className="text-gray-500 text-sm">Opprett eller bli med i en gruppe for å bruke ukesplanleggeren.</p>
         <Link
-          href="/groups"
+          href="/grupper"
           className="inline-block mt-4 px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
         >
           Gå til grupper

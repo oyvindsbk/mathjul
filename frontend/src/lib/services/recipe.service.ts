@@ -156,6 +156,39 @@ class RecipeService {
   }
 
   /**
+   * Fetch the N newest recipes (sorted by createdAt desc)
+   */
+  async getNewestRecipes(token?: string, take = 8): Promise<Recipe[]> {
+    if (appConfig.mocking.enabled) {
+      return mockRecipes.slice(0, take);
+    }
+
+    const url = new URL(`${appConfig.api.baseUrl}/api/recipes/newest`);
+    url.searchParams.set('take', String(take));
+
+    const response = await this.fetchWithTimeout(url.toString(), appConfig.mocking.fetchTimeout, token);
+    if (!response.ok) throw new Error(`Failed to fetch newest recipes: ${response.statusText}`);
+    return await response.json();
+  }
+
+  /**
+   * Fetch the current user's favourite recipes
+   */
+  async getFavoriteRecipes(token?: string): Promise<Recipe[]> {
+    if (appConfig.mocking.enabled) {
+      return mockRecipes.filter((r) => r.isLikedByMe);
+    }
+
+    const response = await this.fetchWithTimeout(
+      `${appConfig.api.baseUrl}/api/recipes/liked`,
+      appConfig.mocking.fetchTimeout,
+      token
+    );
+    if (!response.ok) throw new Error(`Failed to fetch favorite recipes: ${response.statusText}`);
+    return await response.json();
+  }
+
+  /**
    * Get recipe IDs for static generation
    */
   async getRecipeIds(token?: string): Promise<number[]> {

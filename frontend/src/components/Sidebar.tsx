@@ -2,142 +2,172 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
+import { useAuth } from "@/lib/context/AuthContext";
+
+function getEmailFromToken(token: string): string | null {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.email || payload.sub || null;
+  } catch {
+    return null;
+  }
+}
+
+const mainNavLinks = [
+  { href: "/alle-oppskrifter", label: "Alle oppskrifter", testId: "nav-alle-oppskrifter" },
+  { href: "/favoritter", label: "Favoritter", testId: "nav-favoritter" },
+  { href: "/ukesplanlegger", label: "Ukesplanlegger", testId: "nav-ukesplanlegger" },
+  { href: "/grupper", label: "Grupper", testId: "nav-groups" },
+  { href: "/spin-the-wheel", label: "Spin the Wheel", testId: "nav-spin" },
+  { href: "/last-opp-oppskrift", label: "Last opp oppskrift", testId: "nav-upload" },
+];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { isAuthenticated, token, logout } = useAuth();
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const isActive = (path: string) => pathname === path;
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
+
+  const handleLogout = async () => {
+    setUserMenuOpen(false);
+    setMobileMenuOpen(false);
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5238";
+      await fetch(`${apiUrl}/api/auth/logout`, { method: "POST", credentials: "include" });
+    } catch (error) {
+      console.error("Failed to logout from backend:", error);
+    }
+    logout();
+    window.location.href = "/login";
+  };
+
+  const email = isAuthenticated && token ? getEmailFromToken(token) : null;
 
   return (
-    <aside className="w-64 bg-gradient-to-b from-slate-900 to-slate-800 text-white min-h-screen shadow-lg flex flex-col">
-      <div className="p-6">
-        <h1 className="text-2xl font-bold mb-2" data-testid="sidebar-title">Matoppskrifter</h1>
-      </div>
-
-      <nav className="mt-8 space-y-2 px-4 flex-1">
+    <header className="w-full bg-slate-900 text-white shadow-md">
+      {/* Main bar */}
+      <div className="flex items-stretch h-16">
+        {/* Logo */}
         <Link
           href="/"
-          data-testid="nav-home"
-          className={`block px-4 py-3 rounded-lg transition-colors duration-200 ${
-            isActive("/")
-              ? "bg-blue-600 text-white"
-              : "text-slate-300 hover:bg-slate-700"
-          }`}
+          data-testid="sidebar-title"
+          className="flex items-center px-6 gap-2 hover:bg-slate-800 transition-colors duration-200 shrink-0"
         >
-          <div className="flex items-center gap-3">
-            <svg
-              className="w-5 h-5"
-              fill="currentColor"
-              viewBox="0 0 20 20"
+          <span className="text-xl font-bold tracking-wide text-white">Matoppskrifter</span>
+        </Link>
+
+        {/* Desktop nav links */}
+        <nav className="hidden md:flex items-stretch flex-1 px-4">
+          {mainNavLinks.map(({ href, label, testId }) => (
+            <Link
+              key={href}
+              href={href}
+              data-testid={testId}
+              className={`flex items-center px-4 text-sm font-medium border-b-2 transition-colors duration-200 ${
+                isActive(href)
+                  ? "border-blue-400 text-blue-400"
+                  : "border-transparent text-slate-300 hover:text-white hover:border-slate-500"
+              }`}
             >
-              <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
-            </svg>
-            <span>Hjem</span>
-          </div>
-        </Link>
+              {label}
+            </Link>
+          ))}
+        </nav>
 
-        <Link
-          href="/spin"
-          data-testid="nav-spin"
-          className={`block px-4 py-3 rounded-lg transition-colors duration-200 ${
-            isActive("/spin")
-              ? "bg-blue-600 text-white"
-              : "text-slate-300 hover:bg-slate-700"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-lg">🎡</span>
-            <span>Spin the Wheel</span>
-          </div>
-        </Link>
-
-        <Link
-          href="/upload"
-          data-testid="nav-upload"
-          className={`block px-4 py-3 rounded-lg transition-colors duration-200 ${
-            isActive("/upload")
-              ? "bg-blue-600 text-white"
-              : "text-slate-300 hover:bg-slate-700"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            <span>Last opp oppskrift</span>
-          </div>
-        </Link>
-
-        <Link
-          href="/favoritter"
-          data-testid="nav-favoritter"
-          className={`block px-4 py-3 rounded-lg transition-colors duration-200 ${
-            isActive("/favoritter")
-              ? "bg-blue-600 text-white"
-              : "text-slate-300 hover:bg-slate-700"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
-            </svg>
-            <span>Favoritter</span>
-          </div>
-        </Link>
-
-        <Link
-          href="/groups"
-          data-testid="nav-groups"
-          className={`block px-4 py-3 rounded-lg transition-colors duration-200 ${
-            pathname.startsWith("/groups")
-              ? "bg-blue-600 text-white"
-              : "text-slate-300 hover:bg-slate-700"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            <span>Grupper</span>
-          </div>
-        </Link>
-
-        <Link
-          href="/ukesplanlegger"
-          data-testid="nav-ukesplanlegger"
-          className={`block px-4 py-3 rounded-lg transition-colors duration-200 ${
-            pathname.startsWith("/ukesplanlegger")
-              ? "bg-blue-600 text-white"
-              : "text-slate-300 hover:bg-slate-700"
-          }`}
-        >
-          <div className="flex items-center gap-3">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span>Ukesplanlegger</span>
-          </div>
-        </Link>
-      </nav>
-
-      <div className="px-4 pb-4 border-t border-slate-700/50 pt-4">
-        <Link
-          href="/feature-planner"
-          data-testid="nav-feature-planner"
-          className={`block px-4 py-3 rounded-lg transition-colors duration-200 ${
-            pathname.startsWith("/feature-planner")
-              ? "bg-blue-600 text-white"
-              : "text-slate-300 hover:bg-slate-700"
-          }`}
-        >
-          <div className="flex items-center gap-3">
+        {/* Right icons */}
+        <div className="flex items-stretch ml-auto">
+          {/* Feature Planner icon */}
+          <Link
+            href="/feature-planner"
+            data-testid="nav-feature-planner"
+            title="Feature Planner"
+            className={`flex items-center px-5 border-b-2 transition-colors duration-200 ${
+              isActive("/feature-planner")
+                ? "border-blue-400 text-blue-400"
+                : "border-transparent text-slate-300 hover:text-white hover:bg-slate-800"
+            }`}
+          >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
-            <span>Feature Planner</span>
-          </div>
-        </Link>
+          </Link>
+
+          {/* User menu */}
+          {isAuthenticated && token && (
+            <div className="relative flex items-stretch">
+              <button
+                onClick={() => setUserMenuOpen((o) => !o)}
+                title={email ?? "Bruker"}
+                className="flex items-center gap-2 px-5 border-b-2 border-transparent text-slate-300 hover:text-white hover:bg-slate-800 transition-colors duration-200"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className="hidden lg:block text-sm max-w-[140px] truncate">{email ?? "Bruker"}</span>
+              </button>
+
+              {userMenuOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setUserMenuOpen(false)} />
+                  <div className="absolute right-0 top-full mt-0 w-48 bg-slate-800 border border-slate-700 rounded-b-lg shadow-xl z-20 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-slate-700">
+                      <p className="text-xs text-slate-400 truncate">{email ?? "Bruker"}</p>
+                    </div>
+                    <button
+                      onClick={handleLogout}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-slate-700 transition-colors duration-200"
+                    >
+                      <svg className="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      Logg ut
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Mobile hamburger */}
+          <button
+            onClick={() => setMobileMenuOpen((o) => !o)}
+            className="md:hidden flex items-center px-5 border-b-2 border-transparent text-slate-300 hover:text-white hover:bg-slate-800 transition-colors duration-200"
+            aria-label="Åpne meny"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              {mobileMenuOpen
+                ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              }
+            </svg>
+          </button>
+        </div>
       </div>
-    </aside>
+
+      {/* Mobile dropdown */}
+      {mobileMenuOpen && (
+        <nav className="md:hidden border-t border-slate-700 bg-slate-800">
+          {mainNavLinks.map(({ href, label, testId }) => (
+            <Link
+              key={href}
+              href={href}
+              data-testid={testId}
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-6 py-3 text-sm font-medium border-l-4 transition-colors duration-200 ${
+                isActive(href)
+                  ? "border-blue-400 text-blue-400 bg-slate-900"
+                  : "border-transparent text-slate-300 hover:text-white hover:bg-slate-900"
+              }`}
+            >
+              {label}
+            </Link>
+          ))}
+        </nav>
+      )}
+    </header>
   );
 }

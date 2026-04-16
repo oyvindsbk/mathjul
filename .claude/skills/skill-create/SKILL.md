@@ -3,7 +3,7 @@ name: skill-create
 description: "Scaffolds a new agent skill directory and SKILL.md file following the agentskills.io specification. Use when creating a new skill, adding a reusable AI automation, writing a SKILL.md, defining a reusable workflow, or scaffolding a skill template."
 compatibility: Requires file system write access.
 metadata:
-  author: mimir
+  author: oyvind
   version: "1.0"
 ---
 
@@ -50,7 +50,7 @@ name: <skill-name>
 description: "<What this skill does and when to use it. Include semantic keywords. Keep to max 1024 chars.>"
 compatibility: <Optional — environment requirements>
 metadata:
-  author: mimir
+  author: oyvind
   version: "1.0"
 ---
 

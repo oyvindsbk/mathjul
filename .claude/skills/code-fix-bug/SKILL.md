@@ -2,7 +2,7 @@
 name: code-fix-bug
 description: "Diagnose and fix bugs in the mathjul codebase (frontend Next.js or backend ASP.NET Core). Use when a bug is reported, something is broken, an error is thrown, a test is failing, or behavior is unexpected. Covers root cause analysis, targeted fix, and inner loop verification."
 metadata:
-  author: mimir
+  author: oyvind
   version: "1.0"
 ---
 

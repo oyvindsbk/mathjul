@@ -44,12 +44,10 @@ export default function RootLayout({
                 </div>
               )}
 
-              <div className="flex">
-                <Sidebar />
-                <main className="flex-1">
-                  {children}
-                </main>
-              </div>
+              <Sidebar />
+              <main className="flex-1">
+                {children}
+              </main>
             </div>
           </ProtectedRoute>
           <BugReporter />

@@ -1,3 +1,3 @@
 'use client';
 
-export { default } from './HomeClient';
+export { default } from './HomeDashboard';

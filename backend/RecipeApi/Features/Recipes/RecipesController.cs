@@ -687,6 +687,48 @@ public class RecipesController : ControllerBase
 
     // ── Like / Favourite endpoints ─────────────────────────────────────────
 
+    [HttpGet("newest")]
+    public async Task<ActionResult<List<RecipeDto>>> GetNewestRecipes([FromQuery] int take = 8)
+    {
+        var callerEmail = GetCallerEmail();
+
+        IQueryable<Recipe> query = _context.Recipes
+            .Include(r => r.Categories)
+            .Include(r => r.Groups).ThenInclude(rg => rg.Group).ThenInclude(g => g.Members).ThenInclude(m => m.User);
+
+        query = ApplyVisibilityFilter(query, callerEmail);
+
+        var likedIds = callerEmail != null
+            ? await _context.RecipeLikes
+                .Where(l => l.UserEmail == callerEmail)
+                .Select(l => l.RecipeId)
+                .ToHashSetAsync()
+            : new HashSet<int>();
+
+        var recipes = await query
+            .OrderByDescending(r => r.CreatedAt)
+            .Take(take)
+            .Select(r => new RecipeDto
+            {
+                Id = r.Id,
+                Title = r.Title,
+                Description = r.Description,
+                CookTime = r.CookTime,
+                Difficulty = r.Difficulty,
+                ImageUrl = r.ImageUrl,
+                Visibility = r.Visibility,
+                OwnerEmail = r.OwnerEmail,
+                Categories = r.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
+                Groups = r.Groups.Select(rg => new GroupRefDto { Id = rg.GroupId, Name = rg.Group.Name }).ToList()
+            })
+            .ToListAsync();
+
+        foreach (var r in recipes)
+            r.IsLikedByMe = likedIds.Contains(r.Id);
+
+        return Ok(recipes);
+    }
+
     [HttpGet("liked")]
     public async Task<ActionResult<List<RecipeDto>>> GetLikedRecipes()
     {

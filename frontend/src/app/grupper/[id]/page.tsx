@@ -89,7 +89,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
     setIsDeleting(true);
     try {
       await groupsService.deleteGroup(group.id, token ?? undefined);
-      router.push("/groups");
+      router.push("/grupper");
     } catch (e: unknown) {
       alert(e instanceof Error ? e.message : "Kunne ikke slette gruppe");
       setIsDeleting(false);
@@ -103,7 +103,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   if (error || !group) {
     return (
       <div className="min-h-screen p-8">
-        <Link href="/groups" className="text-blue-600 hover:underline text-sm">← Tilbake til grupper</Link>
+        <Link href="/grupper" className="text-blue-600 hover:underline text-sm">← Tilbake til grupper</Link>
         <div className="mt-4 bg-red-100 border border-red-400 text-red-700 px-6 py-4 rounded-lg">
           {error ?? "Gruppe ikke funnet"}
         </div>
@@ -114,7 +114,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="min-h-screen p-8 sm:p-12">
       <main className="max-w-2xl mx-auto">
-        <Link href="/groups" className="text-sm text-blue-600 hover:underline">
+        <Link href="/grupper" className="text-sm text-blue-600 hover:underline">
           ← Tilbake til grupper
         </Link>
 

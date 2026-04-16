@@ -3,7 +3,7 @@ name: code-security-review
 description: "Reviews changed files for security vulnerabilities specific to this project. Checks authentication bypass, JWT handling, email whitelist enforcement, CORS misconfiguration, SSRF in URL processing, secret leakage, SQL injection, XSS, and infrastructure misconfigurations. Use when reviewing a PR, after implementing auth or API changes, before merging, or when asked to do a security review."
 compatibility: Requires git and file system read access.
 metadata:
-  author: mimir
+  author: oyvind
   version: "1.0"
 ---
 

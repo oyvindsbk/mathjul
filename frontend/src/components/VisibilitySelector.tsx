@@ -70,7 +70,7 @@ export default function VisibilitySelector({ value, groupIds, onChange }: Props)
           ) : groups.length === 0 ? (
             <p className="text-sm text-gray-500">
               Ingen grupper funnet.{" "}
-              <Link href="/groups" className="text-emerald-600 underline">
+              <Link href="/grupper" className="text-emerald-600 underline">
                 Opprett en gruppe
               </Link>
               .
