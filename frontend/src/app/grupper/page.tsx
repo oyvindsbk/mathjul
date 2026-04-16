@@ -42,13 +42,6 @@ export default function GroupsPage() {
   return (
     <div className="min-h-screen p-8 sm:p-12">
       <main className="max-w-2xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold">Grupper</h1>
-          <Link href="/" className="text-sm text-blue-600 hover:underline">
-            ← Tilbake
-          </Link>
-        </div>
-
         {/* Create group form */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6 mb-6">
           <h2 className="text-lg font-semibold mb-4">Opprett ny gruppe</h2>

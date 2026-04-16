@@ -100,20 +100,11 @@ export default function HomeClient() {
           </div>
         )}
 
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Matoppskrifter
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Oppdag deilige oppskrifter fra hele verden. Fra raske hverdagsmiddager til spesielle anledninger.
-          </p>
-          {error && (
-            <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
-              <p className="text-sm">Kunne ikke laste oppskrifter: {error}</p>
-            </div>
-          )}
-
-        </div>
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+            <p className="text-sm">Kunne ikke laste oppskrifter: {error}</p>
+          </div>
+        )}
 
         {/* Visibility filter tabs */}
         <div className="flex gap-2 mb-6 flex-wrap">

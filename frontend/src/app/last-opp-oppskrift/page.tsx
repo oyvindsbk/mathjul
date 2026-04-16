@@ -305,17 +305,8 @@ export default function UploadRecipe() {
   return (
     <div className="min-h-screen p-8 pb-20 gap-16 sm:p-20">
       <main className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">Importer oppskrift</h1>
-          <div className="flex items-center gap-4">
-            <AuthButton />
-            <button
-              onClick={() => router.push('/')}
-              className="px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
-            >
-              ← Tilbake til oppskrifter
-            </button>
-          </div>
+        <div className="flex justify-end mb-4">
+          <AuthButton />
         </div>
 
         {/* Tab Toggle */}

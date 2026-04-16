@@ -7,6 +7,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { NavigationProgress } from "@/components/NavigationProgress";
 import { appConfig } from "@/lib/config";
 import { BugReporter } from "@/components/BugReporter";
+import { BreadcrumbBar } from "@/components/BreadcrumbBar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -45,7 +46,8 @@ export default function RootLayout({
               )}
 
               <Sidebar />
-              <main className="flex-1">
+              <BreadcrumbBar />
+              <main>
                 {children}
               </main>
             </div>

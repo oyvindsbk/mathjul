@@ -48,7 +48,7 @@ export function Sidebar() {
   const email = isAuthenticated && token ? getEmailFromToken(token) : null;
 
   return (
-    <header className="w-full bg-slate-900 text-white shadow-md">
+    <header className="sticky top-0 z-50 w-full bg-slate-900 text-white shadow-md">
       {/* Main bar */}
       <div className="flex items-stretch h-16">
         {/* Logo */}
