@@ -35,14 +35,13 @@ export function Sidebar() {
   const handleLogout = async () => {
     setUserMenuOpen(false);
     setMobileMenuOpen(false);
+    logout();
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5238";
       await fetch(`${apiUrl}/api/auth/logout`, { method: "POST", credentials: "include" });
     } catch (error) {
       console.error("Failed to logout from backend:", error);
     }
-    logout();
-    window.location.href = "/login";
   };
 
   const email = isAuthenticated && token ? getEmailFromToken(token) : null;

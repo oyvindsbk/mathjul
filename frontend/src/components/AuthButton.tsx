@@ -15,6 +15,7 @@ export function AuthButton() {
   const { isAuthenticated, isLoading, token, logout } = useAuth();
 
   const handleLogout = async () => {
+    logout();
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5238';
       await fetch(`${apiUrl}/api/auth/logout`, {
@@ -24,8 +25,6 @@ export function AuthButton() {
     } catch (error) {
       console.error('Failed to logout from backend:', error);
     }
-    logout();
-    window.location.href = '/login';
   };
 
   if (isLoading) {
