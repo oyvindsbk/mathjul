@@ -214,8 +214,8 @@ export function UkesplanleggerClient() {
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
+      <div className="w-full max-w-[1600px] mx-auto">
         {/* Header */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -282,7 +282,7 @@ export function UkesplanleggerClient() {
         ) : (
           <div className="flex gap-6 items-start">
             {/* Calendar */}
-            <div className="flex-1 min-w-0 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex-1 min-w-0 bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6 xl:p-8">
               <MealTypeFilter value={activeMealType} onChange={handleMealTypeChange} />
 
               {loadingPlans ? (

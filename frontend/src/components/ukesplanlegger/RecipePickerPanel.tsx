@@ -344,7 +344,7 @@ export function RecipePickerPanel({ token, activeMealType, onSelect, onClose }: 
 // Sidebar content for desktop — used directly in layout
 export function RecipePickerSidebar({ token, activeMealType, onSelect, onClose }: RecipePickerPanelProps) {
   return (
-    <div className="hidden lg:flex flex-col w-72 xl:w-80 bg-white border border-gray-200 rounded-xl shadow-sm h-[calc(100vh-8rem)] sticky top-8 overflow-hidden">
+    <div className="hidden lg:flex flex-col w-72 xl:w-88 2xl:w-96 bg-white border border-gray-200 rounded-xl shadow-sm h-[calc(100vh-8rem)] sticky top-8 overflow-hidden flex-shrink-0">
       <div className="p-4 border-b flex items-center justify-between">
         <h2 className="text-base font-semibold text-gray-900">Velg oppskrift</h2>
         <button

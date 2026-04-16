@@ -41,7 +41,7 @@ export function DayCell({
   return (
     <div
       className={`
-        relative min-h-[80px] border rounded-lg p-1.5 cursor-pointer group transition-colors duration-150
+        relative min-h-[80px] lg:min-h-[110px] xl:min-h-[130px] border rounded-lg p-1.5 lg:p-2 cursor-pointer group transition-colors duration-150
         ${isToday
           ? "bg-blue-50 border-blue-400 shadow-sm"
           : isPast
@@ -60,7 +60,7 @@ export function DayCell({
       onDrop={(e) => onDrop(e, date)}
       title={plans.length > 0 ? `Legg til / endre` : "Legg til middag"}
     >
-      <div className={`text-xs font-semibold mb-1 ${isToday ? "text-blue-700" : isPast ? "text-gray-400" : "text-gray-700"}`}>
+      <div className={`text-xs lg:text-sm font-semibold mb-1 ${isToday ? "text-blue-700" : isPast ? "text-gray-400" : "text-gray-700"}`}>
         {date.getDate()}
       </div>
 
@@ -94,7 +94,7 @@ export function DayCell({
           })}
         </div>
       ) : (
-        <div className={`flex items-center justify-center h-10 transition-colors ${isPast ? "text-gray-200" : "text-gray-300 group-hover:text-blue-400"}`}>
+        <div className={`flex items-center justify-center h-10 lg:h-16 xl:h-20 transition-colors ${isPast ? "text-gray-200" : "text-gray-300 group-hover:text-blue-400"}`}>
           {isDragOver ? (
             <span className="text-green-400 text-lg">+</span>
           ) : (

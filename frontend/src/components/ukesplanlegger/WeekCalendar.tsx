@@ -127,7 +127,7 @@ export function WeekCalendar({
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h2 className="text-xl font-semibold text-gray-900">
+        <h2 className="text-xl xl:text-2xl font-semibold text-gray-900">
           {MONTH_NAMES[viewMonth]} {viewYear}
         </h2>
         <button
@@ -178,7 +178,7 @@ export function WeekCalendar({
               const isToday = day.getTime() === today.getTime();
 
               if (!isCurrentMonth) {
-                return <div key={key} className="min-h-[80px] bg-gray-50 rounded-lg border border-dashed border-gray-100" />;
+                return <div key={key} className="min-h-[80px] lg:min-h-[110px] xl:min-h-[130px] bg-gray-50 rounded-lg border border-dashed border-gray-100" />;
               }
 
               return (
