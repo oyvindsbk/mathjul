@@ -108,7 +108,6 @@ public class ExtractedRecipeDto
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
     public int? Servings { get; set; }
-    public string? Difficulty { get; set; }
     public List<int> SuggestedCategoryIds { get; set; } = new();
     public List<string> Tips { get; set; } = new();
 }
@@ -136,12 +135,6 @@ Extract the following fields:
 - prepTime: Preparation time in minutes. Extract from explicit text (e.g., ""Prep: 15 min""). If not stated, estimate from the instructions (e.g., chopping, marinating steps).
 - cookTime: Cooking time in minutes. Extract from explicit text (e.g., ""Cook: 30 min"", ""bake for 45 minutes""). If not stated, estimate from the instructions (e.g., simmering, baking, frying steps).
 - servings: Number of servings/portions (extract from text like ""Serves 4"", ""4 porsjoner"")
-- difficulty: Estimate the difficulty as exactly one of: ""Enkel"", ""Middels"", or ""Avansert"".
-  Use these guidelines:
-  - ""Enkel"": few ingredients (under 8), straightforward steps, common techniques (boiling, mixing, frying)
-  - ""Middels"": moderate ingredient count, some technique required (e.g., making a sauce, folding, timing multiple components)
-  - ""Avansert"": many ingredients or steps, advanced techniques (e.g., tempering chocolate, making pastry dough, precise temperatures, long fermentation)
-  If the recipe content is ambiguous, prefer ""Middels"".
 - tips: Array of strings with practical tips, substitutions, serving suggestions, or cook's notes from the recipe. Each tip is a standalone sentence in Norwegian. Use an empty array if no tips are present in the source.
 
 SECTIONS RULE: Only use ingredientSections/instructionSections if the source recipe explicitly has labeled sections or component headings. Do NOT invent section headings. For a simple recipe with one list of ingredients and one list of steps, use the flat ingredients/instructions fields.
@@ -168,7 +161,7 @@ Respond with ONLY valid JSON. Use the flat format for simple recipes:
   ""prepTime"": 15,
   ""cookTime"": 30,
   ""servings"": 4,
-  ""difficulty"": ""Middels"",
+
   ""tips"": [""Tip 1"", ""Tip 2""],
   ""suggestedCategoryIds"": []
 }
@@ -200,7 +193,7 @@ Use the sectioned format ONLY when the source recipe has explicit labeled sectio
   ""prepTime"": 15,
   ""cookTime"": 30,
   ""servings"": 4,
-  ""difficulty"": ""Middels"",
+
   ""tips"": [],
   ""suggestedCategoryIds"": []
 }";
@@ -227,7 +220,7 @@ Respond with ONLY valid JSON. Use the flat format for simple recipes:
   ""prepTime"": 15,
   ""cookTime"": 30,
   ""servings"": 4,
-  ""difficulty"": ""Middels"",
+
   ""tips"": [""Tip 1"", ""Tip 2""],
   ""suggestedCategoryIds"": [1, 3]
 }}
@@ -251,7 +244,7 @@ Use the sectioned format ONLY when the source recipe has explicit labeled sectio
   ""prepTime"": 15,
   ""cookTime"": 30,
   ""servings"": 4,
-  ""difficulty"": ""Middels"",
+
   ""tips"": [],
   ""suggestedCategoryIds"": [1, 3]
 }}";

@@ -49,7 +49,6 @@ export default function EditRecipeClient({ id }: { id: string }) {
           prepTime?: number;
           cookTimeMinutes?: number;
           servings?: number;
-          difficulty?: string;
           categories?: Category[];
           imageUrl?: string | null;
           visibility?: string;
@@ -69,7 +68,6 @@ export default function EditRecipeClient({ id }: { id: string }) {
           prepTime: detail.prepTime ?? null,
           cookTime: detail.cookTimeMinutes ?? null,
           servings: detail.servings ?? null,
-          difficulty: detail.difficulty ?? 'Medium',
           categoryIds: detail.categories?.map((c) => c.id) ?? [],
           tips: detail.tips ?? [],
         });

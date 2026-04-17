@@ -13,7 +13,6 @@ interface RecipeDetail extends Recipe {
   cookTime?: string;
   cookTimeMinutes?: number;
   prepTime?: number;
-  difficulty?: string;
   imageUrl?: string | null;
   servings?: number;
   ingredients?: StructuredIngredient[];
@@ -182,8 +181,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
           ) : null}
 
           <div className="p-8">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 mb-4">
                 <h1 className="text-4xl font-bold text-gray-900">{recipe.title}</h1>
                 <HeartButton
                   recipeId={recipe.id}
@@ -191,16 +189,6 @@ export default function RecipeDetailClient({ id }: { id: string }) {
                   token={token}
                   className="mt-1"
                 />
-              </div>
-              <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                recipe.difficulty === 'Easy'
-                  ? 'bg-green-100 text-green-800'
-                  : recipe.difficulty === 'Medium'
-                  ? 'bg-yellow-100 text-yellow-800'
-                  : 'bg-red-100 text-red-800'
-              }`}>
-                {recipe.difficulty}
-              </span>
             </div>
 
             <p className="text-lg text-gray-600 mb-4">{recipe.description}</p>

@@ -94,7 +94,7 @@ public class RecipesController : ControllerBase
                 Title = r.Title,
                 Description = r.Description,
                 CookTime = r.CookTime,
-                Difficulty = r.Difficulty,
+
                 ImageUrl = r.ImageUrl,
                 Visibility = r.Visibility,
                 OwnerEmail = r.OwnerEmail,
@@ -144,7 +144,7 @@ public class RecipesController : ControllerBase
             CookTime = recipe.CookTime,
             CookTimeMinutes = recipe.CookTimeMinutes,
             PrepTime = recipe.PrepTime,
-            Difficulty = recipe.Difficulty,
+
             ImageUrl = recipe.ImageUrl,
             Servings = recipe.Servings,
             Visibility = recipe.Visibility,
@@ -408,7 +408,6 @@ public class RecipesController : ControllerBase
             CookTimeMinutes = request.CookTime,
             CookTime = request.CookTime.HasValue ? $"{request.CookTime} min" : string.Empty,
             Servings = request.Servings,
-            Difficulty = request.Difficulty ?? "Medium",
             ImageUrl = request.MainImageUrl,
             SourceUrl = request.SourceUrl,
             SourceImageUrl = request.SourceImageUrl,
@@ -439,7 +438,7 @@ public class RecipesController : ControllerBase
             Title = recipe.Title,
             Description = recipe.Description,
             CookTime = recipe.CookTime,
-            Difficulty = recipe.Difficulty,
+
             ImageUrl = recipe.ImageUrl,
             Visibility = recipe.Visibility,
             OwnerEmail = recipe.OwnerEmail,
@@ -493,7 +492,6 @@ public class RecipesController : ControllerBase
         recipe.CookTimeMinutes = request.CookTime;
         recipe.CookTime = request.CookTime.HasValue ? $"{request.CookTime} min" : string.Empty;
         recipe.Servings = request.Servings;
-        recipe.Difficulty = request.Difficulty ?? "Medium";
         recipe.Tips = request.Tips ?? new List<string>();
         recipe.UpdatedAt = DateTime.UtcNow;
 
@@ -528,7 +526,7 @@ public class RecipesController : ControllerBase
             CookTime = recipe.CookTime,
             CookTimeMinutes = recipe.CookTimeMinutes,
             PrepTime = recipe.PrepTime,
-            Difficulty = recipe.Difficulty,
+
             ImageUrl = recipe.ImageUrl,
             Servings = recipe.Servings,
             Visibility = recipe.Visibility,
@@ -587,7 +585,7 @@ public class RecipesController : ControllerBase
         return Ok(new RecipeDto
         {
             Id = recipe.Id, Title = recipe.Title, Description = recipe.Description,
-            CookTime = recipe.CookTime, Difficulty = recipe.Difficulty, ImageUrl = recipe.ImageUrl
+            CookTime = recipe.CookTime, ImageUrl = recipe.ImageUrl
         });
     }
 
@@ -718,7 +716,7 @@ public class RecipesController : ControllerBase
                 Title = r.Title,
                 Description = r.Description,
                 CookTime = r.CookTime,
-                Difficulty = r.Difficulty,
+
                 ImageUrl = r.ImageUrl,
                 Visibility = r.Visibility,
                 OwnerEmail = r.OwnerEmail,
@@ -759,7 +757,7 @@ public class RecipesController : ControllerBase
                 Title = r.Title,
                 Description = r.Description,
                 CookTime = r.CookTime,
-                Difficulty = r.Difficulty,
+
                 ImageUrl = r.ImageUrl,
                 Visibility = r.Visibility,
                 OwnerEmail = r.OwnerEmail,
@@ -866,7 +864,6 @@ public class RecipesController : ControllerBase
         PrepTime = dto.PrepTime,
         CookTime = dto.CookTime,
         Servings = dto.Servings,
-        Difficulty = dto.Difficulty,
         SuggestedCategoryIds = dto.SuggestedCategoryIds,
         Tips = dto.Tips
     };
@@ -891,7 +888,6 @@ public class RecipeDto
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string CookTime { get; set; } = string.Empty;
-    public string Difficulty { get; set; } = string.Empty;
     public string? ImageUrl { get; set; }
     public string Visibility { get; set; } = "Public";
     public string? OwnerEmail { get; set; }
@@ -926,7 +922,6 @@ public class RecipeDetailDto
     public string CookTime { get; set; } = string.Empty;
     public int? CookTimeMinutes { get; set; }
     public int? PrepTime { get; set; }
-    public string Difficulty { get; set; } = string.Empty;
     public string? ImageUrl { get; set; }
     public int? Servings { get; set; }
     public string Visibility { get; set; } = "Public";
@@ -968,7 +963,6 @@ public class ExtractedRecipeResponse
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
     public int? Servings { get; set; }
-    public string? Difficulty { get; set; }
     public List<int> SuggestedCategoryIds { get; set; } = new();
     public List<string> Tips { get; set; } = new();
     /// <summary>Blob URL of the AI-extracted dish photo, if detected.</summary>
@@ -995,7 +989,6 @@ public class SaveExtractedRecipeRequest
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
     public int? Servings { get; set; }
-    public string? Difficulty { get; set; }
     public List<int>? CategoryIds { get; set; }
     public List<string>? Tips { get; set; }
     /// <summary>Pre-uploaded blob URL from AI dish extraction (pending blob path will be renamed on save).</summary>
@@ -1019,7 +1012,6 @@ public class UpdateRecipeRequest
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
     public int? Servings { get; set; }
-    public string? Difficulty { get; set; }
     public List<int>? CategoryIds { get; set; }
     public List<string>? Tips { get; set; }
     public string? Visibility { get; set; }

@@ -70,9 +70,6 @@ public class Recipe
     
     public int? Servings { get; set; }
     
-    [StringLength(20)]
-    public string Difficulty { get; set; } = string.Empty;
-    
     public string? ImageUrl { get; set; }
 
     public string? SourceUrl { get; set; }

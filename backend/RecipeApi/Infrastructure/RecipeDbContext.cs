@@ -116,7 +116,6 @@ public class RecipeDbContext : DbContext
             entity.Property(e => e.Title).IsRequired().HasMaxLength(200);
             entity.Property(e => e.Description).HasMaxLength(1000);
             entity.Property(e => e.CookTime).HasMaxLength(50);
-            entity.Property(e => e.Difficulty).HasMaxLength(20);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.Property(e => e.UpdatedAt).IsRequired();
             entity.Property(e => e.Visibility).IsRequired().HasMaxLength(20).HasDefaultValue("Public");
@@ -275,7 +274,7 @@ public class RecipeDbContext : DbContext
                 Title = "Classic Spaghetti Carbonara",
                 Description = "A traditional Italian pasta dish with eggs, cheese, and pancetta",
                 CookTime = "20 minutes",
-                Difficulty = "Medium",
+
                 ImageUrl = "/api/placeholder/300/200",
                 CreatedAt = seedDate,
                 UpdatedAt = seedDate
@@ -286,7 +285,7 @@ public class RecipeDbContext : DbContext
                 Title = "Chicken Tikka Masala",
                 Description = "Creamy and flavorful Indian curry with tender chicken pieces",
                 CookTime = "45 minutes",
-                Difficulty = "Medium",
+
                 ImageUrl = "/api/placeholder/300/200",
                 CreatedAt = seedDate,
                 UpdatedAt = seedDate
@@ -297,7 +296,7 @@ public class RecipeDbContext : DbContext
                 Title = "Chocolate Chip Cookies",
                 Description = "Soft and chewy homemade cookies with chocolate chips",
                 CookTime = "25 minutes",
-                Difficulty = "Easy",
+
                 ImageUrl = "/api/placeholder/300/200",
                 CreatedAt = seedDate,
                 UpdatedAt = seedDate
@@ -308,7 +307,7 @@ public class RecipeDbContext : DbContext
                 Title = "Caesar Salad",
                 Description = "Fresh romaine lettuce with homemade caesar dressing and croutons",
                 CookTime = "15 minutes",
-                Difficulty = "Easy",
+
                 ImageUrl = "/api/placeholder/300/200",
                 CreatedAt = seedDate,
                 UpdatedAt = seedDate

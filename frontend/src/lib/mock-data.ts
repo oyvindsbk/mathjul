@@ -42,7 +42,6 @@ export interface Recipe {
   cookTime?: string | null;
   cookTimeMinutes?: number | null;
   servings?: number | null;
-  difficulty?: string;
   imageUrl?: string | null;
   categories?: Category[];
   tips?: string[];
@@ -89,7 +88,7 @@ export const mockRecipes: Recipe[] = [
     prepTime: 10,
     cookTimeMinutes: 20,
     servings: 4,
-    difficulty: 'Medium',
+
     categories: [
       { id: 3, name: 'Middag', group: 'Måltidstype' },
       { id: 10, name: 'Middels', group: 'Vanskelighetsgrad' },
@@ -119,7 +118,7 @@ export const mockRecipes: Recipe[] = [
     prepTime: 70,
     cookTimeMinutes: 30,
     servings: 4,
-    difficulty: 'Medium',
+
     categories: [
       { id: 3, name: 'Middag', group: 'Måltidstype' },
       { id: 10, name: 'Middels', group: 'Vanskelighetsgrad' },
@@ -146,7 +145,7 @@ export const mockRecipes: Recipe[] = [
     prepTime: 15,
     cookTimeMinutes: 12,
     servings: 24,
-    difficulty: 'Easy',
+
     categories: [
       { id: 4, name: 'Dessert', group: 'Måltidstype' },
       { id: 6, name: 'Søtbakst', group: 'Måltidstype' },
@@ -172,7 +171,7 @@ export const mockRecipes: Recipe[] = [
     prepTime: 10,
     cookTimeMinutes: 0,
     servings: 2,
-    difficulty: 'Easy',
+
     categories: [
       { id: 2, name: 'Lunsj', group: 'Måltidstype' },
       { id: 9, name: 'Enkel', group: 'Vanskelighetsgrad' },
