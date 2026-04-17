@@ -149,6 +149,7 @@ public class RecipesController : ControllerBase
             Servings = recipe.Servings,
             Visibility = recipe.Visibility,
             OwnerEmail = recipe.OwnerEmail,
+            SourceUrl = recipe.SourceUrl,
             Ingredients = recipe.Ingredients.Select(i => new StructuredIngredientDto
             {
                 Quantity = i.Quantity,
@@ -531,6 +532,7 @@ public class RecipesController : ControllerBase
             Servings = recipe.Servings,
             Visibility = recipe.Visibility,
             OwnerEmail = recipe.OwnerEmail,
+            SourceUrl = recipe.SourceUrl,
             Ingredients = recipe.Ingredients.Select(i => new StructuredIngredientDto
             {
                 Quantity = i.Quantity,
@@ -935,6 +937,7 @@ public class RecipeDetailDto
     public List<string> Tips { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public string? SourceUrl { get; set; }
     public bool IsLikedByMe { get; set; }
 }
 

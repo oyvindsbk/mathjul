@@ -9,8 +9,8 @@ import type { Recipe } from "@/lib/mock-data";
 
 function RecipeCard({ recipe, token }: { recipe: Recipe; token: string | null }) {
   return (
-    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col w-56 shrink-0">
-      <div className="h-36 bg-gray-200 flex items-center justify-center overflow-hidden relative">
+    <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col">
+      <div className="h-48 bg-gray-200 flex items-center justify-center overflow-hidden relative">
         {recipe.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -19,7 +19,7 @@ function RecipeCard({ recipe, token }: { recipe: Recipe; token: string | null })
             className="w-full h-full object-contain bg-gray-100"
           />
         ) : (
-          <span className="text-gray-400 text-sm">Ingen bilde</span>
+          <span className="text-gray-500">Oppskrift bilde</span>
         )}
         <div className="absolute top-2 right-2 bg-white/80 rounded-full p-1 shadow">
           <HeartButton
@@ -29,14 +29,14 @@ function RecipeCard({ recipe, token }: { recipe: Recipe; token: string | null })
           />
         </div>
       </div>
-      <div className="p-3 flex flex-col flex-1">
-        <h3 className="text-sm font-semibold text-gray-900 mb-1 line-clamp-2">{recipe.title}</h3>
-        <p className="text-gray-500 text-xs mb-3 line-clamp-2 flex-1">
+      <div className="p-6 flex flex-col flex-1">
+        <h3 className="text-xl font-semibold text-gray-900 mb-2">{recipe.title}</h3>
+        <p className="text-gray-600 text-sm mb-3 flex-1">
           {recipe.description || "Ingen beskrivelse"}
         </p>
         <Link
           href={`/recipes/${recipe.id}`}
-          className="block w-full bg-blue-600 text-white py-1.5 px-3 rounded-md hover:bg-blue-700 transition-colors duration-200 text-center text-xs mt-auto"
+          className="block w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors duration-200 text-center mt-auto"
         >
           Vis oppskrift
         </Link>
@@ -45,7 +45,7 @@ function RecipeCard({ recipe, token }: { recipe: Recipe; token: string | null })
   );
 }
 
-function RecipeRow({
+function RecipeSection({
   title,
   recipes,
   loading,
@@ -62,9 +62,9 @@ function RecipeRow({
     <section className="mb-10">
       <h2 className="text-2xl font-bold text-gray-800 mb-4">{title}</h2>
       {loading ? (
-        <div className="flex gap-4 overflow-x-auto pb-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="w-56 shrink-0 h-64 bg-gray-100 rounded-lg animate-pulse" />
+            <div key={i} className="h-64 bg-gray-100 rounded-lg animate-pulse" />
           ))}
         </div>
       ) : recipes.length === 0 ? (
@@ -72,7 +72,7 @@ function RecipeRow({
           <p className="text-gray-400 text-sm">{emptyMessage}</p>
         </div>
       ) : (
-        <div className="flex gap-4 overflow-x-auto pb-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {recipes.map((recipe) => (
             <RecipeCard key={recipe.id} recipe={recipe} token={token} />
           ))}
@@ -109,7 +109,7 @@ export default function HomeDashboard() {
     <div className="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
 
-        <RecipeRow
+        <RecipeSection
           title="❤️ Favoritter"
           recipes={favorites}
           loading={loadingFavorites}
@@ -117,7 +117,7 @@ export default function HomeDashboard() {
           token={token}
         />
 
-        <RecipeRow
+        <RecipeSection
           title="Nyeste oppskrifter"
           recipes={newest}
           loading={loadingNewest}
