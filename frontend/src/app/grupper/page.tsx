@@ -79,7 +79,7 @@ export default function GroupsPage() {
             {groups.map((g) => (
               <li key={g.id}>
                 <Link
-                  href={`/groups/${g.id}`}
+                  href={`/grupper/${g.id}`}
                   className="flex items-center justify-between p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg hover:border-emerald-400 transition-colors"
                 >
                   <div>

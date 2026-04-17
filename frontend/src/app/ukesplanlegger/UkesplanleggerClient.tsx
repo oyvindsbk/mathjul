@@ -224,7 +224,7 @@ export function UkesplanleggerClient() {
               <p className="text-gray-500 text-sm mt-1">
                 Gruppe:{" "}
                 <Link
-                  href={`/groups/${selectedGroup.id}`}
+                  href={`/grupper/${selectedGroup.id}`}
                   className="font-medium text-blue-600 hover:underline"
                 >
                   {selectedGroup.name}
@@ -272,7 +272,7 @@ export function UkesplanleggerClient() {
             <p className="text-gray-400 text-sm">Gå til gruppeinnstillingene for å aktivere den.</p>
             {selectedGroup && (
               <Link
-                href={`/groups/${selectedGroup.id}`}
+                href={`/grupper/${selectedGroup.id}`}
                 className="inline-block mt-4 px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
               >
                 Åpne gruppeinnstillinger
