@@ -5,6 +5,7 @@
  * on network or API errors.
  */
 
+import { apiFetch } from '../api-fetch';
 import { appConfig } from '../config';
 import { mockCategories, mockRecipes, type Category, type IngredientSection, type InstructionSection, type InstructionStep, type Recipe, type StructuredIngredient } from '../mock-data';
 
@@ -246,7 +247,7 @@ class RecipeService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    return fetch(url, {
+    return apiFetch(url, {
       method,
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -259,7 +260,7 @@ class RecipeService {
   private fetchMultipart(url: string, method: string, body: FormData, token?: string): Promise<Response> {
     const headers: Record<string, string> = { 'Accept': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    return fetch(url, { method, headers, body });
+    return apiFetch(url, { method, headers, body });
   }
 
   /**
@@ -278,7 +279,7 @@ class RecipeService {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    return fetch(url, {
+    return apiFetch(url, {
       signal: controller.signal,
       headers,
     })

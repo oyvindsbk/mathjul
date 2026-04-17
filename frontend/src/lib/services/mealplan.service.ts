@@ -1,3 +1,4 @@
+import { apiFetch } from '../api-fetch';
 import { appConfig } from '../config';
 
 export interface MealPlanRecipe {
@@ -23,7 +24,7 @@ class MealPlanService {
     url.searchParams.set('from', from);
     url.searchParams.set('to', to);
 
-    const response = await fetch(url.toString(), {
+    const response = await apiFetch(url.toString(), {
       headers: {
         Accept: 'application/json',
         Authorization: `Bearer ${token}`,
@@ -35,7 +36,7 @@ class MealPlanService {
   }
 
   async createMealPlan(groupId: number, date: string, recipeId: number, token: string): Promise<MealPlan> {
-    const response = await fetch(`${appConfig.api.baseUrl}/api/groups/${groupId}/mealplans`, {
+    const response = await apiFetch(`${appConfig.api.baseUrl}/api/groups/${groupId}/mealplans`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -50,7 +51,7 @@ class MealPlanService {
   }
 
   async deleteMealPlan(groupId: number, entryId: number, token: string): Promise<void> {
-    const response = await fetch(`${appConfig.api.baseUrl}/api/groups/${groupId}/mealplans/${entryId}`, {
+    const response = await apiFetch(`${appConfig.api.baseUrl}/api/groups/${groupId}/mealplans/${entryId}`, {
       method: 'DELETE',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -63,7 +64,7 @@ class MealPlanService {
   }
 
   async generateAiPlan(groupId: number, weekStart: string, token: string): Promise<MealPlan[]> {
-    const response = await fetch(`${appConfig.api.baseUrl}/api/groups/${groupId}/mealplans/ai-plan`, {
+    const response = await apiFetch(`${appConfig.api.baseUrl}/api/groups/${groupId}/mealplans/ai-plan`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

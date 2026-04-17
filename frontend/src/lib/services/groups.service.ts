@@ -1,3 +1,4 @@
+import { apiFetch } from '../api-fetch';
 import { appConfig } from '../config';
 
 export interface GroupOption {
@@ -40,7 +41,7 @@ class GroupsService {
   }
 
   async getMyGroups(token?: string): Promise<GroupOption[]> {
-    const res = await fetch(`${this.baseUrl}/api/groups`, {
+    const res = await apiFetch(`${this.baseUrl}/api/groups`, {
       headers: this.headers(token),
       credentials: 'include',
     });
@@ -49,7 +50,7 @@ class GroupsService {
   }
 
   async getGroup(id: number, token?: string): Promise<GroupDetail> {
-    const res = await fetch(`${this.baseUrl}/api/groups/${id}`, {
+    const res = await apiFetch(`${this.baseUrl}/api/groups/${id}`, {
       headers: this.headers(token),
       credentials: 'include',
     });
@@ -58,7 +59,7 @@ class GroupsService {
   }
 
   async createGroup(name: string, token?: string): Promise<GroupOption> {
-    const res = await fetch(`${this.baseUrl}/api/groups`, {
+    const res = await apiFetch(`${this.baseUrl}/api/groups`, {
       method: 'POST',
       headers: this.headers(token),
       credentials: 'include',
@@ -69,7 +70,7 @@ class GroupsService {
   }
 
   async renameGroup(id: number, name: string, token?: string): Promise<GroupOption> {
-    const res = await fetch(`${this.baseUrl}/api/groups/${id}`, {
+    const res = await apiFetch(`${this.baseUrl}/api/groups/${id}`, {
       method: 'PUT',
       headers: this.headers(token),
       credentials: 'include',
@@ -80,7 +81,7 @@ class GroupsService {
   }
 
   async deleteGroup(id: number, token?: string): Promise<void> {
-    const res = await fetch(`${this.baseUrl}/api/groups/${id}`, {
+    const res = await apiFetch(`${this.baseUrl}/api/groups/${id}`, {
       method: 'DELETE',
       headers: this.headers(token),
       credentials: 'include',
@@ -89,7 +90,7 @@ class GroupsService {
   }
 
   async addMember(groupId: number, email: string, token?: string): Promise<GroupMember> {
-    const res = await fetch(`${this.baseUrl}/api/groups/${groupId}/members`, {
+    const res = await apiFetch(`${this.baseUrl}/api/groups/${groupId}/members`, {
       method: 'POST',
       headers: this.headers(token),
       credentials: 'include',
@@ -103,7 +104,7 @@ class GroupsService {
   }
 
   async removeMember(groupId: number, userId: number, token?: string): Promise<void> {
-    const res = await fetch(`${this.baseUrl}/api/groups/${groupId}/members/${userId}`, {
+    const res = await apiFetch(`${this.baseUrl}/api/groups/${groupId}/members/${userId}`, {
       method: 'DELETE',
       headers: this.headers(token),
       credentials: 'include',
@@ -112,7 +113,7 @@ class GroupsService {
   }
 
   async updateGroupSettings(groupId: number, settings: { mealPlanEnabled: boolean }, token?: string): Promise<void> {
-    const res = await fetch(`${this.baseUrl}/api/groups/${groupId}/settings`, {
+    const res = await apiFetch(`${this.baseUrl}/api/groups/${groupId}/settings`, {
       method: 'PATCH',
       headers: this.headers(token),
       credentials: 'include',

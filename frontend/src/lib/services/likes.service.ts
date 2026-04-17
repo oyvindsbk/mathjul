@@ -1,9 +1,10 @@
+import { apiFetch } from '../api-fetch';
 import { appConfig } from '../config';
 import type { Recipe } from '../mock-data';
 
 class LikesService {
   async likeRecipe(id: number, token: string): Promise<void> {
-    const response = await fetch(`${appConfig.api.baseUrl}/api/recipes/${id}/like`, {
+    const response = await apiFetch(`${appConfig.api.baseUrl}/api/recipes/${id}/like`, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -17,7 +18,7 @@ class LikesService {
   }
 
   async unlikeRecipe(id: number, token: string): Promise<void> {
-    const response = await fetch(`${appConfig.api.baseUrl}/api/recipes/${id}/like`, {
+    const response = await apiFetch(`${appConfig.api.baseUrl}/api/recipes/${id}/like`, {
       method: 'DELETE',
       headers: {
         Accept: 'application/json',
@@ -31,7 +32,7 @@ class LikesService {
   }
 
   async getLikedRecipes(token: string): Promise<Recipe[]> {
-    const response = await fetch(`${appConfig.api.baseUrl}/api/recipes/liked`, {
+    const response = await apiFetch(`${appConfig.api.baseUrl}/api/recipes/liked`, {
       headers: {
         Accept: 'application/json',
         Authorization: `Bearer ${token}`,

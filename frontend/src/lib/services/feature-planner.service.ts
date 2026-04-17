@@ -1,3 +1,4 @@
+import { apiFetch } from '../api-fetch';
 import { appConfig } from '../config';
 
 export type CardType = 'Feature' | 'Bug';
@@ -106,7 +107,7 @@ class FeaturePlannerService {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
-    const res = await fetch(`${this.baseUrl}${path}`, { ...options, headers });
+    const res = await apiFetch(`${this.baseUrl}${path}`, { ...options, headers });
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       throw new Error(`Feature planner API error ${res.status}: ${body}`);

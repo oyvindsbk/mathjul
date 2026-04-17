@@ -42,7 +42,7 @@ public class TokenService : ITokenService
             issuer: _configuration["Jwt:Issuer"] ?? "RecipeApi",
             audience: _configuration["Jwt:Audience"] ?? "RecipeFrontend",
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(24),
+            expires: DateTime.UtcNow.AddDays(7),
             signingCredentials: credentials
         );
 

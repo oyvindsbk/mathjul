@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { apiFetch } from "../api-fetch";
 
 interface AuthContextType {
   token: string | null;
@@ -18,7 +19,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const ensureUser = (t: string) => {
     const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5238";
-    fetch(`${apiBase}/api/auth/ensure-user`, {
+    apiFetch(`${apiBase}/api/auth/ensure-user`, {
       method: "POST",
       headers: { Authorization: `Bearer ${t}` },
       credentials: "include",
