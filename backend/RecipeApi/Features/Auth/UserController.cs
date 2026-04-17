@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Infrastructure;
@@ -9,7 +8,6 @@ public record UpdateUserRequest(string? Name, string? Nickname);
 
 [ApiController]
 [Route("api/user")]
-[Authorize]
 public class UserController : ControllerBase
 {
     private readonly RecipeDbContext _db;
