@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using RecipeApi.Features.Matkasse;
 using RecipeApi.Features.Recipes;
 using RecipeApi.Infrastructure;
 
@@ -53,32 +54,42 @@ public class MealPlansController : ControllerBase
 
         var plans = await _db.MealPlans
             .Where(p => p.GroupId == groupId && p.Date >= fromDate && p.Date <= toDate)
-            .Include(p => p.Recipe).ThenInclude(r => r.Categories)
-            .Select(p => new MealPlanDto
-            {
-                Id = p.Id,
-                GroupId = p.GroupId,
-                Date = p.Date.ToString("yyyy-MM-dd"),
-                RecipeId = p.RecipeId,
-                Recipe = new MealPlanRecipeDto
-                {
-                    Id = p.Recipe.Id,
-                    Title = p.Recipe.Title,
-                    ImageUrl = p.Recipe.ImageUrl,
-                    MealTypeCategory = p.Recipe.Categories
-                        .Where(c => c.Group == "Måltidstype")
-                        .Select(c => c.Name)
-                        .FirstOrDefault(),
-                    MealTypeCategories = p.Recipe.Categories
-                        .Where(c => c.Group == "Måltidstype")
-                        .Select(c => c.Name)
-                        .ToList()
-                },
-                CreatedByEmail = p.CreatedByEmail
-            })
+            .Include(p => p.Recipe).ThenInclude(r => r!.Categories)
+            .Include(p => p.MatkasseRecipe)
             .ToListAsync();
 
-        return Ok(plans);
+        var planDtos = plans.Select(p => new MealPlanDto
+        {
+            Id = p.Id,
+            GroupId = p.GroupId,
+            Date = p.Date.ToString("yyyy-MM-dd"),
+            RecipeId = p.RecipeId,
+            Recipe = p.Recipe == null ? null : new MealPlanRecipeDto
+            {
+                Id = p.Recipe.Id,
+                Title = p.Recipe.Title,
+                ImageUrl = p.Recipe.ImageUrl,
+                MealTypeCategory = p.Recipe.Categories
+                    .Where(c => c.Group == "Måltidstype")
+                    .Select(c => c.Name)
+                    .FirstOrDefault(),
+                MealTypeCategories = p.Recipe.Categories
+                    .Where(c => c.Group == "Måltidstype")
+                    .Select(c => c.Name)
+                    .ToList()
+            },
+            MatkasseRecipe = p.MatkasseRecipe == null ? null : new MealPlanMatkasseDto
+            {
+                Id = p.MatkasseRecipe.Id,
+                Tittel = p.MatkasseRecipe.Tittel,
+                Beskrivelse = p.MatkasseRecipe.Beskrivelse,
+                Leverandor = p.MatkasseRecipe.Leverandor,
+                ImageUrl = p.MatkasseRecipe.ImageUrl
+            },
+            CreatedByEmail = p.CreatedByEmail
+        }).ToList();
+
+        return Ok(planDtos);
     }
 
     // POST /api/groups/{groupId}/mealplans
@@ -94,16 +105,30 @@ public class MealPlansController : ControllerBase
         if (!DateOnly.TryParse(request.Date, out var parsedDate))
             return BadRequest(new { error = "Invalid date format. Use yyyy-MM-dd." });
 
-        var recipe = await _db.Recipes
-            .Include(r => r.Categories)
-            .FirstOrDefaultAsync(r => r.Id == request.RecipeId);
-        if (recipe == null) return NotFound(new { error = "Recipe not found" });
+        if (request.RecipeId == null && request.MatkasseRecipeId == null)
+            return BadRequest(new { error = "Either recipeId or matkasseRecipeId must be provided" });
+
+        Recipe? recipe = null;
+        RecipeApi.Features.Matkasse.MatkasseRecipe? matkasseRecipe = null;
+
+        if (request.RecipeId != null)
+        {
+            recipe = await _db.Recipes.Include(r => r.Categories).FirstOrDefaultAsync(r => r.Id == request.RecipeId);
+            if (recipe == null) return NotFound(new { error = "Recipe not found" });
+        }
+
+        if (request.MatkasseRecipeId != null)
+        {
+            matkasseRecipe = await _db.MatkasseRecipes.FindAsync(request.MatkasseRecipeId);
+            if (matkasseRecipe == null) return NotFound(new { error = "Matkasse recipe not found" });
+        }
 
         var entry = new MealPlan
         {
             GroupId = groupId,
             Date = parsedDate,
             RecipeId = request.RecipeId,
+            MatkasseRecipeId = request.MatkasseRecipeId,
             CreatedByEmail = email,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -117,13 +142,22 @@ public class MealPlansController : ControllerBase
             GroupId = entry.GroupId,
             Date = entry.Date.ToString("yyyy-MM-dd"),
             RecipeId = entry.RecipeId,
-            Recipe = new MealPlanRecipeDto
+            Recipe = recipe == null ? null : new MealPlanRecipeDto
             {
                 Id = recipe.Id,
                 Title = recipe.Title,
                 ImageUrl = recipe.ImageUrl,
                 MealTypeCategory = ResolveMealTypeCategory(recipe),
                 MealTypeCategories = ResolveMealTypeCategories(recipe)
+            },
+            MatkasseRecipeId = entry.MatkasseRecipeId,
+            MatkasseRecipe = matkasseRecipe == null ? null : new MealPlanMatkasseDto
+            {
+                Id = matkasseRecipe.Id,
+                Tittel = matkasseRecipe.Tittel,
+                Beskrivelse = matkasseRecipe.Beskrivelse,
+                Leverandor = matkasseRecipe.Leverandor,
+                ImageUrl = matkasseRecipe.ImageUrl
             },
             CreatedByEmail = entry.CreatedByEmail
         });
@@ -210,6 +244,7 @@ public class MealPlansController : ControllerBase
                     MealTypeCategory = ResolveMealTypeCategory(recipe),
                     MealTypeCategories = ResolveMealTypeCategories(recipe)
                 },
+                MatkasseRecipe = null,
                 CreatedByEmail = entry.CreatedByEmail
             });
         }
@@ -224,9 +259,20 @@ public class MealPlanDto
     public int Id { get; set; }
     public int GroupId { get; set; }
     public string Date { get; set; } = string.Empty;
-    public int RecipeId { get; set; }
-    public MealPlanRecipeDto Recipe { get; set; } = null!;
+    public int? RecipeId { get; set; }
+    public MealPlanRecipeDto? Recipe { get; set; }
+    public int? MatkasseRecipeId { get; set; }
+    public MealPlanMatkasseDto? MatkasseRecipe { get; set; }
     public string? CreatedByEmail { get; set; }
+}
+
+public class MealPlanMatkasseDto
+{
+    public int Id { get; set; }
+    public string Tittel { get; set; } = string.Empty;
+    public string? Beskrivelse { get; set; }
+    public string Leverandor { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
 }
 
 public class MealPlanRecipeDto
@@ -241,7 +287,8 @@ public class MealPlanRecipeDto
 public class CreateMealPlanRequest
 {
     public string Date { get; set; } = string.Empty;
-    public int RecipeId { get; set; }
+    public int? RecipeId { get; set; }
+    public int? MatkasseRecipeId { get; set; }
 }
 
 public class AiPlanRequest

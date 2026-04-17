@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using RecipeApi.Features.Groups;
+using RecipeApi.Features.Matkasse;
 using RecipeApi.Features.Recipes;
 
 namespace RecipeApi.Features.MealPlans;
@@ -13,8 +14,11 @@ public class MealPlan
 
     public DateOnly Date { get; set; }
 
-    public int RecipeId { get; set; }
-    public Recipe Recipe { get; set; } = null!;
+    public int? RecipeId { get; set; }
+    public Recipe? Recipe { get; set; }
+
+    public int? MatkasseRecipeId { get; set; }
+    public MatkasseRecipe? MatkasseRecipe { get; set; }
 
     [StringLength(200)]
     public string? CreatedByEmail { get; set; }

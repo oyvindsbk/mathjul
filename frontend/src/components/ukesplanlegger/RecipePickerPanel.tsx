@@ -341,8 +341,16 @@ export function RecipePickerPanel({ token, activeMealType, onSelect, onClose }: 
   );
 }
 
-// Sidebar content for desktop — used directly in layout
-export function RecipePickerSidebar({ token, activeMealType, onSelect, onClose }: RecipePickerPanelProps) {
+interface RecipePickerSidebarProps extends RecipePickerPanelProps {
+  embedded?: boolean;
+}
+
+// Sidebar content for desktop — used directly in layout.
+// Pass embedded=true to render only the content (no outer container/header), for use inside a custom wrapper.
+export function RecipePickerSidebar({ token, activeMealType, onSelect, onClose, embedded }: RecipePickerSidebarProps) {
+  if (embedded) {
+    return <PanelContent token={token} activeMealType={activeMealType} onSelect={onSelect} />;
+  }
   return (
     <div className="hidden lg:flex flex-col w-72 xl:w-88 2xl:w-96 bg-white border border-gray-200 rounded-xl shadow-sm h-[calc(100vh-8rem)] sticky top-8 overflow-hidden flex-shrink-0">
       <div className="p-4 border-b flex items-center justify-between">

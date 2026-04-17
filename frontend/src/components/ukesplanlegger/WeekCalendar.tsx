@@ -22,8 +22,11 @@ interface WeekCalendarProps {
   selectedDate: Date | null;
   onDayClick: (date: Date) => void;
   onDeleteEntry: (entryId: number) => void;
+  onEntryClick?: (plan: MealPlan) => void;
   onAiPlan: (weekStart: Date) => void;
   onDrop: (date: Date, recipeId: number) => void;
+  onDropMatkasse: (date: Date, matkasseRecipeId: number) => void;
+  onMoveEntry: (planId: number, date: Date) => void;
   highlightedDays: Set<string>;
 }
 
@@ -62,8 +65,11 @@ export function WeekCalendar({
   selectedDate,
   onDayClick,
   onDeleteEntry,
+  onEntryClick,
   onAiPlan,
   onDrop,
+  onDropMatkasse,
+  onMoveEntry,
   highlightedDays,
 }: WeekCalendarProps) {
   const today = new Date();
@@ -108,6 +114,16 @@ export function WeekCalendar({
   function handleDrop(e: React.DragEvent, date: Date) {
     e.preventDefault();
     setDragOverDate(null);
+    const movePlanId = parseInt(e.dataTransfer.getData("movePlanId"), 10);
+    if (!isNaN(movePlanId)) {
+      onMoveEntry(movePlanId, date);
+      return;
+    }
+    const matkasseRecipeId = parseInt(e.dataTransfer.getData("matkasseRecipeId"), 10);
+    if (!isNaN(matkasseRecipeId)) {
+      onDropMatkasse(date, matkasseRecipeId);
+      return;
+    }
     const recipeId = parseInt(e.dataTransfer.getData("recipeId"), 10);
     if (!isNaN(recipeId)) {
       onDrop(date, recipeId);
@@ -192,6 +208,7 @@ export function WeekCalendar({
                   isDragOver={dragOverDate === key}
                   onClick={onDayClick}
                   onDeleteEntry={onDeleteEntry}
+                  onEntryClick={onEntryClick}
                   onDragOver={handleDragOver}
                   onDragLeave={() => setDragOverDate(null)}
                   onDrop={handleDrop}

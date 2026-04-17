@@ -9,12 +9,22 @@ export interface MealPlanRecipe {
   mealTypeCategories: string[];
 }
 
+export interface MealPlanMatkasse {
+  id: number;
+  tittel: string;
+  beskrivelse: string | null;
+  leverandor: string;
+  imageUrl: string | null;
+}
+
 export interface MealPlan {
   id: number;
   groupId: number;
   date: string; // yyyy-MM-dd
-  recipeId: number;
-  recipe: MealPlanRecipe;
+  recipeId: number | null;
+  recipe: MealPlanRecipe | null;
+  matkasseRecipeId: number | null;
+  matkasseRecipe: MealPlanMatkasse | null;
   createdByEmail: string | null;
 }
 
@@ -44,6 +54,21 @@ class MealPlanService {
         Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({ date, recipeId }),
+    });
+
+    if (!response.ok) throw new Error(`Failed to create meal plan: ${response.statusText}`);
+    return response.json();
+  }
+
+  async createMealPlanMatkasse(groupId: number, date: string, matkasseRecipeId: number, token: string): Promise<MealPlan> {
+    const response = await apiFetch(`${appConfig.api.baseUrl}/api/groups/${groupId}/mealplans`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ date, matkasseRecipeId }),
     });
 
     if (!response.ok) throw new Error(`Failed to create meal plan: ${response.statusText}`);

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using RecipeApi.Features.Auth;
 using RecipeApi.Features.FeaturePlanner;
 using RecipeApi.Features.Groups;
+using RecipeApi.Features.Matkasse;
 using RecipeApi.Features.MealPlans;
 using RecipeApi.Features.Recipes;
 
@@ -23,6 +24,7 @@ public class RecipeDbContext : DbContext
     public DbSet<RecipeGroup> RecipeGroups { get; set; }
     public DbSet<RecipeLike> RecipeLikes { get; set; }
     public DbSet<MealPlan> MealPlans { get; set; }
+    public DbSet<MatkasseRecipe> MatkasseRecipes { get; set; }
     public DbSet<FeatureColumn> FeatureColumns { get; set; }
     public DbSet<FeatureCard> FeatureCards { get; set; }
 
@@ -191,7 +193,32 @@ public class RecipeDbContext : DbContext
             entity.HasOne(e => e.Recipe)
                   .WithMany()
                   .HasForeignKey(e => e.RecipeId)
+                  .IsRequired(false)
                   .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(e => e.MatkasseRecipe)
+                  .WithMany()
+                  .HasForeignKey(e => e.MatkasseRecipeId)
+                  .IsRequired(false)
+                  .OnDelete(DeleteBehavior.ClientSetNull);
+        });
+
+        // Configure MatkasseRecipe entity
+        modelBuilder.Entity<MatkasseRecipe>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.Leverandor).IsRequired().HasMaxLength(50);
+            entity.Property(e => e.UkeStart).IsRequired().HasColumnType("date");
+            entity.Property(e => e.Tittel).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.Beskrivelse).HasMaxLength(2000);
+            entity.Property(e => e.ImageUrl).HasMaxLength(500);
+            entity.Property(e => e.CreatedByEmail).HasMaxLength(200);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.HasIndex(e => new { e.GroupId, e.UkeStart });
+            entity.HasOne(e => e.Group)
+                  .WithMany()
+                  .HasForeignKey(e => e.GroupId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Configure FeatureColumn entity

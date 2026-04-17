@@ -1,0 +1,396 @@
+- generic [active] [ref=e1]:
+  - dialog "Denne nettsiden anvender cookies" [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e5]:
+        - img "logo" [ref=e7]
+        - link "Cookiebot av Usercentrics - åpner i et nytt vindu" [ref=e8] [cursor=pointer]:
+          - /url: https://www.cookiebot.com/en/what-is-behind-powered-by-cookiebot/?utm_source=banner_cb&utm_medium=referral&utm_content=v2
+          - img [ref=e9]
+      - tabpanel "Samtykke" [ref=e36]:
+        - generic [ref=e38]:
+          - heading "Denne nettsiden anvender cookies" [level=2] [ref=e39]
+          - generic [ref=e40]: Vi bruker informasjonskapsler for å gi innhold og annonser et personlig preg, for å levere sosiale mediefunksjoner og for å analysere trafikken vår. Vi deler dessuten informasjon om hvordan du bruker nettstedet vårt, med partnerne våre innen sosiale medier, annonsering og analysearbeid, som kan kombinere den med annen informasjon du har gjort tilgjengelig for dem, eller som de har samlet inn gjennom din bruk av tjenestene deres.
+        - link "Detaljer" [ref=e43] [cursor=pointer]:
+          - /url: "#"
+      - generic [ref=e47]:
+        - button "Tillat alle cookies" [ref=e48] [cursor=pointer]
+        - button "Tilpass" [ref=e49] [cursor=pointer]: Tilpass
+  - alert [ref=e51]
+  - iframe [ref=e52]:
+    
+  - generic [ref=e53]:
+    - navigation [ref=e55]:
+      - generic [ref=e56]:
+        - link [ref=e57] [cursor=pointer]:
+          - /url: /
+          - img [ref=e58]
+        - generic [ref=e71]:
+          - link "Vår matkasse" [ref=e72] [cursor=pointer]:
+            - /url: /var-matkasse
+            - generic [ref=e73]:
+              - img [ref=e74]
+              - paragraph [ref=e76]: Vår matkasse
+          - link "Produsenter" [ref=e77] [cursor=pointer]:
+            - /url: /vare-produsenter
+            - generic [ref=e78]:
+              - img [ref=e79]
+              - paragraph [ref=e81]: Produsenter
+          - link "Oppskrifter" [ref=e82] [cursor=pointer]:
+            - /url: /recipes
+            - generic [ref=e83]:
+              - img [ref=e84]
+              - paragraph [ref=e86]: Oppskrifter
+          - link "Om oss" [ref=e87] [cursor=pointer]:
+            - /url: /om-oss
+            - generic [ref=e88]:
+              - img [ref=e89]
+              - paragraph [ref=e91]: Om oss
+      - generic [ref=e94]:
+        - button "Logg inn" [ref=e95] [cursor=pointer]:
+          - img [ref=e96]
+          - generic [ref=e98]: Logg inn
+        - link "Bestill matkasse" [ref=e99] [cursor=pointer]:
+          - /url: /kasse/abonnement/matkasse
+          - generic [ref=e100]: Bestill matkasse
+    - paragraph [ref=e105]:
+      - text: Velkomsttilbud lagt til
+      - button "vis detaljer" [ref=e106] [cursor=pointer]
+    - generic [ref=e108]:
+      - generic [ref=e109]:
+        - generic [ref=e111]:
+          - img [ref=e114]
+          - heading "I en kasse for seg" [level=1] [ref=e229]
+          - link "Bestill matkasse" [ref=e231] [cursor=pointer]:
+            - /url: /kasse/abonnement/matkasse
+        - paragraph [ref=e234]: Mye kjærlighet og god mat samlet i en kasse
+      - generic [ref=e235]:
+        - generic [ref=e236]:
+          - generic [ref=e237]:
+            - generic [ref=e239]:
+              - paragraph [ref=e240]: Uke 18
+              - paragraph [ref=e241]: Leveres 25.apr. - 28.apr.
+              - paragraph [ref=e242]: Bestillingsfrist 19. apr.
+            - generic [ref=e243]:
+              - button [ref=e244] [cursor=pointer]:
+                - img [ref=e245]
+              - paragraph [ref=e248]: Uke 18
+              - button [ref=e249] [cursor=pointer]:
+                - img [ref=e250]
+          - generic [ref=e252]:
+            - link "Torsk Soyasmør Torsk Soyasmør Nyyyydelig, flakende, hvit torsk med lun spinat- og linsesalat, blomkålpuré og brunet soyasmør. Vi synes at den som fant på å putte soya i brunet smør fortjener en medalje! 30 min. Se oppskrift" [ref=e253] [cursor=pointer]:
+              - /url: /recipes/torsk-soyasmor?origin=homepage
+              - img "Torsk Soyasmør" [ref=e255]
+              - generic [ref=e256]:
+                - heading "Torsk Soyasmør" [level=3] [ref=e257]
+                - paragraph [ref=e258]: Nyyyydelig, flakende, hvit torsk med lun spinat- og linsesalat, blomkålpuré og brunet soyasmør. Vi synes at den som fant på å putte soya i brunet smør fortjener en medalje!
+              - generic [ref=e259]:
+                - list [ref=e260]:
+                  - listitem [ref=e261]
+                  - listitem [ref=e262]
+                  - listitem [ref=e263]
+                - paragraph [ref=e265]: 30 min.
+              - generic [ref=e266]:
+                - paragraph [ref=e267]: Se oppskrift
+                - img [ref=e268]
+            - link "Arons Creamy Kimchi Udon Arons Creamy Kimchi Udon Comfort, creamy, cheesy, kimchi, crispy er alle stikkord til Aron Espelands Udon-nudelrett. Når vi spurte Aron om han ville utvikle en rett med oss, falt valget raskt ned på denne koseretten. Herligheten toppes med sprø sukkerert, reddik, vårløk, kylling og en nydelig Thaibasilikum-pesto. 30 min. Se oppskrift" [ref=e270] [cursor=pointer]:
+              - /url: /recipes/arons-creamy-kimchi-udon?origin=homepage
+              - img "Arons Creamy Kimchi Udon" [ref=e272]
+              - generic [ref=e273]:
+                - heading "Arons Creamy Kimchi Udon" [level=3] [ref=e274]
+                - paragraph [ref=e275]: Comfort, creamy, cheesy, kimchi, crispy er alle stikkord til Aron Espelands Udon-nudelrett. Når vi spurte Aron om han ville utvikle en rett med oss, falt valget raskt ned på denne koseretten. Herligheten toppes med sprø sukkerert, reddik, vårløk, kylling og en nydelig Thaibasilikum-pesto.
+              - generic [ref=e276]:
+                - list [ref=e277]:
+                  - listitem [ref=e278]
+                  - listitem [ref=e279]
+                  - listitem [ref=e280]
+                - paragraph [ref=e282]: 30 min.
+              - generic [ref=e283]:
+                - paragraph [ref=e284]: Se oppskrift
+                - img [ref=e285]
+            - 'link "Svin Indrefilet Bearnaisesmør Svin Indrefilet Bearnaisesmør Svin indrefilet fra Stølsvidda, serveres med fløyelsmyk puré av hvite bønner, hvitløk og Rørosfløte. Toppes med selve stjerna i retten: Kokkelørens Bearnaisesmør og sprøstekt grønnkål. 30 min. Se oppskrift" [ref=e287] [cursor=pointer]':
+              - /url: /recipes/svin-indrefilet-bearnaisesmor?origin=homepage
+              - img "Svin Indrefilet Bearnaisesmør" [ref=e289]
+              - generic [ref=e290]:
+                - heading "Svin Indrefilet Bearnaisesmør" [level=3] [ref=e291]
+                - paragraph [ref=e292]: "Svin indrefilet fra Stølsvidda, serveres med fløyelsmyk puré av hvite bønner, hvitløk og Rørosfløte. Toppes med selve stjerna i retten: Kokkelørens Bearnaisesmør og sprøstekt grønnkål."
+              - generic [ref=e293]:
+                - list [ref=e294]:
+                  - listitem [ref=e295]
+                  - listitem [ref=e296]
+                  - listitem [ref=e297]
+                - paragraph [ref=e299]: 30 min.
+              - generic [ref=e300]:
+                - paragraph [ref=e301]: Se oppskrift
+                - img [ref=e302]
+        - generic [ref=e304]:
+          - heading "Ren utkassing!" [level=2] [ref=e306]
+          - generic [ref=e307]:
+            - list [ref=e309]:
+              - listitem [ref=e310]:
+                - generic [ref=e311]:
+                  - generic [ref=e312]:
+                    - img [ref=e313]
+                    - generic [ref=e322]:
+                      - heading "En kasse skiller seg ut" [level=3] [ref=e323]
+                      - heading "Matkassetest Godt.no 2022" [level=4] [ref=e324]
+                  - paragraph [ref=e325]: “Kokkelørens kasse skiller seg litt ut. Den gir deg mer for pengene. Det får du igjen i smak og råvarer”
+                  - separator [ref=e326]
+                  - link "Les testen her" [ref=e327] [cursor=pointer]:
+                    - /url: https://www.godt.no/anmeldelser/tester/i/eE0gmK/anmeldelse-av-matkasser-en-kasse-skiller-seg-ut
+                    - text: Les testen her
+                    - img [ref=e328]
+              - listitem [ref=e330]:
+                - generic [ref=e331]:
+                  - generic [ref=e332]:
+                    - img [ref=e333]
+                    - generic [ref=e342]:
+                      - heading "Bare en konge!" [level=3] [ref=e343]
+                      - heading "Matkassetest Dagbladet 2021" [level=4] [ref=e344]
+                  - paragraph [ref=e345]: "\"I tillegg til at Kokkeløren løfter fram små produsenter i Norge, er mye av maten oppfinnsom og dessuten morsom å lage.\""
+                  - separator [ref=e346]
+                  - link "Les testen her" [ref=e347] [cursor=pointer]:
+                    - /url: https://www.dagbladet.no/mat/test-av-matkasser---bare-n-konge/74377125
+                    - text: Les testen her
+                    - img [ref=e348]
+              - listitem [ref=e350]:
+                - generic [ref=e351]:
+                  - generic [ref=e352]:
+                    - img [ref=e353]
+                    - generic [ref=e361]:
+                      - heading "Ingenting å trekke" [level=3] [ref=e362]
+                      - heading "TV2 Hjelper deg matkassetest 2020" [level=4] [ref=e363]
+                  - paragraph [ref=e364]: "\"Kokkeløren tilbyr en kasse for de som ønsker det ypperste innen råvarer og produkter. Dette er for dem som liker å lage og setter pris på god mat.”"
+                  - separator [ref=e365]
+                  - link "Les testen her" [ref=e366] [cursor=pointer]:
+                    - /url: https://www.tv2.no/underholdning/denne-matkassen-far-terningkast-6/11341641/
+                    - text: Les testen her
+                    - img [ref=e367]
+              - listitem [ref=e369]:
+                - generic [ref=e370]:
+                  - generic [ref=e371]:
+                    - img [ref=e372]
+                    - generic [ref=e381]:
+                      - heading "Bugner av fine råvarer!" [level=3] [ref=e382]
+                      - heading "Dagbladet’s matkassetest 2020" [level=4] [ref=e383]
+                  - paragraph [ref=e384]: “Kassa bugner av fine råvarer. Men, det mest slående er de små boksene med hjemmelagde sauser, dipper og puréer”
+                  - separator [ref=e385]
+                  - link "Les testen her" [ref=e386] [cursor=pointer]:
+                    - /url: https://www.dagbladet.no/mat/mat-levert-pa-dora-n-er-overlegent-best-pa-smak/72288899
+                    - text: Les testen her
+                    - img [ref=e387]
+              - listitem [ref=e389]:
+                - generic [ref=e390]:
+                  - generic [ref=e391]:
+                    - img [ref=e392]
+                    - generic [ref=e401]:
+                      - heading "Vinneren er soleklar!" [level=3] [ref=e402]
+                      - heading "Dagbladets matkassetest 2018" [level=4] [ref=e403]
+                  - paragraph [ref=e404]: "\"Råvarene er gjennomgående gode. Oppskriftene er lette å følge, med gode trinn for trinn-oppskrifter og bilder. Porsjonene er meget rause.\""
+                  - separator [ref=e405]
+                  - link "Les testen her" [ref=e406] [cursor=pointer]:
+                    - /url: https://www.dagbladet.no/mat/den-store-matkassetesten-vinneren-er-soleklar/70252648
+                    - text: Les testen her
+                    - img [ref=e407]
+            - slider [ref=e409]: "0"
+        - generic [ref=e411]:
+          - generic [ref=e412]:
+            - heading "Hvor mye kjærlighet og god mat vil du ha samlet i en kasse?" [level=2] [ref=e413]
+            - paragraph [ref=e414]: Vår matkasse kommer i tre forskjellige størrelser. Hver matkasse er porsjonert ut slik at de fleste finner noe som passer for dem.
+          - generic [ref=e418]:
+            - list [ref=e419]:
+              - listitem [ref=e420]:
+                - generic [ref=e421]:
+                  - generic [ref=e422]:
+                    - heading "2 voksne" [level=3] [ref=e423]
+                    - paragraph [ref=e424]: Mat for to voksne
+                  - paragraph [ref=e425]: 1049,- / uke
+                - separator [ref=e426]
+              - listitem [ref=e427]:
+                - generic [ref=e428]:
+                  - generic [ref=e429]:
+                    - heading "Liten familie" [level=3] [ref=e430]
+                    - paragraph [ref=e431]: Mat for to voksne og to små barn
+                  - paragraph [ref=e432]: 1249,- / uke
+                - separator [ref=e433]
+              - listitem [ref=e434]:
+                - generic [ref=e435]:
+                  - generic [ref=e436]:
+                    - heading "Stor familie" [level=3] [ref=e437]
+                    - paragraph [ref=e438]: Mat for fire voksne
+                  - paragraph [ref=e439]: 1449,- / uke
+            - link "Sjekk om vi leverer til deg" [ref=e440] [cursor=pointer]:
+              - /url: /sjekk-levering
+              - text: Sjekk om vi leverer til deg
+              - img [ref=e441]
+        - generic [ref=e444]:
+          - heading "Nye smaker hver uke" [level=4] [ref=e445]:
+            - generic [ref=e446]: Nye smaker hver uke
+          - paragraph [ref=e447]: Vi i Kokkeløren er lidenskapelig opptatt av smak, og mesteparten av tiden vår går med til å utvikle spennende ukemenyer. Hemmeligheten ligger i fantastiske råvarer fra dedikerte produsenter, nysgjerrighet og årelang erfaring fra ulike kjøkken.
+          - paragraph [ref=e448]: Vi har reist verden rundt for å hente inspirasjon, og har tatt med oss de beste oppskriftene hjem sånn at du nyte de samme fantastiske smakene og utvide smakshorisonten din hver eneste uke.
+          - link "Ukens smaker" [ref=e449] [cursor=pointer]:
+            - /url: /var-matkasse
+            - button "Ukens smaker" [ref=e450]
+        - generic [ref=e457]:
+          - generic [ref=e458]:
+            - heading "Det er faktisk kasseforskjell" [level=2] [ref=e459]
+            - paragraph [ref=e461]: Vi legger all kjærlighet og kunnskap i å sørge for at dere får et produkt som tilsvarer deres forventninger. Da betyr det veldig mye når vi leser at dere er så fornøyde!
+          - generic [ref=e464]:
+            - list [ref=e466]:
+              - listitem [ref=e467]:
+                - generic [ref=e468]:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                      - generic:
+                        - img
+                      - generic:
+                        - img
+                      - generic:
+                        - img
+                      - generic:
+                        - img
+                      - generic:
+                        - img
+                    - paragraph: "\"Min samboer og jeg har akkurat bestilt vår første matkasse fra dere og jeg må bare si at vi er helt blåst av banen hvor bra dette er! Tusen takk for tidenes kulinariske opplevelse\""
+                    - paragraph: Even (31)
+              - listitem [ref=e469]:
+                - generic [ref=e470]:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                      - generic:
+                        - img
+                      - generic:
+                        - img
+                      - generic:
+                        - img
+                      - generic:
+                        - img
+                      - generic:
+                        - img
+                    - paragraph: "\"Vi gleder oss hver uke til levering. Gode, smaksrike og varierte middager. Sønn på 16 har som oftest med seg rester (vi er 3 og bestille stor kasse) som lunch på skolen dagen etter.\""
+                    - paragraph: Trude (38)
+              - listitem [ref=e471]:
+                - generic [ref=e472]:
+                  - generic:
+                    - generic:
+                      - generic:
+                        - img
+                      - generic:
+                        - img
+                      - generic:
+                        - img
+                      - generic:
+                        - img
+                      - generic:
+                        - img
+                      - generic:
+                        - img
+                    - paragraph: "\"Får ikke takket dere nok for all den nydelige maten. Dere gjør ukene våre så mye bedre og vi heier på dere hele gjengen 🥰🥰🥰\""
+                    - paragraph: Sophie (31)
+            - slider [ref=e473]: "0"
+        - generic [ref=e474]:
+          - heading "Slik fungerer det" [level=2] [ref=e475]
+          - list [ref=e476]:
+            - listitem [ref=e477]:
+              - generic [ref=e479]:
+                - generic [ref=e480]: "1"
+                - paragraph [ref=e481]: Matkassen inneholder 3 middager og du bestiller matkasse i den størrelsen du trenger, velger hvor ofte du ønsker å motta kassen, og hvilket leveringstidspunkt som passer for deg.
+            - listitem [ref=e482]:
+              - generic [ref=e484]:
+                - generic [ref=e485]: "2"
+                - paragraph [ref=e486]: Matkassen leveres til deg, med våre håndlagde sauser og dressinger og perfekt porsjonerte råvarer.
+            - listitem [ref=e487]:
+              - generic [ref=e489]:
+                - generic [ref=e490]: "3"
+                - paragraph [ref=e491]: Våre steg-for-steg oppskrifter viser med tekst og bilde hvordan du går frem for å sikre at resultatet blir perfekt.
+        - generic [ref=e493]:
+          - heading "Levering og tidsfrister" [level=4] [ref=e494]:
+            - generic [ref=e495]: Levering og tidsfrister
+          - paragraph [ref=e496]:
+            - text: Våre matkasser kommer rett til døren din, fraktet trygt med en av våre leveringspartnere. Matkassen blir entet fraktet på kjølebil eller med isposer avhengig av hvor du bor. Vi leverer til hele Østlandet, Bergen, Sørlandet, Stavanger og Trondheim. Avhengig av hvor du bor leverer vi på lørdager, søndager, mandager og tirsdager i ulike tidsrom. Bestillingsfristen for neste uke er søndager, mer detaljer finner du under
+            - link "FAQ" [ref=e497] [cursor=pointer]:
+              - /url: /faq
+            - text: .
+          - paragraph [ref=e498]: I Oslo tilbyr vi også praktiske hentepunkter. Vi er alltid på jakt etter å utvide dette antallet hentepunkter, så hvis du har noen forslag eller ønsker setter vi veldig pris på et tips eller to på e-post.
+          - link "Sjekk om vi leverer til deg" [ref=e499] [cursor=pointer]:
+            - /url: /sjekk-levering
+            - button "Sjekk om vi leverer til deg" [ref=e500]
+        - generic [ref=e502]:
+          - heading "Råvarer i en helt egen kasse" [level=4] [ref=e503]:
+            - generic [ref=e504]: Råvarer i en helt egen kasse
+          - paragraph [ref=e505]: Nøkkelen til et nydelig måltid er fantastiske råvarer. Våre nøye utvalgte produsenter representerer det beste Norge har å by på, og vi er veldig stolte av å jobbe med noen av landets beste produsenter.
+          - link "Bli kjent med våre produsenter" [ref=e506] [cursor=pointer]:
+            - /url: /vare-produsenter
+            - button "Bli kjent med våre produsenter" [ref=e507]
+    - generic [ref=e510]:
+      - navigation [ref=e511]:
+        - generic [ref=e513]:
+          - link [ref=e514] [cursor=pointer]:
+            - /url: /
+            - img [ref=e515]
+          - paragraph [ref=e528]: En prisvinnende matkasse proppfull av smak, kjærlighet og ekte matglede
+          - listitem [ref=e529]:
+            - link "post@kokkeloren.no" [ref=e530] [cursor=pointer]:
+              - /url: mailto:post@kokkeloren.no
+              - paragraph [ref=e531]: post@kokkeloren.no
+          - listitem [ref=e532]:
+            - link "+47 451 80 893" [ref=e533] [cursor=pointer]:
+              - /url: tel:+4745180893
+              - paragraph [ref=e534]: +47 451 80 893
+        - generic [ref=e535]:
+          - paragraph [ref=e536]: Handle hos oss
+          - list [ref=e537]:
+            - listitem [ref=e538]:
+              - link "Vår matkasse" [ref=e539] [cursor=pointer]:
+                - /url: /var-matkasse
+                - paragraph [ref=e540]: Vår matkasse
+            - listitem [ref=e541]:
+              - link "Kokkelørens Handleri" [ref=e542] [cursor=pointer]:
+                - /url: /produkt/kokkelorens-handleri
+                - paragraph [ref=e543]: Kokkelørens Handleri
+            - listitem [ref=e544]:
+              - link "Gavekort" [ref=e545] [cursor=pointer]:
+                - /url: /gavekort-fra-kokkeloren
+                - paragraph [ref=e546]: Gavekort
+            - listitem [ref=e547]:
+              - link "Våre produsenter" [ref=e548] [cursor=pointer]:
+                - /url: /vare-produsenter
+                - paragraph [ref=e549]: Våre produsenter
+        - generic [ref=e550]:
+          - paragraph [ref=e551]: Kokkeløren
+          - list [ref=e552]:
+            - listitem [ref=e553]:
+              - link "Om oss" [ref=e554] [cursor=pointer]:
+                - /url: /om-oss
+                - paragraph [ref=e555]: Om oss
+            - listitem [ref=e556]:
+              - link "Kontakt oss" [ref=e557] [cursor=pointer]:
+                - /url: /kontakt-oss
+                - paragraph [ref=e558]: Kontakt oss
+            - listitem [ref=e559]:
+              - link "Ofte stilte spørsmål" [ref=e560] [cursor=pointer]:
+                - /url: /faq
+                - paragraph [ref=e561]: Ofte stilte spørsmål
+            - listitem [ref=e562]:
+              - link "Vilkår og garantier" [ref=e563] [cursor=pointer]:
+                - /url: /vilkar-og-garantier
+                - paragraph [ref=e564]: Vilkår og garantier
+            - listitem [ref=e565]:
+              - link "Personvern" [ref=e566] [cursor=pointer]:
+                - /url: /personvern
+                - paragraph [ref=e567]: Personvern
+        - generic [ref=e568]:
+          - paragraph [ref=e569]: Keep in touch
+          - list [ref=e570]:
+            - listitem [ref=e571]:
+              - link "Instagram" [ref=e572] [cursor=pointer]:
+                - /url: https://www.instagram.com/kokkeloren.no/
+                - paragraph [ref=e573]: Instagram
+            - listitem [ref=e574]:
+              - link "Facebook" [ref=e575] [cursor=pointer]:
+                - /url: https://www.facebook.com/kokkeloren
+                - paragraph [ref=e576]: Facebook
+      - paragraph [ref=e578]: © 2025 Kokkeløren Holding AS (917 554 145)

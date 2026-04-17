@@ -7,10 +7,24 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { groupsService, type GroupOption } from "@/lib/services/groups.service";
 import { mealPlanService, type MealPlan } from "@/lib/services/mealplan.service";
 import { WeekCalendar } from "@/components/ukesplanlegger/WeekCalendar";
+import { MealPlanPreviewModal } from "@/components/ukesplanlegger/MealPlanPreviewModal";
 import { MealTypeFilter, type MealType } from "@/components/ukesplanlegger/MealTypeFilter";
 import { RecipePickerPanel, RecipePickerSidebar } from "@/components/ukesplanlegger/RecipePickerPanel";
+import { MatkassePanelSidebar } from "@/components/matkasse/MatkassePanelSidebar";
+import type { MatkasseRecipe } from "@/lib/services/matkasse.service";
 import type { Recipe } from "@/lib/mock-data";
 import { formatDate } from "@/components/ukesplanlegger/DayCell";
+
+function computeHighlightedDays(monday: Date | null): Set<string> {
+  if (!monday) return new Set();
+  const result = new Set<string>();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    result.add(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+  }
+  return result;
+}
 
 export function UkesplanleggerClient() {
   const { token, isLoading: authLoading } = useAuth();
@@ -31,7 +45,10 @@ export function UkesplanleggerClient() {
 
   const [activeDayDate, setActiveDayDate] = useState<Date | null>(today);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarTab, setSidebarTab] = useState<"oppskrifter" | "matkasse">("oppskrifter");
   const [aiLoading, setAiLoading] = useState(false);
+  const [matkasseWeekMonday, setMatkasseWeekMonday] = useState<Date | null>(null);
+  const [previewPlan, setPreviewPlan] = useState<MealPlan | null>(null);
 
   // URL param: mealType
   const mealTypeParam = (searchParams.get("mealType") as MealType) ?? "Middag";
@@ -113,10 +130,9 @@ export function UkesplanleggerClient() {
 
     try {
       const created = await mealPlanService.createMealPlan(selectedGroupId, dateStr, recipe.id, token);
-      // Use the active meal type filter as a fallback icon hint when the recipe has no category
-      const hasCat = created.recipe.mealTypeCategories?.length > 0;
+      const hasCat = (created.recipe?.mealTypeCategories?.length ?? 0) > 0;
       const fallbackType = !hasCat && activeMealType !== "Alle" ? activeMealType : null;
-      const withCategory = hasCat || !fallbackType
+      const withCategory: typeof created = hasCat || !fallbackType || !created.recipe
         ? created
         : {
             ...created,
@@ -147,9 +163,9 @@ export function UkesplanleggerClient() {
     const dateStr = formatDate(date);
     try {
       const created = await mealPlanService.createMealPlan(selectedGroupId, dateStr, recipeId, token);
-      const hasCat = created.recipe.mealTypeCategories?.length > 0;
+      const hasCat = (created.recipe?.mealTypeCategories?.length ?? 0) > 0;
       const fallbackType = !hasCat && activeMealType !== "Alle" ? activeMealType : null;
-      const withCategory = hasCat || !fallbackType
+      const withCategory: typeof created = hasCat || !fallbackType || !created.recipe
         ? created
         : {
             ...created,
@@ -180,6 +196,60 @@ export function UkesplanleggerClient() {
       setError(e instanceof Error ? e.message : "Kunne ikke generere ukesplan");
     } finally {
       setAiLoading(false);
+    }
+  }
+
+  async function handleMatkasseAdd(matkasseRecipe: MatkasseRecipe, date: Date) {
+    if (!token || !selectedGroupId) return;
+    const dateStr = formatDate(date);
+    try {
+      const created = await mealPlanService.createMealPlanMatkasse(selectedGroupId, dateStr, matkasseRecipe.id, token);
+      setPlans((prev) => [...prev, created]);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Kunne ikke legge til matkasseoppskrift");
+    }
+  }
+
+  async function handleDropMatkasse(date: Date, matkasseRecipeId: number) {
+    if (!token || !selectedGroupId) return;
+    const dateStr = formatDate(date);
+    try {
+      const created = await mealPlanService.createMealPlanMatkasse(selectedGroupId, dateStr, matkasseRecipeId, token);
+      setPlans((prev) => [...prev, created]);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Kunne ikke legge til matkasseoppskrift");
+    }
+  }
+
+  async function handleMoveEntry(planId: number, date: Date) {
+    if (!token || !selectedGroupId) return;
+    const existing = plans.find((p) => p.id === planId);
+    if (!existing || formatDate(date) === existing.date) return;
+    const dateStr = formatDate(date);
+    try {
+      await mealPlanService.deleteMealPlan(selectedGroupId, planId, token);
+      let created: MealPlan;
+      if (existing.matkasseRecipeId != null) {
+        created = await mealPlanService.createMealPlanMatkasse(selectedGroupId, dateStr, existing.matkasseRecipeId, token);
+      } else if (existing.recipeId != null) {
+        created = await mealPlanService.createMealPlan(selectedGroupId, dateStr, existing.recipeId, token);
+      } else {
+        return;
+      }
+      setPlans((prev) => [...prev.filter((p) => p.id !== planId), created]);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Kunne ikke flytte middag");
+    }
+  }
+
+  async function handleMatkasseAddToWeek(matkasseRecipes: MatkasseRecipe[], weekMonday: Date) {
+    if (!token || !selectedGroupId) return;
+    const count = matkasseRecipes.length;
+    const days = count <= 3 ? 3 : 5;
+    for (let i = 0; i < Math.min(count, days); i++) {
+      const date = new Date(weekMonday);
+      date.setDate(weekMonday.getDate() + i);
+      await handleMatkasseAdd(matkasseRecipes[i], date);
     }
   }
 
@@ -293,27 +363,71 @@ export function UkesplanleggerClient() {
                   selectedDate={activeDayDate}
                   onDayClick={handleDayClick}
                   onDeleteEntry={handleDeleteEntry}
+                  onEntryClick={setPreviewPlan}
                   onAiPlan={handleAiPlan}
                   onDrop={handleDrop}
-                  highlightedDays={new Set()}
+                  onDropMatkasse={handleDropMatkasse}
+                  onMoveEntry={handleMoveEntry}
+                  highlightedDays={computeHighlightedDays(sidebarTab === "matkasse" ? matkasseWeekMonday : null)}
                 />
               )}
             </div>
 
             {/* Desktop sidebar */}
-            {sidebarOpen && token && (
-              <RecipePickerSidebar
-                token={token}
-                activeMealType={activeMealType}
-                onSelect={async (recipe) => {
-                  await handleRecipePicked(recipe);
-                }}
-                onClose={() => { setSidebarOpen(false); setActiveDayDate(null); }}
-              />
+            {sidebarOpen && token && selectedGroupId && (
+              <div className="w-72 xl:w-80 shrink-0 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+                {/* Sidebar tab bar */}
+                <div className="flex border-b border-gray-200">
+                  <button
+                    onClick={() => setSidebarTab("oppskrifter")}
+                    className={`flex-1 py-2.5 text-sm font-medium transition-colors ${sidebarTab === "oppskrifter" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+                  >
+                    Oppskrifter
+                  </button>
+                  <button
+                    onClick={() => setSidebarTab("matkasse")}
+                    className={`flex-1 py-2.5 text-sm font-medium transition-colors ${sidebarTab === "matkasse" ? "text-blue-600 border-b-2 border-blue-600" : "text-gray-500 hover:text-gray-700"}`}
+                  >
+                    Matkasse
+                  </button>
+                  <button
+                    onClick={() => { setSidebarOpen(false); setActiveDayDate(null); }}
+                    className="px-3 text-gray-400 hover:text-gray-600 transition-colors"
+                    aria-label="Lukk"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-4">
+                  {sidebarTab === "oppskrifter" ? (
+                    <RecipePickerSidebar
+                      token={token}
+                      activeMealType={activeMealType}
+                      onSelect={async (recipe) => { await handleRecipePicked(recipe); }}
+                      onClose={() => { setSidebarOpen(false); setActiveDayDate(null); }}
+                      embedded
+                    />
+                  ) : (
+                    <MatkassePanelSidebar
+                      token={token}
+                      groupId={selectedGroupId}
+                      activeDayDate={activeDayDate}
+                      onAddToWeek={handleMatkasseAddToWeek}
+                      onWeekChange={setMatkasseWeekMonday}
+                      usedRecipeIds={new Set(plans.flatMap((p) => p.matkasseRecipe != null ? [p.matkasseRecipe.id] : []))}
+                    />
+                  )}
+                </div>
+              </div>
             )}
           </div>
         )}
       </div>
+
+      {previewPlan && (
+        <MealPlanPreviewModal plan={previewPlan} onClose={() => setPreviewPlan(null)} />
+      )}
 
       {/* Mobile modal */}
       {sidebarOpen && token && (

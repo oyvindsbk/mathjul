@@ -101,9 +101,15 @@ var imageEndpoint = builder.Configuration["AiFoundry:ImageEndpoint"];
 var imageApiKey = builder.Configuration["AiFoundry:ImageApiKey"] ?? aiApiKey;
 
 if (!string.IsNullOrEmpty(imageEndpoint) && !string.IsNullOrEmpty(imageApiKey))
+{
     builder.Services.AddScoped<IRecipeImageProcessor, RecipeImageProcessor>();
+    builder.Services.AddScoped<RecipeApi.Features.Matkasse.IMatkasseImageProcessor, RecipeApi.Features.Matkasse.MatkasseImageProcessor>();
+}
 else
+{
     builder.Services.AddScoped<IRecipeImageProcessor, DisabledRecipeImageProcessor>();
+    builder.Services.AddScoped<RecipeApi.Features.Matkasse.IMatkasseImageProcessor, RecipeApi.Features.Matkasse.DisabledMatkasseImageProcessor>();
+}
 
 if (!string.IsNullOrEmpty(aiEndpoint) && !string.IsNullOrEmpty(aiApiKey))
     builder.Services.AddScoped<IRecipeUrlProcessor, RecipeUrlProcessor>();
@@ -232,19 +238,13 @@ using (var scope = app.Services.CreateScope())
         {
             logger.LogInformation("Attempting to connect to database (attempt {Count}/{Max})...", retryCount + 1, maxRetries);
             
-            // In development, drop and recreate the database to apply schema changes
             if (IsLocalDev(app.Environment))
             {
                 logger.LogInformation("Development mode: Dropping and recreating database...");
                 await context.Database.EnsureDeletedAsync();
-                await context.Database.EnsureCreatedAsync();
-                logger.LogInformation("Database recreated successfully!");
             }
-            else
-            {
-                // In production, only create if it doesn't exist
-                await context.Database.EnsureCreatedAsync();
-            }
+
+            await context.Database.MigrateAsync();
             
             logger.LogInformation("Database connection successful!");
             break;
