@@ -23,6 +23,8 @@ interface RecipeDetail extends Recipe {
   tips?: string[];
   createdAt?: string;
   updatedAt?: string;
+  ownerEmail?: string | null;
+  sourceUrl?: string | null;
 }
 
 function formatQuantity(quantity: number): string {
@@ -184,6 +186,17 @@ export default function RecipeDetailClient({ id }: { id: string }) {
 
             <p className="text-lg text-gray-600 mb-4">{recipe.description}</p>
 
+            {(recipe.ownerEmail || recipe.sourceUrl) && (
+              <div className="text-sm text-gray-500 mb-4 flex flex-col gap-1">
+                {recipe.ownerEmail && (
+                  <span>Lagt til av {recipe.ownerEmail}</span>
+                )}
+                {recipe.sourceUrl && (
+                  <span>Kilde: <a href={recipe.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{recipe.sourceUrl}</a></span>
+                )}
+              </div>
+            )}
+
             {recipe.categories && recipe.categories.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-6">
                 {recipe.categories.map((cat) => (
@@ -299,7 +312,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
                     onClick={() => setCheckedSteps(new Set())}
                     className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                   >
-                    Nullstill trinn
+                    Begynn på nytt
                   </button>
                 )}
               </div>
@@ -318,32 +331,30 @@ export default function RecipeDetailClient({ id }: { id: string }) {
                             return (
                               <li
                                 key={num}
-                                className="flex items-start gap-4 cursor-pointer"
+                                className="flex items-start gap-3 cursor-pointer"
                                 onClick={() => toggleStep(num)}
                               >
-                                <span className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold flex-shrink-0 mt-0.5 transition-colors ${checked ? 'bg-gray-200 text-gray-400' : 'bg-blue-600 text-white'}`}>
+                                <span className={`flex items-center justify-center w-7 h-7 rounded-full text-sm font-semibold flex-shrink-0 transition-colors ${checked ? 'bg-gray-200 text-gray-400' : 'bg-blue-600 text-white'}`}>
                                   {num}
                                 </span>
-                                <div className="flex-1 flex items-start gap-3">
-                                  <input
-                                    type="checkbox"
-                                    checked={checked}
-                                    onChange={() => toggleStep(num)}
-                                    onClick={(e) => e.stopPropagation()}
-                                    className="mt-1 w-4 h-4 text-blue-600 rounded cursor-pointer flex-shrink-0"
-                                    aria-label={`Trinn ${num}: ${step.text}`}
-                                  />
-                                  <div className="flex-1">
-                                    <p className={`transition-colors ${checked ? 'line-through text-gray-400' : 'text-gray-700'}`}>{step.text}</p>
-                                    {step.imageUrl && (
-                                      // eslint-disable-next-line @next/next/no-img-element
-                                      <img
-                                        src={step.imageUrl}
-                                        alt={`Trinn ${num}`}
-                                        className="mt-3 rounded-lg max-h-48 object-cover border border-gray-200"
-                                      />
-                                    )}
-                                  </div>
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleStep(num)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="mt-1 w-4 h-4 text-blue-600 rounded cursor-pointer flex-shrink-0"
+                                  aria-label={`Trinn ${num}: ${step.text}`}
+                                />
+                                <div className="flex-1">
+                                  <p className={`transition-colors ${checked ? 'line-through text-gray-400' : 'text-gray-700'}`}>{step.text}</p>
+                                  {step.imageUrl && (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img
+                                      src={step.imageUrl}
+                                      alt={`Trinn ${num}`}
+                                      className="mt-3 rounded-lg max-h-48 object-cover border border-gray-200"
+                                    />
+                                  )}
                                 </div>
                               </li>
                             );
