@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const code = searchParams.get("code");
   const error = searchParams.get("error");
+  const stateParam = searchParams.get("state");
 
   // Derive base URL early — needed for all redirects so we never redirect to 0.0.0.0
   const baseUrl =
@@ -15,6 +16,13 @@ export async function GET(request: NextRequest) {
   if (error || !code) {
     console.error("Google OAuth error:", error);
     return NextResponse.redirect(new URL("/login?error=oauth_denied", baseUrl));
+  }
+
+  // Validate CSRF state: must match the cookie set during the initiation step
+  const storedState = request.cookies.get("oauth_state")?.value;
+  if (!stateParam || !storedState || stateParam !== storedState) {
+    console.error("OAuth state mismatch — possible CSRF attempt");
+    return NextResponse.redirect(new URL("/login?error=auth_failed", baseUrl));
   }
 
   try {
@@ -85,6 +93,9 @@ export async function GET(request: NextRequest) {
       maxAge: 60 * 60 * 24, // 24 hours
       path: "/",
     });
+
+    // Clear the one-time CSRF state cookie
+    response.cookies.delete("oauth_state");
 
     return response;
   } catch (err) {

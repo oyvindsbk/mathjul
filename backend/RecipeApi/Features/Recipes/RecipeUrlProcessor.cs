@@ -1,6 +1,8 @@
 using Azure;
 using Azure.AI.Inference;
 using HtmlAgilityPack;
+using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 
@@ -52,6 +54,9 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
             return RecipeExtractionResult.Failure("Invalid URL. Must be an http or https URL.");
         }
 
+        if (IsPrivateOrReservedHost(uri))
+            return RecipeExtractionResult.Failure("Access to private or reserved network addresses is not allowed.");
+
         try
         {
             _logger.LogInformation("Fetching recipe page: {Url}", url);
@@ -96,6 +101,45 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
             _logger.LogError(ex, "Error extracting recipe from URL: {Url}", url);
             return RecipeExtractionResult.Failure($"Error processing URL: {ex.Message}");
         }
+    }
+
+    private static bool IsPrivateOrReservedHost(Uri uri)
+    {
+        var host = uri.Host;
+
+        if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+            host.Equals("0.0.0.0", StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (IPAddress.TryParse(host, out var ip))
+            return IsPrivateIpAddress(ip);
+
+        return false;
+    }
+
+    private static bool IsPrivateIpAddress(IPAddress ip)
+    {
+        if (IPAddress.IsLoopback(ip)) return true;
+
+        if (ip.AddressFamily == AddressFamily.InterNetwork)
+        {
+            var b = ip.GetAddressBytes();
+            return b[0] == 10                                       // 10.0.0.0/8
+                || (b[0] == 172 && b[1] >= 16 && b[1] <= 31)       // 172.16.0.0/12
+                || (b[0] == 192 && b[1] == 168)                     // 192.168.0.0/16
+                || (b[0] == 169 && b[1] == 254)                     // 169.254.0.0/16 (link-local / Azure IMDS)
+                || b[0] == 0;                                        // 0.0.0.0/8
+        }
+
+        if (ip.AddressFamily == AddressFamily.InterNetworkV6)
+        {
+            var b = ip.GetAddressBytes();
+            // ::1 already covered by IsLoopback; also block fc00::/7 (ULA) and fe80::/10 (link-local)
+            return (b[0] & 0xFE) == 0xFC                            // fc00::/7 unique local
+                || (b[0] == 0xFE && (b[1] & 0xC0) == 0x80);        // fe80::/10 link-local
+        }
+
+        return false;
     }
 
     private static string ExtractText(string html)

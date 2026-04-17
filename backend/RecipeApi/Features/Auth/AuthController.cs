@@ -101,9 +101,10 @@ public class AuthController : ControllerBase
             var json = await googleResponse.Content.ReadAsStringAsync();
             var tokenInfo = JsonDocument.Parse(json);
 
-            // Require verified email
-            if (tokenInfo.RootElement.TryGetProperty("email_verified", out var verified) &&
-                verified.GetString() != "true")
+            // Require verified email — block if property is absent or not "true"
+            var isEmailVerified = tokenInfo.RootElement.TryGetProperty("email_verified", out var verified)
+                                  && verified.GetString() == "true";
+            if (!isEmailVerified)
             {
                 return Unauthorized(new { error = "Google email address is not verified" });
             }
