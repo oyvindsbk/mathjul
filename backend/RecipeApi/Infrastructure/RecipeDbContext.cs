@@ -37,6 +37,8 @@ public class RecipeDbContext : DbContext
             entity.Property(e => e.Id).ValueGeneratedOnAdd();
             entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
             entity.Property(e => e.DisplayName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Name).HasMaxLength(100);
+            entity.Property(e => e.Nickname).HasMaxLength(50);
             entity.HasIndex(e => e.Email).IsUnique();
         });
 

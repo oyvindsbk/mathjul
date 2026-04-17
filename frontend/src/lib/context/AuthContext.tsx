@@ -3,12 +3,23 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { apiFetch } from "../api-fetch";
 
+interface UserProfile {
+  userId: number | null;
+  name: string | null;
+  nickname: string | null;
+}
+
 interface AuthContextType {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  userId: number | null;
+  name: string | null;
+  nickname: string | null;
   setToken: (token: string) => void;
   logout: () => void;
+  refreshProfile: () => Promise<void>;
+  setProfile: (profile: Partial<UserProfile>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -16,16 +27,27 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setTokenState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<number | null>(null);
+  const [name, setName] = useState<string | null>(null);
+  const [nickname, setNickname] = useState<string | null>(null);
 
-  const ensureUser = (t: string) => {
+  const ensureUser = async (t: string) => {
     const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5238";
-    apiFetch(`${apiBase}/api/auth/ensure-user`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${t}` },
-      credentials: "include",
-    }).catch(() => {
+    try {
+      const res = await apiFetch(`${apiBase}/api/auth/ensure-user`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${t}` },
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { id: number; name: string | null; nickname: string | null };
+        setUserId(data.id);
+        setName(data.name ?? null);
+        setNickname(data.nickname ?? null);
+      }
+    } catch {
       // Non-critical — ignore errors
-    });
+    }
   };
 
   // Load token from localStorage on mount; fall back to server session cookie (set by Google OAuth)
@@ -34,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const stored = localStorage.getItem("jwt_token");
       if (stored) {
         setTokenState(stored);
-        ensureUser(stored);
+        await ensureUser(stored);
         setIsLoading(false);
         return;
       }
@@ -47,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (data.token) {
             setTokenState(data.token);
             localStorage.setItem("jwt_token", data.token);
-            ensureUser(data.token);
+            await ensureUser(data.token);
           }
         }
       } catch {
@@ -74,10 +96,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     setTokenState(null);
+    setUserId(null);
+    setName(null);
+    setNickname(null);
     localStorage.removeItem("jwt_token");
     
     // Clear the cookie by setting it to expire in the past
     document.cookie = `auth_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC; SameSite=Lax`;
+  };
+
+  const refreshProfile = async () => {
+    if (token) {
+      await ensureUser(token);
+    }
+  };
+
+  const setProfile = (profile: Partial<UserProfile>) => {
+    if (profile.userId !== undefined) setUserId(profile.userId);
+    if (profile.name !== undefined) setName(profile.name);
+    if (profile.nickname !== undefined) setNickname(profile.nickname);
   };
 
   return (
@@ -86,8 +123,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         token,
         isLoading,
         isAuthenticated: !!token,
+        userId,
+        name,
+        nickname,
         setToken,
         logout,
+        refreshProfile,
+        setProfile,
       }}
     >
       {children}

@@ -14,5 +14,11 @@ public class User
     [StringLength(100)]
     public string DisplayName { get; set; } = string.Empty;
 
+    [StringLength(100)]
+    public string? Name { get; set; }
+
+    [StringLength(50)]
+    public string? Nickname { get; set; }
+
     public DateTime CreatedAt { get; set; }
 }

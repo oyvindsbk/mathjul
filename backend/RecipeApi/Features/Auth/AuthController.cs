@@ -73,7 +73,7 @@ public class AuthController : ControllerBase
             _logger.LogInformation("Created user record for {Email}", email);
         }
 
-        return Ok(new { id = user.Id, email = user.Email, displayName = user.DisplayName });
+        return Ok(new { id = user.Id, email = user.Email, displayName = user.DisplayName, name = user.Name, nickname = user.Nickname });
     }
 
     /// <summary>
