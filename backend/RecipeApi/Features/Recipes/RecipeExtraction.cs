@@ -128,10 +128,10 @@ Extract the following fields:
 - ingredientSections: Array of ingredient sections (use this INSTEAD of ingredients when the recipe has explicit section headings like ""For the sauce:"", ""Marinade:"", ""Dough:""). Each section:
   - heading: The section heading in Norwegian
   - ingredients: Array of ingredient objects (same format as above)
-- instructions: Array of instruction steps as separate strings (use this when the recipe has NO sections)
+- instructions: Array of instruction steps as separate strings (use this when the recipe has NO sections). IMPORTANT: Strip any leading step numbers from the text (e.g., ""1. Boil water"" → ""Boil water"", ""Step 2: Add salt"" → ""Add salt""). The UI adds numbering automatically.
 - instructionSections: Array of instruction sections (use this INSTEAD of instructions when the recipe has explicit phase headings like ""Preparation:"", ""Baking:""). Each section:
   - heading: The section heading in Norwegian
-  - steps: Array of instruction step strings
+  - steps: Array of instruction step strings. IMPORTANT: Strip any leading step numbers from each step text (same rule as above).
 - prepTime: Preparation time in minutes. Extract from explicit text (e.g., ""Prep: 15 min""). If not stated, estimate from the instructions (e.g., chopping, marinating steps).
 - cookTime: Cooking time in minutes. Extract from explicit text (e.g., ""Cook: 30 min"", ""bake for 45 minutes""). If not stated, estimate from the instructions (e.g., simmering, baking, frying steps).
 - servings: Number of servings/portions (extract from text like ""Serves 4"", ""4 porsjoner"")

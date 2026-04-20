@@ -303,7 +303,7 @@ export default function UploadRecipe() {
   };
 
   return (
-    <div className="min-h-screen p-8 pb-20 gap-16 sm:p-20">
+    <div className="min-h-screen p-4 pb-8 sm:p-8 sm:pb-20 lg:p-20">
       <main className="max-w-4xl mx-auto">
         <div className="flex justify-end mb-4">
           <AuthButton />
@@ -371,11 +371,11 @@ export default function UploadRecipe() {
                   />
                 </svg>
                 <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                  Dra og slipp bilder her, eller
+                  <span className="hidden sm:inline">Dra og slipp bilder her, eller </span>
                 </p>
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="mt-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+                  className="mt-2 px-5 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors min-h-[44px]"
                 >
                   Velg bilder
                 </button>
@@ -439,7 +439,7 @@ export default function UploadRecipe() {
                 onChange={(e) => setRecipeUrl(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter' && !isExtracting) handleExtractFromUrl(); }}
                 placeholder="https://www.example.com/recipe/chocolate-cake"
-                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-base"
               />
               {!extractedRecipe && (
                 <button

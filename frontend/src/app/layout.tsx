@@ -8,6 +8,7 @@ import { NavigationProgress } from "@/components/NavigationProgress";
 import { appConfig } from "@/lib/config";
 import { BugReporter } from "@/components/BugReporter";
 import { BreadcrumbBar } from "@/components/BreadcrumbBar";
+import { BottomNav } from "@/components/BottomNav";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -47,9 +48,10 @@ export default function RootLayout({
 
               <Sidebar />
               <BreadcrumbBar />
-              <main>
+              <main className="pb-16 md:pb-0">
                 {children}
               </main>
+              <BottomNav />
             </div>
           </ProtectedRoute>
           <BugReporter />

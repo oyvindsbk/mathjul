@@ -300,7 +300,7 @@ export function UkesplanleggerClient() {
   const selectedGroup = groups.find((g) => g.id === selectedGroupId);
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 xl:px-12 2xl:px-16">
+    <div className="min-h-screen bg-gray-50 py-4 md:py-8 px-2 sm:px-4 md:px-6 lg:px-8 xl:px-12 2xl:px-16">
       <div className="w-full max-w-[1600px] mx-auto">
         {/* Header */}
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -374,19 +374,23 @@ export function UkesplanleggerClient() {
               {loadingPlans ? (
                 <div className="flex items-center justify-center py-16 text-gray-400">Laster plan...</div>
               ) : (
-                <WeekCalendar
-                  plans={plans}
-                  selectedDate={activeDayDate}
-                  onDayClick={handleDayClick}
-                  onDeleteEntry={handleDeleteEntry}
-                  onEntryClick={setPreviewPlan}
-                  onAiPlan={handleAiPlan}
-                  onDrop={handleDrop}
-                  onDropMatkasse={handleDropMatkasse}
-                  onMoveEntry={handleMoveEntry}
-                  highlightedDays={computeHighlightedDays(sidebarTab === "matkasse" ? matkasseWeekMonday : null)}
-                  onAddCustomCard={setCustomCardDate}
-                />
+                <div className="overflow-x-auto -mx-4 lg:-mx-6 xl:-mx-8 px-4 lg:px-6 xl:px-8">
+                  <div className="min-w-[700px]">
+                    <WeekCalendar
+                      plans={plans}
+                      selectedDate={activeDayDate}
+                      onDayClick={handleDayClick}
+                      onDeleteEntry={handleDeleteEntry}
+                      onEntryClick={setPreviewPlan}
+                      onAiPlan={handleAiPlan}
+                      onDrop={handleDrop}
+                      onDropMatkasse={handleDropMatkasse}
+                      onMoveEntry={handleMoveEntry}
+                      highlightedDays={computeHighlightedDays(sidebarTab === "matkasse" ? matkasseWeekMonday : null)}
+                      onAddCustomCard={setCustomCardDate}
+                    />
+                  </div>
+                </div>
               )}
             </div>
 

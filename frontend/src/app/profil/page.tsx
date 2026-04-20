@@ -73,7 +73,7 @@ export default function ProfilPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-6 md:py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-md mx-auto">
         <h1 className="text-2xl font-bold text-gray-900 mb-8">Profilinnstillinger</h1>
 
@@ -90,7 +90,7 @@ export default function ProfilPage() {
                 onChange={(e) => setNameInput(e.target.value)}
                 maxLength={100}
                 placeholder="Ditt fulle navn"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
@@ -105,7 +105,7 @@ export default function ProfilPage() {
                 onChange={(e) => setNicknameInput(e.target.value)}
                 maxLength={50}
                 placeholder="Ditt kallenavn"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 

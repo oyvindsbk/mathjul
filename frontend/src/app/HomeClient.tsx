@@ -86,7 +86,7 @@ export default function HomeClient() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gray-50 py-4 md:py-12 px-3 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         {showDevBanner && (
           <div className="mb-4 p-3 bg-amber-100 border border-amber-400 text-amber-800 rounded-md text-sm flex gap-4">
@@ -198,10 +198,10 @@ export default function HomeClient() {
           );
         })()}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" data-testid="recipe-grid">
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6" data-testid="recipe-grid">
           {filteredRecipes.map((recipe) => (
             <div key={recipe.id} data-testid={`recipe-card-${recipe.id}`} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col">
-              <div className="h-48 bg-gray-200 flex items-center justify-center overflow-hidden relative">
+              <div className="h-28 md:h-48 bg-gray-200 flex items-center justify-center overflow-hidden relative">
                 {recipe.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -220,11 +220,11 @@ export default function HomeClient() {
                   />
                 </div>
               </div>
-              <div className="p-6 flex flex-col flex-1">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+              <div className="p-3 md:p-6 flex flex-col flex-1">
+                <h3 className="text-sm md:text-xl font-semibold text-gray-900 mb-1 md:mb-2 line-clamp-2">
                   {recipe.title}
                 </h3>
-                <p className="text-gray-600 text-sm mb-3">
+                <p className="text-gray-600 text-xs md:text-sm mb-2 md:mb-3 line-clamp-2 hidden md:block">
                   {recipe.description || "Ingen beskrivelse"}
                 </p>
                 {recipe.categories && recipe.categories.length > 0 && (
@@ -242,7 +242,7 @@ export default function HomeClient() {
                 )}
                 <Link
                   href={`/recipes/${recipe.id}`}
-                  className="block w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors duration-200 text-center mt-auto"
+                  className="block w-full bg-blue-600 text-white py-2 px-2 md:px-4 rounded-md hover:bg-blue-700 transition-colors duration-200 text-center mt-auto text-xs md:text-sm min-h-[44px] flex items-center justify-center"
                 >
                   Vis oppskrift
                 </Link>

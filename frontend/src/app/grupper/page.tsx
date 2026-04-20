@@ -40,7 +40,7 @@ export default function GroupsPage() {
   };
 
   return (
-    <div className="min-h-screen p-8 sm:p-12">
+    <div className="min-h-screen p-4 sm:p-8 md:p-12">
       <main className="max-w-2xl mx-auto">
         {/* Create group form */}
         <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6 mb-6">
@@ -51,7 +51,7 @@ export default function GroupsPage() {
               value={newGroupName}
               onChange={(e) => setNewGroupName(e.target.value)}
               placeholder="Gruppenavn"
-              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
+              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-base"
               disabled={isCreating}
             />
             <button

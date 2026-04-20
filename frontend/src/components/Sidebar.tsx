@@ -27,14 +27,12 @@ export function Sidebar() {
   const pathname = usePathname();
   const { isAuthenticated, token, logout } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   const handleLogout = async () => {
     setUserMenuOpen(false);
-    setMobileMenuOpen(false);
     logout();
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5238";
@@ -48,7 +46,6 @@ export function Sidebar() {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-slate-900 text-white shadow-md">
-      {/* Main bar */}
       <div className="flex items-stretch h-16">
         {/* Logo */}
         <Link
@@ -79,12 +76,12 @@ export function Sidebar() {
 
         {/* Right icons */}
         <div className="flex items-stretch ml-auto">
-          {/* Feature Planner icon */}
+          {/* Feature Planner icon — desktop only */}
           <Link
             href="/feature-planner"
             data-testid="nav-feature-planner"
             title="Feature Planner"
-            className={`flex items-center px-5 border-b-2 transition-colors duration-200 ${
+            className={`hidden md:flex items-center px-5 border-b-2 transition-colors duration-200 ${
               isActive("/feature-planner")
                 ? "border-blue-400 text-blue-400"
                 : "border-transparent text-slate-300 hover:text-white hover:bg-slate-800"
@@ -140,43 +137,8 @@ export function Sidebar() {
               )}
             </div>
           )}
-
-          {/* Mobile hamburger */}
-          <button
-            onClick={() => setMobileMenuOpen((o) => !o)}
-            className="md:hidden flex items-center px-5 border-b-2 border-transparent text-slate-300 hover:text-white hover:bg-slate-800 transition-colors duration-200"
-            aria-label="Åpne meny"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {mobileMenuOpen
-                ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              }
-            </svg>
-          </button>
         </div>
       </div>
-
-      {/* Mobile dropdown */}
-      {mobileMenuOpen && (
-        <nav className="md:hidden border-t border-slate-700 bg-slate-800">
-          {mainNavLinks.map(({ href, label, testId }) => (
-            <Link
-              key={href}
-              href={href}
-              data-testid={testId}
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-6 py-3 text-sm font-medium border-l-4 transition-colors duration-200 ${
-                isActive(href)
-                  ? "border-blue-400 text-blue-400 bg-slate-900"
-                  : "border-transparent text-slate-300 hover:text-white hover:bg-slate-900"
-              }`}
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
-      )}
     </header>
   );
 }
