@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth } from "@/lib/context/AuthContext";
 import { groupsService, type GroupOption } from "@/lib/services/groups.service";
 import { mealPlanService, type MealPlan } from "@/lib/services/mealplan.service";
+import { CustomCardModal } from "@/components/ukesplanlegger/CustomCardModal";
 import { WeekCalendar } from "@/components/ukesplanlegger/WeekCalendar";
 import { MealPlanPreviewModal } from "@/components/ukesplanlegger/MealPlanPreviewModal";
 import { MealTypeFilter, type MealType } from "@/components/ukesplanlegger/MealTypeFilter";
@@ -49,6 +50,7 @@ export function UkesplanleggerClient() {
   const [aiLoading, setAiLoading] = useState(false);
   const [matkasseWeekMonday, setMatkasseWeekMonday] = useState<Date | null>(null);
   const [previewPlan, setPreviewPlan] = useState<MealPlan | null>(null);
+  const [customCardDate, setCustomCardDate] = useState<Date | null>(null);
 
   // URL param: mealType
   const mealTypeParam = (searchParams.get("mealType") as MealType) ?? "Middag";
@@ -233,6 +235,8 @@ export function UkesplanleggerClient() {
         created = await mealPlanService.createMealPlanMatkasse(selectedGroupId, dateStr, existing.matkasseRecipeId, token);
       } else if (existing.recipeId != null) {
         created = await mealPlanService.createMealPlan(selectedGroupId, dateStr, existing.recipeId, token);
+      } else if (existing.isCustom && existing.customTitle) {
+        created = await mealPlanService.createCustomMealPlan(selectedGroupId, dateStr, existing.customTitle, existing.customNote, token);
       } else {
         return;
       }
@@ -250,6 +254,18 @@ export function UkesplanleggerClient() {
       const date = new Date(weekMonday);
       date.setDate(weekMonday.getDate() + i);
       await handleMatkasseAdd(matkasseRecipes[i], date);
+    }
+  }
+
+  async function handleCustomCardConfirm(title: string, note: string | null) {
+    if (!customCardDate || !token || !selectedGroupId) return;
+    const dateStr = formatDate(customCardDate);
+    setCustomCardDate(null);
+    try {
+      const created = await mealPlanService.createCustomMealPlan(selectedGroupId, dateStr, title, note, token);
+      setPlans((prev) => [...prev, created]);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Kunne ikke lagre kort");
     }
   }
 
@@ -369,6 +385,7 @@ export function UkesplanleggerClient() {
                   onDropMatkasse={handleDropMatkasse}
                   onMoveEntry={handleMoveEntry}
                   highlightedDays={computeHighlightedDays(sidebarTab === "matkasse" ? matkasseWeekMonday : null)}
+                  onAddCustomCard={setCustomCardDate}
                 />
               )}
             </div>
@@ -427,6 +444,14 @@ export function UkesplanleggerClient() {
 
       {previewPlan && (
         <MealPlanPreviewModal plan={previewPlan} onClose={() => setPreviewPlan(null)} />
+      )}
+
+      {customCardDate && (
+        <CustomCardModal
+          date={customCardDate}
+          onConfirm={handleCustomCardConfirm}
+          onClose={() => setCustomCardDate(null)}
+        />
       )}
 
       {/* Mobile modal */}

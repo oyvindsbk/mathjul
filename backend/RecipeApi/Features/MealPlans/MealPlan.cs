@@ -20,6 +20,12 @@ public class MealPlan
     public int? MatkasseRecipeId { get; set; }
     public MatkasseRecipe? MatkasseRecipe { get; set; }
 
+    [StringLength(100)]
+    public string? CustomTitle { get; set; }
+
+    [StringLength(300)]
+    public string? CustomNote { get; set; }
+
     [StringLength(200)]
     public string? CreatedByEmail { get; set; }
 

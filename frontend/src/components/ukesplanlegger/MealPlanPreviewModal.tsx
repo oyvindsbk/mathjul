@@ -9,11 +9,20 @@ interface Props {
 }
 
 export function MealPlanPreviewModal({ plan, onClose }: Props) {
+  const isCustom = plan.isCustom;
   const isMatkasse = plan.matkasseRecipe != null;
-  const title = isMatkasse ? plan.matkasseRecipe!.tittel : (plan.recipe?.title ?? "");
-  const description = isMatkasse ? plan.matkasseRecipe!.beskrivelse : null;
-  const imageUrl = isMatkasse ? plan.matkasseRecipe!.imageUrl : plan.recipe?.imageUrl;
-  const leverandor = isMatkasse ? (plan.matkasseRecipe!.leverandor as Leverandor) : null;
+  const title = isCustom
+    ? (plan.customTitle ?? "")
+    : isMatkasse
+      ? plan.matkasseRecipe!.tittel
+      : (plan.recipe?.title ?? "");
+  const description = isCustom
+    ? plan.customNote
+    : isMatkasse
+      ? plan.matkasseRecipe!.beskrivelse
+      : null;
+  const imageUrl = isCustom ? null : isMatkasse ? plan.matkasseRecipe!.imageUrl : plan.recipe?.imageUrl;
+  const leverandor = isMatkasse && !isCustom ? (plan.matkasseRecipe!.leverandor as Leverandor) : null;
   const colors = leverandor ? (LEVERANDOR_COLORS[leverandor] ?? { bg: "bg-gray-100", text: "text-gray-800", border: "border-gray-200" }) : null;
   const leverandorLabel = leverandor ? (LEVERANDOR_LABELS[leverandor] ?? leverandor) : null;
 
@@ -54,7 +63,7 @@ export function MealPlanPreviewModal({ plan, onClose }: Props) {
           {description && (
             <p className="text-sm text-gray-600 leading-relaxed">{description}</p>
           )}
-          {!description && !imageUrl && (
+          {!description && !imageUrl && !isCustom && (
             <p className="text-sm text-gray-400 italic">Ingen beskrivelse tilgjengelig.</p>
           )}
         </div>

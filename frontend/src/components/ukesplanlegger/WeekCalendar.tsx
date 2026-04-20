@@ -28,6 +28,7 @@ interface WeekCalendarProps {
   onDropMatkasse: (date: Date, matkasseRecipeId: number) => void;
   onMoveEntry: (planId: number, date: Date) => void;
   highlightedDays: Set<string>;
+  onAddCustomCard?: (date: Date) => void;
 }
 
 function getMonday(date: Date): Date {
@@ -71,6 +72,7 @@ export function WeekCalendar({
   onDropMatkasse,
   onMoveEntry,
   highlightedDays,
+  onAddCustomCard,
 }: WeekCalendarProps) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -212,6 +214,7 @@ export function WeekCalendar({
                   onDragOver={handleDragOver}
                   onDragLeave={() => setDragOverDate(null)}
                   onDrop={handleDrop}
+                  onAddCustomCard={onAddCustomCard}
                 />
               );
             })}

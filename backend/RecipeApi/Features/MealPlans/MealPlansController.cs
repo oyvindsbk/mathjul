@@ -86,6 +86,9 @@ public class MealPlansController : ControllerBase
                 Leverandor = p.MatkasseRecipe.Leverandor,
                 ImageUrl = p.MatkasseRecipe.ImageUrl
             },
+            CustomTitle = p.CustomTitle,
+            CustomNote = p.CustomNote,
+            IsCustom = p.CustomTitle != null,
             CreatedByEmail = p.CreatedByEmail
         }).ToList();
 
@@ -105,8 +108,13 @@ public class MealPlansController : ControllerBase
         if (!DateOnly.TryParse(request.Date, out var parsedDate))
             return BadRequest(new { error = "Invalid date format. Use yyyy-MM-dd." });
 
-        if (request.RecipeId == null && request.MatkasseRecipeId == null)
-            return BadRequest(new { error = "Either recipeId or matkasseRecipeId must be provided" });
+        var sourceCount = (request.RecipeId != null ? 1 : 0)
+            + (request.MatkasseRecipeId != null ? 1 : 0)
+            + (!string.IsNullOrWhiteSpace(request.CustomTitle) ? 1 : 0);
+        if (sourceCount == 0)
+            return BadRequest(new { error = "One of recipeId, matkasseRecipeId, or customTitle must be provided" });
+        if (sourceCount > 1)
+            return BadRequest(new { error = "Only one of recipeId, matkasseRecipeId, or customTitle may be provided" });
 
         Recipe? recipe = null;
         RecipeApi.Features.Matkasse.MatkasseRecipe? matkasseRecipe = null;
@@ -129,6 +137,8 @@ public class MealPlansController : ControllerBase
             Date = parsedDate,
             RecipeId = request.RecipeId,
             MatkasseRecipeId = request.MatkasseRecipeId,
+            CustomTitle = string.IsNullOrWhiteSpace(request.CustomTitle) ? null : request.CustomTitle.Trim(),
+            CustomNote = string.IsNullOrWhiteSpace(request.CustomNote) ? null : request.CustomNote.Trim(),
             CreatedByEmail = email,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -159,6 +169,9 @@ public class MealPlansController : ControllerBase
                 Leverandor = matkasseRecipe.Leverandor,
                 ImageUrl = matkasseRecipe.ImageUrl
             },
+            CustomTitle = entry.CustomTitle,
+            CustomNote = entry.CustomNote,
+            IsCustom = entry.CustomTitle != null,
             CreatedByEmail = entry.CreatedByEmail
         });
     }
@@ -263,6 +276,9 @@ public class MealPlanDto
     public MealPlanRecipeDto? Recipe { get; set; }
     public int? MatkasseRecipeId { get; set; }
     public MealPlanMatkasseDto? MatkasseRecipe { get; set; }
+    public string? CustomTitle { get; set; }
+    public string? CustomNote { get; set; }
+    public bool IsCustom { get; set; }
     public string? CreatedByEmail { get; set; }
 }
 
@@ -289,6 +305,8 @@ public class CreateMealPlanRequest
     public string Date { get; set; } = string.Empty;
     public int? RecipeId { get; set; }
     public int? MatkasseRecipeId { get; set; }
+    public string? CustomTitle { get; set; }
+    public string? CustomNote { get; set; }
 }
 
 public class AiPlanRequest

@@ -17,6 +17,7 @@ interface DayCellProps {
   onDragOver: (e: React.DragEvent, date: Date) => void;
   onDragLeave: () => void;
   onDrop: (e: React.DragEvent, date: Date) => void;
+  onAddCustomCard?: (date: Date) => void;
 }
 
 function formatDate(date: Date): string {
@@ -36,6 +37,7 @@ export function DayCell({
   onDragOver,
   onDragLeave,
   onDrop,
+  onAddCustomCard,
 }: DayCellProps) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -64,19 +66,43 @@ export function DayCell({
       onDrop={(e) => onDrop(e, date)}
       title={plans.length > 0 ? `Legg til / endre` : "Legg til middag"}
     >
-      <div className={`text-xs lg:text-sm font-semibold mb-1 ${isToday ? "text-blue-700" : isPast ? "text-gray-400" : "text-gray-700"}`}>
-        {date.getDate()}
+      <div className="flex items-center justify-between mb-1">
+        <div className={`text-xs lg:text-sm font-semibold ${isToday ? "text-blue-700" : isPast ? "text-gray-400" : "text-gray-700"}`}>
+          {date.getDate()}
+        </div>
+        {!isPast && onAddCustomCard && (
+          <button
+            className="hidden group-hover:flex items-center justify-center w-4 h-4 rounded text-gray-400 hover:text-blue-500 transition-colors text-[10px] leading-none"
+            onClick={(e) => {
+              e.stopPropagation();
+              onAddCustomCard(date);
+            }}
+            title="Legg til egendefinert kort"
+            aria-label="Legg til egendefinert kort"
+          >
+            ✏️
+          </button>
+        )}
       </div>
 
       {plans.length > 0 ? (
         <div className="flex flex-col gap-1 flex-1">
           {plans.map((plan) => {
+            const isCustom = plan.isCustom;
             const isMatkasse = plan.matkasseRecipe != null;
-            const title = isMatkasse ? plan.matkasseRecipe!.tittel : (plan.recipe?.title ?? "");
+            const title = isCustom
+              ? (plan.customTitle ?? "")
+              : isMatkasse
+                ? plan.matkasseRecipe!.tittel
+                : (plan.recipe?.title ?? "");
             const iconCategory = isMatkasse
               ? null
               : (plan.recipe?.mealTypeCategories?.find((c) => MEAL_TYPE_ICONS[c]) ?? plan.recipe?.mealTypeCategory ?? null);
-            const icon = isMatkasse ? "🥡" : (iconCategory ? (MEAL_TYPE_ICONS[iconCategory] ?? "🍴") : "🍴");
+            const icon = isCustom
+              ? "✏️"
+              : isMatkasse
+                ? "🥡"
+                : (iconCategory ? (MEAL_TYPE_ICONS[iconCategory] ?? "🍴") : "🍴");
             const single = plans.length === 1;
             return (
               <div
@@ -94,13 +120,17 @@ export function DayCell({
                   if (!draggingRef.current) onEntryClick?.(plan);
                 }}
                 className={`relative group/entry cursor-grab active:cursor-grabbing active:opacity-50 ${
-                  single
-                    ? "flex flex-col items-center justify-center flex-1 gap-1 rounded-md bg-blue-50 border border-blue-100 px-1 py-2 text-center"
-                    : "flex items-start gap-1"
+                  isCustom
+                    ? single
+                      ? "flex flex-col items-center justify-center flex-1 gap-1 rounded-md bg-amber-50 border border-amber-200 px-1 py-2 text-center"
+                      : "flex items-start gap-1"
+                    : single
+                      ? "flex flex-col items-center justify-center flex-1 gap-1 rounded-md bg-blue-50 border border-blue-100 px-1 py-2 text-center"
+                      : "flex items-start gap-1"
                 }`}
               >
                 <span className={single ? "text-xl leading-none" : "text-[10px] flex-shrink-0 mt-0.5"}>{icon}</span>
-                <p className={`font-medium leading-tight flex-1 ${isPast ? "text-gray-400" : "text-gray-800"} ${single ? "text-xs line-clamp-3" : "text-[10px] line-clamp-2"}`}>
+                <p className={`font-medium leading-tight flex-1 ${isPast ? "text-gray-400" : isCustom ? "text-amber-800" : "text-gray-800"} ${single ? "text-xs line-clamp-3" : "text-[10px] line-clamp-2"}`}>
                   {title}
                 </p>
                 <button

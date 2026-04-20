@@ -25,6 +25,9 @@ export interface MealPlan {
   recipe: MealPlanRecipe | null;
   matkasseRecipeId: number | null;
   matkasseRecipe: MealPlanMatkasse | null;
+  customTitle: string | null;
+  customNote: string | null;
+  isCustom: boolean;
   createdByEmail: string | null;
 }
 
@@ -72,6 +75,21 @@ class MealPlanService {
     });
 
     if (!response.ok) throw new Error(`Failed to create meal plan: ${response.statusText}`);
+    return response.json();
+  }
+
+  async createCustomMealPlan(groupId: number, date: string, customTitle: string, customNote: string | null, token: string): Promise<MealPlan> {
+    const response = await apiFetch(`${appConfig.api.baseUrl}/api/groups/${groupId}/mealplans`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ date, customTitle, customNote }),
+    });
+
+    if (!response.ok) throw new Error(`Failed to create custom meal plan: ${response.statusText}`);
     return response.json();
   }
 
