@@ -194,7 +194,7 @@ export function BugReporter() {
                   value={title}
                   onChange={e => setTitle(e.target.value)}
                   placeholder="Kort beskrivelse av buggen"
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-red-500"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm focus:outline-none focus:border-blue-500"
                   autoFocus
                 />
               </div>
@@ -209,7 +209,7 @@ export function BugReporter() {
                   onChange={e => setDescription(e.target.value)}
                   placeholder="Beskriv hva som skjer og hva du forventet. Inkluder steg for å reprodusere."
                   rows={4}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm resize-none focus:outline-none focus:border-red-500"
+                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white placeholder-slate-500 text-sm resize-none focus:outline-none focus:border-blue-500"
                 />
               </div>
 
@@ -220,7 +220,7 @@ export function BugReporter() {
                   <select
                     value={columnId ?? ''}
                     onChange={e => setColumnId(Number(e.target.value))}
-                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-red-500"
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 text-white text-sm focus:outline-none focus:border-blue-500"
                   >
                     {columns.map(col => (
                       <option key={col.id} value={col.id}>{col.name}</option>
@@ -240,7 +240,7 @@ export function BugReporter() {
               <button
                 onClick={handleSubmit}
                 disabled={saving || !title.trim() || !description.trim()}
-                className="bg-red-600 hover:bg-red-500 disabled:bg-slate-700 disabled:text-slate-500 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
+                className="bg-green-600 hover:bg-green-500 disabled:bg-slate-700 disabled:text-slate-500 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors"
               >
                 {saving ? 'Lagrer...' : 'Legg til tavlen'}
               </button>
@@ -265,26 +265,25 @@ function SnippingOverlay({ onCapture, onCancel }: SnippingOverlayProps) {
   const [rect, setRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const [capturing, setCapturing] = useState(false);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    startRef.current = { x: e.clientX, y: e.clientY };
-    setRect({ x: e.clientX, y: e.clientY, w: 0, h: 0 });
+  const beginDrag = useCallback((clientX: number, clientY: number) => {
+    startRef.current = { x: clientX, y: clientY };
+    setRect({ x: clientX, y: clientY, w: 0, h: 0 });
   }, []);
 
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+  const moveDrag = useCallback((clientX: number, clientY: number) => {
     if (!startRef.current) return;
     const { x, y } = startRef.current;
     const next = {
-      x: Math.min(e.clientX, x),
-      y: Math.min(e.clientY, y),
-      w: Math.abs(e.clientX - x),
-      h: Math.abs(e.clientY - y),
+      x: Math.min(clientX, x),
+      y: Math.min(clientY, y),
+      w: Math.abs(clientX - x),
+      h: Math.abs(clientY - y),
     };
     rectRef.current = next;
     setRect(next);
   }, []);
 
-  const handleMouseUp = useCallback(async () => {
+  const endDrag = useCallback(async () => {
     const currentRect = rectRef.current;
     if (!startRef.current || !currentRect || currentRect.w < 10 || currentRect.h < 10) {
       startRef.current = null;
@@ -331,14 +330,40 @@ function SnippingOverlay({ onCapture, onCancel }: SnippingOverlayProps) {
     }
   }, [onCapture, onCancel]);
 
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    beginDrag(e.clientX, e.clientY);
+  }, [beginDrag]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    moveDrag(e.clientX, e.clientY);
+  }, [moveDrag]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    const t = e.touches[0];
+    beginDrag(t.clientX, t.clientY);
+  }, [beginDrag]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    const t = e.touches[0];
+    moveDrag(t.clientX, t.clientY);
+  }, [moveDrag]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.preventDefault();
+    endDrag();
+  }, [endDrag]);
+
   // Attach mouseup to window so release outside overlay is still caught
   useEffect(() => {
-    const handler = () => { if (startRef.current) handleMouseUp(); };
+    const handler = () => { if (startRef.current) endDrag(); };
     window.addEventListener('mouseup', handler);
     return () => window.removeEventListener('mouseup', handler);
-  }, [handleMouseUp]);
+  }, [endDrag]);
 
-  // Escape key cancels
+  // Escape key cancels (desktop)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancel(); };
     window.addEventListener('keydown', handler);
@@ -348,15 +373,24 @@ function SnippingOverlay({ onCapture, onCancel }: SnippingOverlayProps) {
   return (
     <div
       ref={overlayRef}
-      className="fixed inset-0 z-50 cursor-crosshair"
+      className="fixed inset-0 z-50 cursor-crosshair touch-none"
       style={{ background: 'rgba(0,0,0,0.35)' }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
-      {/* Instruction */}
+      {/* Instruction + cancel button */}
       {!rect && !capturing && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-slate-900 border border-slate-700 text-white text-sm px-4 py-2 rounded-xl shadow-lg pointer-events-none select-none">
-          Dra for å velge område — trykk Esc for å avbryte
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-slate-900 border border-slate-700 text-white text-sm px-4 py-2 rounded-xl shadow-lg select-none whitespace-nowrap">
+          <span className="pointer-events-none">Dra for å velge område</span>
+          <button
+            onClick={onCancel}
+            className="text-slate-400 hover:text-white transition-colors font-medium px-2 py-0.5 rounded-lg hover:bg-slate-800"
+          >
+            Avbryt
+          </button>
         </div>
       )}
 
