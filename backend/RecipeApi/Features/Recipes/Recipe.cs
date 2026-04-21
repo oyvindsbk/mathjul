@@ -68,8 +68,14 @@ public class Recipe
     
     public int? CookTimeMinutes { get; set; } // in minutes
     
-    public int? Servings { get; set; }
-    
+    public double? Servings { get; set; }
+
+    [StringLength(20)]
+    public string QuantityType { get; set; } = "porsjoner";
+
+    [StringLength(100)]
+    public string? CustomUnit { get; set; }
+
     public string? ImageUrl { get; set; }
 
     public string? SourceUrl { get; set; }

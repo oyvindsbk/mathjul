@@ -8,6 +8,8 @@ interface FloatingIngredientsButtonProps {
   ingredients?: StructuredIngredient[];
   ingredientSections?: IngredientSection[];
   servings?: number;
+  quantityType?: string;
+  customUnit?: string | null;
   desiredServings: number;
   onServingsChange: (n: number) => void;
   ingredientsSectionId: string;
@@ -17,6 +19,8 @@ export function FloatingIngredientsButton({
   ingredients,
   ingredientSections,
   servings,
+  quantityType,
+  customUnit,
   desiredServings,
   onServingsChange,
   ingredientsSectionId,
@@ -64,6 +68,8 @@ export function FloatingIngredientsButton({
         ingredients={ingredients}
         ingredientSections={ingredientSections}
         servings={servings}
+        quantityType={quantityType}
+        customUnit={customUnit}
         desiredServings={desiredServings}
         onServingsChange={onServingsChange}
       />

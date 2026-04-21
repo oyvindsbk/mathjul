@@ -147,6 +147,8 @@ public class RecipesController : ControllerBase
 
             ImageUrl = recipe.ImageUrl,
             Servings = recipe.Servings,
+            QuantityType = recipe.QuantityType,
+            CustomUnit = recipe.CustomUnit,
             Visibility = recipe.Visibility,
             OwnerEmail = recipe.OwnerEmail,
             SourceUrl = recipe.SourceUrl,
@@ -409,6 +411,8 @@ public class RecipesController : ControllerBase
             CookTimeMinutes = request.CookTime,
             CookTime = request.CookTime.HasValue ? $"{request.CookTime} min" : string.Empty,
             Servings = request.Servings,
+            QuantityType = request.QuantityType,
+            CustomUnit = request.CustomUnit,
             ImageUrl = request.MainImageUrl,
             SourceUrl = request.SourceUrl,
             SourceImageUrl = request.SourceImageUrl,
@@ -493,6 +497,8 @@ public class RecipesController : ControllerBase
         recipe.CookTimeMinutes = request.CookTime;
         recipe.CookTime = request.CookTime.HasValue ? $"{request.CookTime} min" : string.Empty;
         recipe.Servings = request.Servings;
+        recipe.QuantityType = request.QuantityType;
+        recipe.CustomUnit = request.CustomUnit;
         recipe.Tips = request.Tips ?? new List<string>();
         recipe.UpdatedAt = DateTime.UtcNow;
 
@@ -530,6 +536,8 @@ public class RecipesController : ControllerBase
 
             ImageUrl = recipe.ImageUrl,
             Servings = recipe.Servings,
+            QuantityType = recipe.QuantityType,
+            CustomUnit = recipe.CustomUnit,
             Visibility = recipe.Visibility,
             OwnerEmail = recipe.OwnerEmail,
             SourceUrl = recipe.SourceUrl,
@@ -866,6 +874,8 @@ public class RecipesController : ControllerBase
         PrepTime = dto.PrepTime,
         CookTime = dto.CookTime,
         Servings = dto.Servings,
+        QuantityType = dto.QuantityType,
+        CustomUnit = dto.CustomUnit,
         SuggestedCategoryIds = dto.SuggestedCategoryIds,
         Tips = dto.Tips
     };
@@ -925,7 +935,9 @@ public class RecipeDetailDto
     public int? CookTimeMinutes { get; set; }
     public int? PrepTime { get; set; }
     public string? ImageUrl { get; set; }
-    public int? Servings { get; set; }
+    public double? Servings { get; set; }
+    public string QuantityType { get; set; } = "porsjoner";
+    public string? CustomUnit { get; set; }
     public string Visibility { get; set; } = "Public";
     public string? OwnerEmail { get; set; }
     public List<StructuredIngredientDto> Ingredients { get; set; } = new();
@@ -965,7 +977,9 @@ public class ExtractedRecipeResponse
     public List<InstructionSectionDto> InstructionSections { get; set; } = new();
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
-    public int? Servings { get; set; }
+    public double? Servings { get; set; }
+    public string QuantityType { get; set; } = "porsjoner";
+    public string? CustomUnit { get; set; }
     public List<int> SuggestedCategoryIds { get; set; } = new();
     public List<string> Tips { get; set; } = new();
     /// <summary>Blob URL of the AI-extracted dish photo, if detected.</summary>
@@ -991,7 +1005,9 @@ public class SaveExtractedRecipeRequest
     public List<InstructionSectionDto>? InstructionSections { get; set; }
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
-    public int? Servings { get; set; }
+    public double? Servings { get; set; }
+    public string QuantityType { get; set; } = "porsjoner";
+    public string? CustomUnit { get; set; }
     public List<int>? CategoryIds { get; set; }
     public List<string>? Tips { get; set; }
     /// <summary>Pre-uploaded blob URL from AI dish extraction (pending blob path will be renamed on save).</summary>
@@ -1014,7 +1030,9 @@ public class UpdateRecipeRequest
     public List<InstructionSectionDto>? InstructionSections { get; set; }
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
-    public int? Servings { get; set; }
+    public double? Servings { get; set; }
+    public string QuantityType { get; set; } = "porsjoner";
+    public string? CustomUnit { get; set; }
     public List<int>? CategoryIds { get; set; }
     public List<string>? Tips { get; set; }
     public string? Visibility { get; set; }

@@ -9,6 +9,8 @@ interface IngredientsSheetProps {
   ingredients?: StructuredIngredient[];
   ingredientSections?: IngredientSection[];
   servings?: number;
+  quantityType?: string;
+  customUnit?: string | null;
   desiredServings: number;
   onServingsChange: (n: number) => void;
 }
@@ -31,12 +33,20 @@ function ingParts(
   return { qtyUnit: [qtyStr, ing.unit].filter(Boolean).join(" "), name: ing.name };
 }
 
+function servingsLabel(quantityType?: string, customUnit?: string | null): string {
+  if (quantityType === 'antall') return 'stk';
+  if (quantityType === 'custom' && customUnit) return customUnit;
+  return 'porsjoner';
+}
+
 export function IngredientsSheet({
   open,
   onClose,
   ingredients,
   ingredientSections,
   servings,
+  quantityType,
+  customUnit,
   desiredServings,
   onServingsChange,
 }: IngredientsSheetProps) {
@@ -115,21 +125,32 @@ export function IngredientsSheet({
         {servings && (
           <div className="flex items-center gap-3 px-5 py-3 shrink-0 border-b border-gray-100">
             <button
-              onClick={() => onServingsChange(Math.max(1, desiredServings - 1))}
+              onClick={() => onServingsChange(Math.max(0.5, desiredServings - 1))}
               className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold text-lg flex items-center justify-center"
-              aria-label="Færre porsjoner"
+              aria-label="Færre"
             >
               −
             </button>
-            <span className="text-xl font-bold text-gray-900 min-w-[2ch] text-center">{desiredServings}</span>
+            <input
+              type="number"
+              step="any"
+              min="0"
+              value={desiredServings}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                if (!isNaN(v) && v > 0) onServingsChange(v);
+              }}
+              className="text-xl font-bold text-gray-900 text-center w-16 border border-gray-200 rounded-lg px-1 py-0.5 bg-white focus:outline-none focus:border-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              aria-label="Antall"
+            />
             <button
               onClick={() => onServingsChange(desiredServings + 1)}
               className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold text-lg flex items-center justify-center"
-              aria-label="Flere porsjoner"
+              aria-label="Flere"
             >
               +
             </button>
-            <span className="text-gray-600 text-sm">porsjoner</span>
+            <span className="text-gray-600 text-sm">{servingsLabel(quantityType, customUnit)}</span>
           </div>
         )}
 

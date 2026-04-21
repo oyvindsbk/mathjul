@@ -704,17 +704,52 @@ export default function RecipeForm({
         />
       </div>
 
-      {/* Servings, Prep Time, Cook Time */}
-      <div className="grid grid-cols-3 gap-4">
-        <div>
-          <label className="block text-sm font-medium mb-2">Porsjoner</label>
+      {/* Quantity type + servings */}
+      <div>
+        <label className="block text-sm font-medium mb-2">Antall / Porsjoner</label>
+        <div className="flex gap-2 mb-2">
+          {(['porsjoner', 'antall', 'custom'] as const).map((type) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => {
+                handleField('quantityType', type);
+                if (type !== 'custom') handleField('customUnit', null);
+              }}
+              className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                (formData.quantityType ?? 'porsjoner') === type
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-400'
+              }`}
+            >
+              {type === 'porsjoner' ? 'Porsjoner' : type === 'antall' ? 'Antall (stk)' : 'Egendefinert'}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
           <input
             type="number"
+            step="any"
+            min="0"
+            placeholder={(formData.quantityType ?? 'porsjoner') === 'porsjoner' ? 'Porsjoner' : (formData.quantityType === 'custom' ? 'Antall' : 'Antall (stk)')}
             value={formData.servings ?? ''}
-            onChange={(e) => handleField('servings', parseInt(e.target.value) || null)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
+            onChange={(e) => handleField('servings', e.target.value === '' ? null : parseFloat(e.target.value))}
+            className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
           />
+          {formData.quantityType === 'custom' && (
+            <input
+              type="text"
+              placeholder="Enhet (f.eks. brød, brett)"
+              value={formData.customUnit ?? ''}
+              onChange={(e) => handleField('customUnit', e.target.value || null)}
+              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
+            />
+          )}
         </div>
+      </div>
+
+      {/* Prep Time, Cook Time */}
+      <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium mb-2">Forberedelsestid (min)</label>
           <input

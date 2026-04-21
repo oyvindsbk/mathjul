@@ -19,6 +19,8 @@ export interface RecipeFormData {
   prepTime?: number | null;
   cookTime?: number | null;
   servings?: number | null;
+  quantityType?: string;
+  customUnit?: string | null;
   categoryIds?: number[];
   tips?: string[];
   mainImageUrl?: string | null;

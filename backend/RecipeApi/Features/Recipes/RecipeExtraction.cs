@@ -39,7 +39,44 @@ internal sealed class FlexibleDecimalConverter : JsonConverter<decimal?>
 }
 
 /// <summary>
-/// Handles AI responses where int fields (prepTime, cookTime, servings) may be returned as strings.
+/// Handles AI responses where double fields (servings) may be returned as strings or integers.
+/// </summary>
+internal sealed class FlexibleDoubleConverter : JsonConverter<double?>
+{
+    public override double? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.Null)
+            return null;
+
+        if (reader.TokenType == JsonTokenType.Number)
+            return reader.GetDouble();
+
+        if (reader.TokenType == JsonTokenType.String)
+        {
+            var s = reader.GetString();
+            if (string.IsNullOrWhiteSpace(s)) return null;
+            if (double.TryParse(s, System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out var d))
+                return d;
+            var digits = new string(s.TakeWhile(c => char.IsDigit(c) || c == '.').ToArray());
+            if (digits.Length > 0 && double.TryParse(digits, System.Globalization.NumberStyles.Any,
+                    System.Globalization.CultureInfo.InvariantCulture, out var d2))
+                return d2;
+            return null;
+        }
+
+        return null;
+    }
+
+    public override void Write(Utf8JsonWriter writer, double? value, JsonSerializerOptions options)
+    {
+        if (value.HasValue) writer.WriteNumberValue(value.Value);
+        else writer.WriteNullValue();
+    }
+}
+
+/// <summary>
+/// Handles AI responses where int fields (prepTime, cookTime) may be returned as strings.
 /// </summary>
 internal sealed class FlexibleIntConverter : JsonConverter<int?>
 {
@@ -107,7 +144,9 @@ public class ExtractedRecipeDto
     public List<ExtractedInstructionSectionDto> InstructionSections { get; set; } = new();
     public int? PrepTime { get; set; }
     public int? CookTime { get; set; }
-    public int? Servings { get; set; }
+    public double? Servings { get; set; }
+    public string QuantityType { get; set; } = "porsjoner";
+    public string? CustomUnit { get; set; }
     public List<int> SuggestedCategoryIds { get; set; } = new();
     public List<string> Tips { get; set; } = new();
 }
@@ -134,7 +173,9 @@ Extract the following fields:
   - steps: Array of instruction step strings. IMPORTANT: Strip any leading step numbers from each step text (same rule as above).
 - prepTime: Preparation time in minutes. Extract from explicit text (e.g., ""Prep: 15 min""). If not stated, estimate from the instructions (e.g., chopping, marinating steps).
 - cookTime: Cooking time in minutes. Extract from explicit text (e.g., ""Cook: 30 min"", ""bake for 45 minutes""). If not stated, estimate from the instructions (e.g., simmering, baking, frying steps).
-- servings: Number of servings/portions (extract from text like ""Serves 4"", ""4 porsjoner"")
+- servings: The yield quantity as a number (e.g., 4, 12, 0.5). Supports decimals.
+- quantityType: How to interpret the yield. Use ""porsjoner"" when the recipe serves people (e.g., ""serves 4"", ""4 porsjoner""). Use ""antall"" when the recipe yields countable items measured in pieces (e.g., ""gir 10 vafler"", ""12 muffins"", ""24 cookies""). Use ""custom"" when the yield uses a specific unit that is neither a serving nor a simple piece count (e.g., ""2 brød"", ""1 brett""). Default to ""porsjoner"" if unclear.
+- customUnit: Only set when quantityType is ""custom"". The Norwegian unit label (e.g., ""brød"", ""brett"", ""kaker""). Leave null otherwise.
 - tips: Array of strings with practical tips, substitutions, serving suggestions, or cook's notes from the recipe. Each tip is a standalone sentence in Norwegian. Use an empty array if no tips are present in the source.
 
 SECTIONS RULE: Only use ingredientSections/instructionSections if the source recipe explicitly has labeled sections or component headings. Do NOT invent section headings. For a simple recipe with one list of ingredients and one list of steps, use the flat ingredients/instructions fields.
@@ -161,7 +202,8 @@ Respond with ONLY valid JSON. Use the flat format for simple recipes:
   ""prepTime"": 15,
   ""cookTime"": 30,
   ""servings"": 4,
-
+  ""quantityType"": ""porsjoner"",
+  ""customUnit"": null,
   ""tips"": [""Tip 1"", ""Tip 2""],
   ""suggestedCategoryIds"": []
 }
@@ -193,7 +235,8 @@ Use the sectioned format ONLY when the source recipe has explicit labeled sectio
   ""prepTime"": 15,
   ""cookTime"": 30,
   ""servings"": 4,
-
+  ""quantityType"": ""porsjoner"",
+  ""customUnit"": null,
   ""tips"": [],
   ""suggestedCategoryIds"": []
 }";
@@ -220,7 +263,8 @@ Respond with ONLY valid JSON. Use the flat format for simple recipes:
   ""prepTime"": 15,
   ""cookTime"": 30,
   ""servings"": 4,
-
+  ""quantityType"": ""porsjoner"",
+  ""customUnit"": null,
   ""tips"": [""Tip 1"", ""Tip 2""],
   ""suggestedCategoryIds"": [1, 3]
 }}
@@ -244,7 +288,8 @@ Use the sectioned format ONLY when the source recipe has explicit labeled sectio
   ""prepTime"": 15,
   ""cookTime"": 30,
   ""servings"": 4,
-
+  ""quantityType"": ""porsjoner"",
+  ""customUnit"": null,
   ""tips"": [],
   ""suggestedCategoryIds"": [1, 3]
 }}";
@@ -386,7 +431,7 @@ Use the sectioned format ONLY when the source recipe has explicit labeled sectio
             var options = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true,
-                Converters = { new FlexibleDecimalConverter(), new FlexibleIntConverter() }
+                Converters = { new FlexibleDecimalConverter(), new FlexibleIntConverter(), new FlexibleDoubleConverter() }
             };
 
             // Pre-process: if ingredients contains plain strings, convert to structured objects

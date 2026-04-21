@@ -49,6 +49,8 @@ export default function EditRecipeClient({ id }: { id: string }) {
           prepTime?: number;
           cookTimeMinutes?: number;
           servings?: number;
+          quantityType?: string;
+          customUnit?: string | null;
           categories?: Category[];
           imageUrl?: string | null;
           visibility?: string;
@@ -68,6 +70,8 @@ export default function EditRecipeClient({ id }: { id: string }) {
           prepTime: detail.prepTime ?? null,
           cookTime: detail.cookTimeMinutes ?? null,
           servings: detail.servings ?? null,
+          quantityType: detail.quantityType ?? 'porsjoner',
+          customUnit: detail.customUnit ?? null,
           categoryIds: detail.categories?.map((c) => c.id) ?? [],
           tips: detail.tips ?? [],
         });
