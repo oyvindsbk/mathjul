@@ -1,12 +1,17 @@
 import type { NextConfig } from "next";
+import withSerwistInit from "@serwist/next";
+
+const withSerwist = withSerwistInit({
+  swSrc: "src/app/sw.ts",
+  swDest: "public/sw.js",
+  disable: process.env.NODE_ENV === "development",
+});
 
 const nextConfig: NextConfig = {
-  // Use standalone for Docker container deployment
-  output: 'standalone',
-  // Disable image optimization for standalone builds
+  output: "standalone",
   images: {
     unoptimized: true,
   },
 };
 
-export default nextConfig;
+export default withSerwist(nextConfig);

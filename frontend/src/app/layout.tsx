@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
@@ -9,6 +9,7 @@ import { appConfig } from "@/lib/config";
 import { BugReporter } from "@/components/BugReporter";
 import { BreadcrumbBar } from "@/components/BreadcrumbBar";
 import { BottomNav } from "@/components/BottomNav";
+import { UpdatePrompt } from "@/components/UpdatePrompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -20,9 +21,22 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#0f172a",
+};
+
 export const metadata: Metadata = {
   title: "Matoppskrifter",
   description: "Oppdag og utforsk oppskrifter",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Matjul",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
+  },
 };
 
 export default function RootLayout({
@@ -32,6 +46,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="no">
+      <head>
+        <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
@@ -55,6 +72,7 @@ export default function RootLayout({
             </div>
           </ProtectedRoute>
           <BugReporter />
+          <UpdatePrompt />
         </AuthProvider>
       </body>
     </html>
