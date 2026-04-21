@@ -33,7 +33,7 @@ export function FloatingIngredientsButton({
       ([entry]) => {
         setVisible(!entry.isIntersecting);
       },
-      { threshold: 0 }
+      { threshold: 0, rootMargin: "0px 0px 200px 0px" }
     );
     observerRef.current.observe(target);
 

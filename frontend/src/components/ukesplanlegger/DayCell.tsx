@@ -2,7 +2,14 @@
 
 import { useRef } from "react";
 import type { MealPlan } from "@/lib/services/mealplan.service";
+import type { Leverandor } from "@/lib/services/matkasse.service";
 import { MEAL_TYPE_ICONS } from "./MealTypeFilter";
+
+const LEVERANDOR_LOGOS: Record<Leverandor, string> = {
+  Hellofresh: "/icons/logo-hellofresh.png",
+  Kokkeloren: "/icons/logo-kokkeloren.png",
+  GodtLevert: "/icons/logo-godtlevert.png",
+};
 
 interface DayCellProps {
   date: Date;
@@ -101,8 +108,11 @@ export function DayCell({
             const icon = isCustom
               ? "✏️"
               : isMatkasse
-                ? "🥡"
+                ? null
                 : (iconCategory ? (MEAL_TYPE_ICONS[iconCategory] ?? "🍴") : "🍴");
+            const matkasseLogo = isMatkasse
+              ? LEVERANDOR_LOGOS[plan.matkasseRecipe!.leverandor as Leverandor]
+              : null;
             const single = plans.length === 1;
             return (
               <div
@@ -129,7 +139,16 @@ export function DayCell({
                       : "flex items-start gap-1"
                 }`}
               >
-                <span className={single ? "text-xl leading-none" : "text-[10px] flex-shrink-0 mt-0.5"}>{icon}</span>
+                {matkasseLogo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={matkasseLogo}
+                    alt={plan.matkasseRecipe!.leverandor}
+                    className={single ? "w-8 h-8 object-contain rounded" : "w-4 h-4 object-contain rounded flex-shrink-0 mt-0.5"}
+                  />
+                ) : (
+                  <span className={single ? "text-xl leading-none" : "text-[10px] flex-shrink-0 mt-0.5"}>{icon}</span>
+                )}
                 <p className={`font-medium leading-tight flex-1 ${isPast ? "text-gray-400" : isCustom ? "text-amber-800" : "text-gray-800"} ${single ? "text-xs line-clamp-3" : "text-[10px] line-clamp-2"}`}>
                   {title}
                 </p>

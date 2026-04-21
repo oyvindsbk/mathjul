@@ -85,7 +85,8 @@ export function BugReporter() {
         <button
           onClick={openMenu}
           title="Rapporter en bug"
-          className="fixed bottom-6 right-6 z-40 w-12 h-12 bg-red-600 hover:bg-red-500 text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
+          className="fixed right-4 md:right-6 z-50 w-12 h-12 bg-red-600 hover:bg-red-500 text-white rounded-full shadow-lg flex items-center justify-center transition-colors"
+          style={{ bottom: "calc(4rem + env(safe-area-inset-bottom) + 0.75rem)" }}
         >
           <BugIcon className="w-6 h-6" />
         </button>
@@ -93,7 +94,7 @@ export function BugReporter() {
 
       {/* Menu popup */}
       {step === 'menu' && (
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="fixed right-4 md:right-6 z-50" style={{ bottom: "calc(4rem + env(safe-area-inset-bottom) + 0.75rem)" }}>
           <div className="mb-3 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl p-3 flex flex-col gap-2 w-52">
             <button
               onClick={() => setStep('snipping')}
