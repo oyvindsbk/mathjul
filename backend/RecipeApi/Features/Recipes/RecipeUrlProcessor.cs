@@ -67,12 +67,21 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
             httpClient.Timeout = TimeSpan.FromSeconds(15);
 
             var html = await httpClient.GetStringAsync(uri, cancellationToken);
+
+            // Try JSON-LD first — it's structured and accurate, no AI needed
+            var jsonLdResult = TryExtractFromJsonLd(html);
+            if (jsonLdResult != null)
+            {
+                _logger.LogInformation("Successfully extracted recipe from JSON-LD structured data");
+                return RecipeExtractionResult.Success(jsonLdResult);
+            }
+
             var pageText = ExtractText(html);
 
             if (string.IsNullOrWhiteSpace(pageText))
                 return RecipeExtractionResult.Failure("Could not extract readable text from the page");
 
-            _logger.LogInformation("Extracted {Length} chars of text from URL, sending to AI", pageText.Length);
+            _logger.LogInformation("No JSON-LD found, sending {Length} chars of text to AI", pageText.Length);
 
             var systemPrompt = RecipeExtractionPrompt.BuildSystemPrompt(categoryListJson);
             var options = new ChatCompletionsOptions
@@ -140,6 +149,248 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
         }
 
         return false;
+    }
+
+    private ExtractedRecipeDto? TryExtractFromJsonLd(string html)
+    {
+        var doc = new HtmlDocument();
+        doc.LoadHtml(html);
+
+        var scriptNodes = doc.DocumentNode.SelectNodes("//script[@type='application/ld+json']");
+        if (scriptNodes == null) return null;
+
+        foreach (var node in scriptNodes)
+        {
+            try
+            {
+                var jsonText = node.InnerText.Trim();
+                if (string.IsNullOrWhiteSpace(jsonText)) continue;
+
+                using var doc2 = JsonDocument.Parse(jsonText);
+                var root = doc2.RootElement;
+
+                // Handle both single object and @graph array
+                JsonElement? recipeElement = null;
+                if (root.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var item in root.EnumerateArray())
+                    {
+                        if (IsRecipeType(item)) { recipeElement = item; break; }
+                    }
+                }
+                else if (root.ValueKind == JsonValueKind.Object)
+                {
+                    if (IsRecipeType(root))
+                        recipeElement = root;
+                    else if (root.TryGetProperty("@graph", out var graph) && graph.ValueKind == JsonValueKind.Array)
+                    {
+                        foreach (var item in graph.EnumerateArray())
+                        {
+                            if (IsRecipeType(item)) { recipeElement = item; break; }
+                        }
+                    }
+                }
+
+                if (recipeElement == null) continue;
+
+                var recipe = MapJsonLdToDto(recipeElement.Value);
+                if (recipe != null) return recipe;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to parse JSON-LD block, trying next");
+            }
+        }
+
+        return null;
+    }
+
+    private static bool IsRecipeType(JsonElement element)
+    {
+        if (!element.TryGetProperty("@type", out var typeProp)) return false;
+        if (typeProp.ValueKind == JsonValueKind.String)
+            return typeProp.GetString()?.Equals("Recipe", StringComparison.OrdinalIgnoreCase) == true;
+        if (typeProp.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var t in typeProp.EnumerateArray())
+                if (t.GetString()?.Equals("Recipe", StringComparison.OrdinalIgnoreCase) == true) return true;
+        }
+        return false;
+    }
+
+    private static ExtractedRecipeDto? MapJsonLdToDto(JsonElement r)
+    {
+        var title = GetString(r, "name");
+        if (string.IsNullOrWhiteSpace(title)) return null;
+
+        var dto = new ExtractedRecipeDto
+        {
+            Title = title,
+            Description = GetString(r, "description"),
+            PrepTime = ParseIsoDuration(GetString(r, "prepTime")),
+            CookTime = ParseIsoDuration(GetString(r, "cookTime")) ?? ParseIsoDuration(GetString(r, "totalTime")),
+        };
+
+        // Servings from recipeYield
+        if (r.TryGetProperty("recipeYield", out var yieldProp))
+        {
+            var yieldStr = yieldProp.ValueKind == JsonValueKind.Array
+                ? yieldProp.EnumerateArray().FirstOrDefault().GetString()
+                : yieldProp.ValueKind == JsonValueKind.String ? yieldProp.GetString()
+                : yieldProp.ValueKind == JsonValueKind.Number ? yieldProp.GetRawText()
+                : null;
+
+            if (yieldStr != null)
+            {
+                // Extract leading number from strings like "6 porsjoner" or "6"
+                var digits = new string(yieldStr.TakeWhile(c => char.IsDigit(c) || c == '.').ToArray());
+                if (digits.Length > 0 && double.TryParse(digits, System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture, out var servings))
+                    dto.Servings = servings;
+            }
+        }
+
+        // Ingredients
+        if (r.TryGetProperty("recipeIngredient", out var ingProp) && ingProp.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var ing in ingProp.EnumerateArray())
+            {
+                var raw = ing.GetString();
+                if (!string.IsNullOrWhiteSpace(raw))
+                    dto.Ingredients.Add(ParseIngredientString(raw));
+            }
+        }
+
+        // Instructions — handle HowToStep, HowToSection, or plain string
+        if (r.TryGetProperty("recipeInstructions", out var instrProp))
+        {
+            if (instrProp.ValueKind == JsonValueKind.String)
+            {
+                var text = instrProp.GetString();
+                if (!string.IsNullOrWhiteSpace(text)) dto.Instructions.Add(text);
+            }
+            else if (instrProp.ValueKind == JsonValueKind.Array)
+            {
+                var sections = new List<ExtractedIngredientSectionDto>();
+                var instrSections = new List<ExtractedInstructionSectionDto>();
+
+                foreach (var item in instrProp.EnumerateArray())
+                {
+                    var itemType = item.TryGetProperty("@type", out var tp) ? tp.GetString() : null;
+
+                    if (itemType?.Equals("HowToSection", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        var heading = GetString(item, "name") ?? "";
+                        var steps = new List<string>();
+                        if (item.TryGetProperty("itemListElement", out var listEl) && listEl.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var step in listEl.EnumerateArray())
+                                steps.Add(GetString(step, "text") ?? GetString(step, "name") ?? "");
+                        }
+                        instrSections.Add(new ExtractedInstructionSectionDto { Heading = heading, Steps = steps });
+                    }
+                    else if (itemType?.Equals("HowToStep", StringComparison.OrdinalIgnoreCase) == true)
+                    {
+                        var text = GetString(item, "text") ?? GetString(item, "name") ?? "";
+                        if (!string.IsNullOrWhiteSpace(text)) dto.Instructions.Add(text);
+                    }
+                    else if (item.ValueKind == JsonValueKind.String)
+                    {
+                        var text = item.GetString();
+                        if (!string.IsNullOrWhiteSpace(text)) dto.Instructions.Add(text);
+                    }
+                }
+
+                if (instrSections.Count > 0)
+                {
+                    dto.InstructionSections = instrSections;
+                    dto.Instructions = [];
+                }
+            }
+        }
+
+        // Tips from "comment" or "review"
+        if (r.TryGetProperty("comment", out var commentProp) && commentProp.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var c in commentProp.EnumerateArray())
+            {
+                var text = GetString(c, "text");
+                if (!string.IsNullOrWhiteSpace(text)) dto.Tips.Add(text);
+            }
+        }
+
+        return dto;
+    }
+
+    private static string? GetString(JsonElement el, string prop)
+    {
+        if (el.TryGetProperty(prop, out var val) && val.ValueKind == JsonValueKind.String)
+            return val.GetString();
+        return null;
+    }
+
+    private static int? ParseIsoDuration(string? iso)
+    {
+        // Parse ISO 8601 duration like PT30M, PT1H30M, P0D
+        if (string.IsNullOrWhiteSpace(iso)) return null;
+        iso = iso.ToUpperInvariant();
+        if (!iso.StartsWith("PT") && !iso.StartsWith('P')) return null;
+
+        int total = 0;
+        var s = iso.TrimStart('P');
+        // Skip 'T' separator
+        s = s.Replace("T", "");
+        int num = 0;
+        foreach (var c in s)
+        {
+            if (char.IsDigit(c)) { num = num * 10 + (c - '0'); }
+            else if (c == 'H') { total += num * 60; num = 0; }
+            else if (c == 'M') { total += num; num = 0; }
+            else if (c == 'S') { num = 0; } // ignore seconds
+        }
+        return total > 0 ? total : null;
+    }
+
+    /// <summary>
+    /// Parses a raw ingredient string like "100 gram mel" into a StructuredIngredient.
+    /// </summary>
+    private static StructuredIngredient ParseIngredientString(string raw)
+    {
+        raw = raw.Trim();
+        var parts = raw.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
+
+        if (parts.Length >= 2)
+        {
+            // Try to parse first token as a number (including fractions like "1/2")
+            decimal? qty = TryParseQuantity(parts[0]);
+            if (qty.HasValue)
+            {
+                if (parts.Length == 2)
+                    return new StructuredIngredient { Quantity = qty, Unit = null, Name = parts[1] };
+
+                // parts[1] might be unit, rest is name
+                return new StructuredIngredient { Quantity = qty, Unit = parts[1], Name = parts[2] };
+            }
+        }
+
+        return new StructuredIngredient { Quantity = null, Unit = null, Name = raw };
+    }
+
+    private static decimal? TryParseQuantity(string s)
+    {
+        if (decimal.TryParse(s, System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture, out var d))
+            return d;
+
+        // Handle fractions like "1/2"
+        var slash = s.IndexOf('/');
+        if (slash > 0 && slash < s.Length - 1)
+        {
+            if (decimal.TryParse(s[..slash], out var num) && decimal.TryParse(s[(slash + 1)..], out var den) && den != 0)
+                return num / den;
+        }
+
+        return null;
     }
 
     private static string ExtractText(string html)
