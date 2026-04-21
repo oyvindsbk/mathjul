@@ -151,15 +151,15 @@ export default function EditRecipeClient({ id }: { id: string }) {
   }
 
   return (
-    <div className="min-h-screen p-8 pb-20 gap-16 sm:p-20">
+    <div className="min-h-screen p-4 sm:p-8 pb-20 sm:pb-20">
       <main className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">Rediger oppskrift</h1>
+        <div className="flex flex-wrap gap-3 justify-between items-center mb-6">
+          <h1 className="text-2xl sm:text-4xl font-bold">Rediger oppskrift</h1>
           <Link
             href={`/recipes/${id}`}
-            className="px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
+            className="px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors text-sm sm:text-base"
           >
-            ← Tilbake til oppskrift
+            ← Tilbake
           </Link>
         </div>
 

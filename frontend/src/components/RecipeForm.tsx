@@ -72,45 +72,49 @@ function SortableIngredient({ id, index, ingredient, onChange, onRemove }: Sorta
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="flex gap-2 items-center">
-      <button
-        type="button"
-        {...attributes}
-        {...listeners}
-        className="px-2 py-2 cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 touch-none"
-        aria-label="Drag to reorder"
-      >
-        <GripIcon />
-      </button>
-      <input
-        type="number"
-        step="any"
-        value={ingredient.quantity ?? ''}
-        onChange={(e) => onChange(index, { ...ingredient, quantity: e.target.value ? parseFloat(e.target.value) : null })}
-        placeholder="Antall"
-        className="w-20 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-      />
-      <input
-        type="text"
-        value={ingredient.unit ?? ''}
-        onChange={(e) => onChange(index, { ...ingredient, unit: e.target.value || null })}
-        placeholder="Enhet"
-        className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-      />
-      <input
-        type="text"
-        value={ingredient.name}
-        onChange={(e) => onChange(index, { ...ingredient, name: e.target.value })}
-        placeholder="Ingrediensnavn"
-        className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-      />
-      <button
-        type="button"
-        onClick={() => onRemove(index)}
-        className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-      >
-        ✕
-      </button>
+    <div ref={setNodeRef} style={style} className="flex flex-col sm:flex-row gap-1 sm:gap-2 sm:items-center">
+      <div className="flex gap-1 sm:gap-2 items-center">
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="px-2 py-2 cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 touch-none shrink-0"
+          aria-label="Drag to reorder"
+        >
+          <GripIcon />
+        </button>
+        <input
+          type="number"
+          step="any"
+          value={ingredient.quantity ?? ''}
+          onChange={(e) => onChange(index, { ...ingredient, quantity: e.target.value ? parseFloat(e.target.value) : null })}
+          placeholder="Antall"
+          className="w-16 sm:w-20 px-2 sm:px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
+        />
+        <input
+          type="text"
+          value={ingredient.unit ?? ''}
+          onChange={(e) => onChange(index, { ...ingredient, unit: e.target.value || null })}
+          placeholder="Enhet"
+          className="w-20 sm:w-24 px-2 sm:px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
+        />
+      </div>
+      <div className="flex gap-1 sm:gap-2 items-center pl-8 sm:pl-0 sm:flex-1">
+        <input
+          type="text"
+          value={ingredient.name}
+          onChange={(e) => onChange(index, { ...ingredient, name: e.target.value })}
+          placeholder="Ingrediensnavn"
+          className="flex-1 px-2 sm:px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
+        />
+        <button
+          type="button"
+          onClick={() => onRemove(index)}
+          className="px-2 sm:px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 shrink-0"
+        >
+          ✕
+        </button>
+      </div>
     </div>
   );
 }
@@ -707,7 +711,7 @@ export default function RecipeForm({
       {/* Quantity type + servings */}
       <div>
         <label className="block text-sm font-medium mb-2">Antall / Porsjoner</label>
-        <div className="flex gap-2 mb-2">
+        <div className="flex flex-wrap gap-2 mb-2">
           {(['porsjoner', 'antall', 'custom'] as const).map((type) => (
             <button
               key={type}
@@ -1067,7 +1071,7 @@ export default function RecipeForm({
       })()}
 
       {/* Action Buttons */}
-      <div className="flex gap-4 pt-4">
+      <div className="flex flex-col sm:flex-row gap-3 pt-4">
         <button
           onClick={handleSubmit}
           disabled={isSaving}
@@ -1078,7 +1082,7 @@ export default function RecipeForm({
         <button
           onClick={onCancel}
           disabled={isSaving}
-          className="px-6 py-3 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+          className="sm:px-6 py-3 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
         >
           Avbryt
         </button>
