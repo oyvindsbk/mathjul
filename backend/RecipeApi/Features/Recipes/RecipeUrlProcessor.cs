@@ -126,6 +126,11 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
             _logger.LogError(ex, "Failed to fetch URL: {Url}", url);
             return RecipeExtractionResult.Failure($"Could not fetch the page: {ex.Message}");
         }
+        catch (System.ClientModel.ClientResultException ex) when (ex.Status == 404)
+        {
+            _logger.LogError(ex, "AI model deployment not found. Check AiFoundry:TextModelName configuration. URL: {Url}", url);
+            return RecipeExtractionResult.Failure("AI model deployment not found. The configured model name does not match any deployment in Azure AI Foundry.");
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error extracting recipe from URL: {Url}", url);
