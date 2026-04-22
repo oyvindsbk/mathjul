@@ -11,7 +11,7 @@ namespace RecipeApi.Features.Recipes;
 
 public interface IRecipeUrlProcessor
 {
-    Task<RecipeExtractionResult> ExtractRecipeFromUrlAsync(string url, string? categoryListJson = null, CancellationToken cancellationToken = default);
+    Task<RecipeExtractionResult> ExtractRecipeFromUrlAsync(string url, string? categoryListJson = null, Func<string, Task>? reportStage = null, CancellationToken cancellationToken = default);
 }
 
 public class RecipeUrlProcessor : IRecipeUrlProcessor
@@ -42,6 +42,7 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
     public async Task<RecipeExtractionResult> ExtractRecipeFromUrlAsync(
         string url,
         string? categoryListJson = null,
+        Func<string, Task>? reportStage = null,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(url))
@@ -60,6 +61,7 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
         {
             _logger.LogInformation("Fetching recipe page: {Url}", url);
 
+            if (reportStage != null) await reportStage("fetching_url");
             var cookieContainer = new CookieContainer();
             using var handler = new HttpClientHandler
             {
@@ -94,6 +96,7 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
 
                 _logger.LogInformation("No JSON-LD found, sending {Length} chars of text to AI model {Model}", pageText.Length, _modelName);
 
+                if (reportStage != null) await reportStage("ai_processing");
                 var systemPrompt = RecipeExtractionPrompt.BuildSystemPrompt(categoryListJson);
                 var messages = new List<ChatMessage>
                 {
@@ -109,6 +112,7 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
                 extractedDto = aiResult.Recipe!;
             }
 
+            if (reportStage != null) await reportStage("downloading_image");
             var mainImageUrl = await TryDownloadImageAsync(extractedDto.ImageUrl, cancellationToken);
             return RecipeExtractionResult.Success(extractedDto, mainImageUrl);
         }

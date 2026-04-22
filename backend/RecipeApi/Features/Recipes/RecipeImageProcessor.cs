@@ -10,7 +10,7 @@ namespace RecipeApi.Features.Recipes;
 public interface IRecipeImageProcessor
 {
     Task<RecipeExtractionResult> ExtractRecipeFromImageAsync(IFormFile imageFile, string? categoryListJson = null, CancellationToken cancellationToken = default);
-    Task<RecipeExtractionResult> ExtractRecipeFromImagesAsync(IReadOnlyList<IFormFile> imageFiles, string? categoryListJson = null, CancellationToken cancellationToken = default);
+    Task<RecipeExtractionResult> ExtractRecipeFromImagesAsync(IReadOnlyList<IFormFile> imageFiles, string? categoryListJson = null, Func<string, Task>? reportStage = null, CancellationToken cancellationToken = default);
     Task<byte[]?> TryExtractDishPhotoAsync(byte[] imageBytes, CancellationToken cancellationToken = default);
 }
 
@@ -121,6 +121,7 @@ public class RecipeImageProcessor : IRecipeImageProcessor
     public async Task<RecipeExtractionResult> ExtractRecipeFromImagesAsync(
         IReadOnlyList<IFormFile> imageFiles,
         string? categoryListJson = null,
+        Func<string, Task>? reportStage = null,
         CancellationToken cancellationToken = default)
     {
         if (imageFiles == null || imageFiles.Count == 0)
@@ -138,6 +139,7 @@ public class RecipeImageProcessor : IRecipeImageProcessor
 
         try
         {
+            if (reportStage != null) await reportStage("reading_images");
             var imageParts = new List<ChatMessageContentPart>();
             foreach (var file in imageFiles)
             {
@@ -152,6 +154,7 @@ public class RecipeImageProcessor : IRecipeImageProcessor
             }
 
             _logger.LogInformation("Extracting recipe from {Count} images", imageFiles.Count);
+            if (reportStage != null) await reportStage("ai_processing");
 
             var systemPrompt = RecipeExtractionPrompt.BuildSystemPrompt(categoryListJson);
             var userParts = new List<ChatMessageContentPart>

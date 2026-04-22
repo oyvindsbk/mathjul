@@ -8,10 +8,19 @@ import RecipeForm from '@/components/RecipeForm';
 import MainPhotoUpload from '@/components/MainPhotoUpload';
 import VisibilitySelector, { type Visibility } from '@/components/VisibilitySelector';
 import { recipeService } from '@/lib/services/recipe.service';
+import { consumeSseStream } from '@/lib/sseStream';
 import type { RecipeFormData } from '@/lib/services/recipe.service';
 import type { Category } from '@/lib/mock-data';
 
 type ExtractedRecipe = RecipeFormData;
+
+type ApiExtractedRecipe = Omit<RecipeFormData, 'categoryIds' | 'instructionSteps'> & {
+  suggestedCategoryIds?: number[];
+  instructionSteps?: RecipeFormData['instructionSteps'];
+  sourceUrl?: string | null;
+  sourceImageUrl?: string | null;
+  mainImageUrl?: string | null;
+};
 
 type InputMode = 'image' | 'url';
 
@@ -21,6 +30,7 @@ export default function UploadRecipe() {
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [recipeUrl, setRecipeUrl] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
+  const [progressMessage, setProgressMessage] = useState<string | null>(null);
   const [extractedRecipe, setExtractedRecipe] = useState<ExtractedRecipe | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -108,6 +118,14 @@ export default function UploadRecipe() {
     setPreviewUrls([]);
   };
 
+  const stageMessages: Record<string, string> = {
+    reading_images: 'Leser bilder...',
+    ai_processing: 'Analyserer med AI...',
+    uploading_images: 'Laster opp bilder...',
+    fetching_url: 'Henter nettsiden...',
+    downloading_image: 'Laster ned bilde...',
+  };
+
   const handleExtractFromImage = async () => {
     if (selectedFiles.length === 0) return;
 
@@ -117,6 +135,7 @@ export default function UploadRecipe() {
     }
 
     setIsExtracting(true);
+    setProgressMessage(null);
     setError(null);
 
     try {
@@ -129,33 +148,43 @@ export default function UploadRecipe() {
       if (!apiBaseUrl) {
         throw new Error('API base URL is not set. Please define NEXT_PUBLIC_API_BASE_URL in your environment variables.');
       }
-      const response = await fetch(`${apiBaseUrl}/api/recipes/from-images`, {
+      const response = await fetch(`${apiBaseUrl}/api/recipes/from-images/stream`, {
         method: 'POST',
         body: formData,
         headers: { 'Authorization': `Bearer ${token}` },
       });
 
-      const text = await response.text();
-      if (!text) throw new Error('Ingen svar fra serveren. Forespørselen kan ha timet ut.');
-      const data = JSON.parse(text);
-
-      if (!response.ok || !data.success) {
-        if (response.status === 403) {
-          throw new Error('Tilgang nektet. Kontoen din er ikke autorisert. Kontakt en administrator.');
-        }
-        throw new Error(data.errorMessage || 'Kunne ikke hente oppskriften');
+      if (response.status === 403) {
+        throw new Error('Tilgang nektet. Kontoen din er ikke autorisert. Kontakt en administrator.');
+      }
+      if (!response.ok) {
+        throw new Error('Kunne ikke hente oppskriften');
       }
 
-      const { suggestedCategoryIds, mainImageUrl, sourceImageUrl: extractedSourceImageUrl, instructionSteps, ...rest } = data.extractedRecipe;
-      setCurrentMainImageUrl(mainImageUrl ?? null);
-      setSourceImageUrl(extractedSourceImageUrl ?? null);
-      setSourceUrl(null);
-      setPendingMainImageFile(null);
-      setExtractedRecipe({
-        ...rest,
-        instructionSteps: instructionSteps ?? [],
-        categoryIds: suggestedCategoryIds ?? [],
-        mainImageUrl: mainImageUrl ?? null,
+      await new Promise<void>((resolve, reject) => {
+        consumeSseStream(response, {
+          onStage: (stage) => setProgressMessage(stageMessages[stage] ?? null),
+          onDone: (result) => {
+            const data = result as { success: boolean; errorMessage?: string; extractedRecipe?: ApiExtractedRecipe };
+            if (!data.success || !data.extractedRecipe) {
+              reject(new Error(data.errorMessage || 'Kunne ikke hente oppskriften'));
+              return;
+            }
+            const { suggestedCategoryIds, mainImageUrl, sourceImageUrl: extractedSourceImageUrl, instructionSteps, ...rest } = data.extractedRecipe;
+            setCurrentMainImageUrl(mainImageUrl ?? null);
+            setSourceImageUrl(extractedSourceImageUrl ?? null);
+            setSourceUrl(null);
+            setPendingMainImageFile(null);
+            setExtractedRecipe({
+              ...rest,
+              instructionSteps: instructionSteps ?? [],
+              categoryIds: suggestedCategoryIds ?? [],
+              mainImageUrl: mainImageUrl ?? null,
+            });
+            resolve();
+          },
+          onError: (message) => reject(new Error(message || 'Kunne ikke hente oppskriften')),
+        });
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Kunne ikke hente oppskriften';
@@ -165,6 +194,7 @@ export default function UploadRecipe() {
       }
     } finally {
       setIsExtracting(false);
+      setProgressMessage(null);
     }
   };
 
@@ -180,6 +210,7 @@ export default function UploadRecipe() {
     }
 
     setIsExtracting(true);
+    setProgressMessage(null);
     setError(null);
 
     try {
@@ -187,7 +218,7 @@ export default function UploadRecipe() {
       if (!apiBaseUrl) {
         throw new Error('API base URL is not set. Please define NEXT_PUBLIC_API_BASE_URL in your environment variables.');
       }
-      const response = await fetch(`${apiBaseUrl}/api/recipes/from-url`, {
+      const response = await fetch(`${apiBaseUrl}/api/recipes/from-url/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -196,27 +227,38 @@ export default function UploadRecipe() {
         body: JSON.stringify({ url: recipeUrl.trim() }),
       });
 
-      const text = await response.text();
-      if (!text) throw new Error('Ingen svar fra serveren. Forespørselen kan ha timet ut.');
-      const data = JSON.parse(text);
-
-      if (!response.ok || !data.success) {
-        if (response.status === 403) {
-          throw new Error('Tilgang nektet. Kontoen din er ikke autorisert. Kontakt en administrator.');
-        }
-        throw new Error(data.errorMessage || 'Kunne ikke hente oppskriften');
+      if (response.status === 403) {
+        throw new Error('Tilgang nektet. Kontoen din er ikke autorisert. Kontakt en administrator.');
+      }
+      if (!response.ok) {
+        throw new Error('Kunne ikke hente oppskriften');
       }
 
-      const { suggestedCategoryIds, mainImageUrl, sourceUrl: extractedSourceUrl, instructionSteps, ...rest } = data.extractedRecipe;
-      setCurrentMainImageUrl(mainImageUrl ?? null);
-      setSourceUrl(extractedSourceUrl ?? recipeUrl.trim() ?? null);
-      setSourceImageUrl(null);
-      setPendingMainImageFile(null);
-      setExtractedRecipe({
-        ...rest,
-        instructionSteps: instructionSteps ?? [],
-        categoryIds: suggestedCategoryIds ?? [],
-        mainImageUrl: mainImageUrl ?? null,
+      const capturedUrl = recipeUrl.trim();
+      await new Promise<void>((resolve, reject) => {
+        consumeSseStream(response, {
+          onStage: (stage) => setProgressMessage(stageMessages[stage] ?? null),
+          onDone: (result) => {
+            const data = result as { success: boolean; errorMessage?: string; extractedRecipe?: ApiExtractedRecipe };
+            if (!data.success || !data.extractedRecipe) {
+              reject(new Error(data.errorMessage || 'Kunne ikke hente oppskriften'));
+              return;
+            }
+            const { suggestedCategoryIds, mainImageUrl, sourceUrl: extractedSourceUrl, instructionSteps, ...rest } = data.extractedRecipe;
+            setCurrentMainImageUrl(mainImageUrl ?? null);
+            setSourceUrl(extractedSourceUrl ?? capturedUrl ?? null);
+            setSourceImageUrl(null);
+            setPendingMainImageFile(null);
+            setExtractedRecipe({
+              ...rest,
+              instructionSteps: instructionSteps ?? [],
+              categoryIds: suggestedCategoryIds ?? [],
+              mainImageUrl: mainImageUrl ?? null,
+            });
+            resolve();
+          },
+          onError: (message) => reject(new Error(message || 'Kunne ikke hente oppskriften')),
+        });
       });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Kunne ikke hente oppskriften';
@@ -226,6 +268,7 @@ export default function UploadRecipe() {
       }
     } finally {
       setIsExtracting(false);
+      setProgressMessage(null);
     }
   };
 
@@ -451,6 +494,13 @@ export default function UploadRecipe() {
                 </button>
               )}
             </div>
+          </div>
+        )}
+
+        {/* Progress Message */}
+        {isExtracting && progressMessage && (
+          <div className="mb-4 text-sm text-gray-500 dark:text-gray-400 italic text-center">
+            {progressMessage}
           </div>
         )}
 

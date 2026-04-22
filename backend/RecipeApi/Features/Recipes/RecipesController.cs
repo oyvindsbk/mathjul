@@ -333,6 +333,141 @@ public class RecipesController : ControllerBase
         return Ok(new RecipeExtractionResponse { Success = true, ExtractedRecipe = extracted });
     }
 
+    [HttpPost("from-images/stream")]
+    [RequestSizeLimit(50 * 1024 * 1024)]
+    public async Task ExtractRecipeFromImagesStream(IFormFileCollection images)
+    {
+        Response.ContentType = "text/event-stream";
+        Response.Headers.CacheControl = "no-cache";
+        Response.Headers.Append("X-Accel-Buffering", "no");
+
+        async Task SendEventAsync(string data)
+        {
+            await Response.WriteAsync($"data: {data}\n\n");
+            await Response.Body.FlushAsync();
+        }
+
+        if (images == null || images.Count == 0)
+        {
+            await SendEventAsync("{\"stage\":\"error\",\"message\":\"No image files provided\"}");
+            return;
+        }
+
+        if (images.Count > 5)
+        {
+            await SendEventAsync("{\"stage\":\"error\",\"message\":\"Maximum 5 images allowed\"}");
+            return;
+        }
+
+        var categoryListJson = await BuildCategoryListJsonAsync();
+
+        var result = await _imageProcessor.ExtractRecipeFromImagesAsync(
+            images.ToList().AsReadOnly(),
+            categoryListJson,
+            reportStage: stage => SendEventAsync($"{{\"stage\":\"{stage}\"}}"),
+            cancellationToken: HttpContext.RequestAborted);
+
+        if (!result.IsSuccess)
+        {
+            var escaped = System.Text.Json.JsonSerializer.Serialize(result.ErrorMessage);
+            await SendEventAsync($"{{\"stage\":\"error\",\"message\":{escaped}}}");
+            return;
+        }
+
+        await SendEventAsync("{\"stage\":\"uploading_images\"}");
+
+        string? mainImageUrl = null;
+        try
+        {
+            foreach (var imageFile in images)
+            {
+                using var ms = new MemoryStream();
+                await imageFile.CopyToAsync(ms);
+                var dishBytes = await _imageProcessor.TryExtractDishPhotoAsync(ms.ToArray());
+                if (dishBytes != null)
+                {
+                    var blobPath = $"recipes/pending/{Guid.NewGuid()}.jpg";
+                    using var dishStream = new MemoryStream(dishBytes);
+                    mainImageUrl = await _blobStorage.UploadAsync(dishStream, blobPath, "image/jpeg");
+                    break;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Dish photo extraction failed, continuing without main image");
+        }
+
+        string? sourceImageUrl = null;
+        try
+        {
+            foreach (var imageFile in images)
+            {
+                var ext = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
+                if (string.IsNullOrEmpty(ext)) ext = ".jpg";
+                var sourceBlobPath = $"recipes/pending/source-{Guid.NewGuid()}{ext}";
+                using var sourceStream = imageFile.OpenReadStream();
+                var url = await _blobStorage.UploadAsync(sourceStream, sourceBlobPath, imageFile.ContentType);
+                sourceImageUrl ??= url;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Source image upload failed, continuing without sourceImageUrl");
+        }
+
+        var extracted = MapToExtractedResponse(result.Recipe!);
+        extracted.MainImageUrl = mainImageUrl;
+        extracted.SourceImageUrl = sourceImageUrl;
+
+        var payload = System.Text.Json.JsonSerializer.Serialize(new RecipeExtractionResponse { Success = true, ExtractedRecipe = extracted },
+            new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+        await SendEventAsync($"{{\"stage\":\"done\",\"result\":{payload}}}");
+    }
+
+    [HttpPost("from-url/stream")]
+    public async Task ExtractRecipeFromUrlStream([FromBody] ExtractFromUrlRequest request)
+    {
+        Response.ContentType = "text/event-stream";
+        Response.Headers.CacheControl = "no-cache";
+        Response.Headers.Append("X-Accel-Buffering", "no");
+
+        async Task SendEventAsync(string data)
+        {
+            await Response.WriteAsync($"data: {data}\n\n");
+            await Response.Body.FlushAsync();
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Url))
+        {
+            await SendEventAsync("{\"stage\":\"error\",\"message\":\"No URL provided\"}");
+            return;
+        }
+
+        var categoryListJson = await BuildCategoryListJsonAsync();
+
+        var result = await _urlProcessor.ExtractRecipeFromUrlAsync(
+            request.Url,
+            categoryListJson,
+            reportStage: stage => SendEventAsync($"{{\"stage\":\"{stage}\"}}"),
+            cancellationToken: HttpContext.RequestAborted);
+
+        if (!result.IsSuccess)
+        {
+            var escaped = System.Text.Json.JsonSerializer.Serialize(result.ErrorMessage);
+            await SendEventAsync($"{{\"stage\":\"error\",\"message\":{escaped}}}");
+            return;
+        }
+
+        var extractedFromUrl = MapToExtractedResponse(result.Recipe!);
+        extractedFromUrl.SourceUrl = request.Url;
+        extractedFromUrl.MainImageUrl = result.MainImageUrl;
+
+        var payload = System.Text.Json.JsonSerializer.Serialize(new RecipeExtractionResponse { Success = true, ExtractedRecipe = extractedFromUrl },
+            new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+        await SendEventAsync($"{{\"stage\":\"done\",\"result\":{payload}}}");
+    }
+
     [HttpPost("from-url")]
     public async Task<ActionResult<RecipeExtractionResponse>> ExtractRecipeFromUrl([FromBody] ExtractFromUrlRequest request)
     {
