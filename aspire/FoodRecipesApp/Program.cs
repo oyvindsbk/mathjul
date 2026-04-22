@@ -19,7 +19,7 @@ var recipeApi = builder.AddProject<Projects.RecipeApi>("recipeapi")
     .WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
 
 // Add the frontend project in development mode
-var frontend = builder.AddNpmApp("frontend", "../../frontend", "dev")
+var frontend = builder.AddJavaScriptApp("frontend", "../../frontend", "dev")
     .WithReference(recipeApi)
     .WithHttpEndpoint(env: "PORT")
     .WithExternalHttpEndpoints();

@@ -1,6 +1,7 @@
 using Azure;
-using Azure.AI.Inference;
+using Azure.AI.OpenAI;
 using HtmlAgilityPack;
+using OpenAI.Chat;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -15,28 +16,26 @@ public interface IRecipeUrlProcessor
 
 public class RecipeUrlProcessor : IRecipeUrlProcessor
 {
-    private readonly ChatCompletionsClient _chatClient;
-    private readonly string _modelName;
-    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly ChatClient _chatClient;
     private readonly ILogger<RecipeUrlProcessor> _logger;
+    private readonly IBlobStorageService _blobStorage;
+    private readonly string _modelName;
     private const int MaxTextLength = 8000;
 
     public RecipeUrlProcessor(
         IConfiguration configuration,
-        IHttpClientFactory httpClientFactory,
+        IBlobStorageService blobStorage,
         ILogger<RecipeUrlProcessor> logger)
     {
         var endpoint = configuration["AiFoundry:Endpoint"]
             ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:Endpoint");
         var apiKey = configuration["AiFoundry:ApiKey"]
             ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:ApiKey");
-        _modelName = configuration["AiFoundry:ModelName"]
-            ?? "Phi-4-multimodal-instruct";
+        _modelName = configuration["AiFoundry:TextModelName"] ?? "gpt-4o-mini";
 
-        _chatClient = new ChatCompletionsClient(
-            new Uri(endpoint),
-            new AzureKeyCredential(apiKey));
-        _httpClientFactory = httpClientFactory;
+        _chatClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey))
+            .GetChatClient(_modelName);
+        _blobStorage = blobStorage;
         _logger = logger;
     }
 
@@ -61,44 +60,57 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
         {
             _logger.LogInformation("Fetching recipe page: {Url}", url);
 
-            var httpClient = _httpClientFactory.CreateClient();
+            var cookieContainer = new CookieContainer();
+            using var handler = new HttpClientHandler
+            {
+                CookieContainer = cookieContainer,
+                AllowAutoRedirect = true,
+                AutomaticDecompression = System.Net.DecompressionMethods.All
+            };
+            using var httpClient = new HttpClient(handler);
             httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
+            httpClient.DefaultRequestHeaders.Accept.ParseAdd(
+                "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8");
+            httpClient.DefaultRequestHeaders.AcceptLanguage.ParseAdd("nb,no;q=0.9,en;q=0.8");
             httpClient.Timeout = TimeSpan.FromSeconds(15);
 
             var html = await httpClient.GetStringAsync(uri, cancellationToken);
 
             // Try JSON-LD first — it's structured and accurate, no AI needed
             var jsonLdResult = TryExtractFromJsonLd(html);
+            ExtractedRecipeDto? extractedDto;
             if (jsonLdResult != null)
             {
                 _logger.LogInformation("Successfully extracted recipe from JSON-LD structured data");
-                return RecipeExtractionResult.Success(jsonLdResult);
+                extractedDto = jsonLdResult;
+            }
+            else
+            {
+                var pageText = ExtractText(html);
+
+                if (string.IsNullOrWhiteSpace(pageText))
+                    return RecipeExtractionResult.Failure("Could not extract readable text from the page");
+
+                _logger.LogInformation("No JSON-LD found, sending {Length} chars of text to AI model {Model}", pageText.Length, _modelName);
+
+                var systemPrompt = RecipeExtractionPrompt.BuildSystemPrompt(categoryListJson);
+                var messages = new List<ChatMessage>
+                {
+                    new SystemChatMessage(systemPrompt),
+                    new UserChatMessage($"Please extract the recipe information from the following webpage content:\n\n{pageText}")
+                };
+                var options = new ChatCompletionOptions { Temperature = 0.2f, MaxOutputTokenCount = 4096 };
+
+                var response = await _chatClient.CompleteChatAsync(messages, options, cancellationToken);
+
+                var aiResult = RecipeExtractionPrompt.ParseResponseContent(response.Value.Content[0].Text, _logger);
+                if (!aiResult.IsSuccess) return aiResult;
+                extractedDto = aiResult.Recipe!;
             }
 
-            var pageText = ExtractText(html);
-
-            if (string.IsNullOrWhiteSpace(pageText))
-                return RecipeExtractionResult.Failure("Could not extract readable text from the page");
-
-            _logger.LogInformation("No JSON-LD found, sending {Length} chars of text to AI", pageText.Length);
-
-            var systemPrompt = RecipeExtractionPrompt.BuildSystemPrompt(categoryListJson);
-            var options = new ChatCompletionsOptions
-            {
-                Model = _modelName,
-                Temperature = 0.2f,
-                MaxTokens = 4096,
-                Messages =
-                {
-                    new ChatRequestSystemMessage(systemPrompt),
-                    new ChatRequestUserMessage($"Please extract the recipe information from the following webpage content:\n\n{pageText}")
-                }
-            };
-
-            var response = await _chatClient.CompleteAsync(options, cancellationToken);
-
-            return RecipeExtractionPrompt.ParseResponse(response.Value, _logger);
+            var mainImageUrl = await TryDownloadImageAsync(extractedDto.ImageUrl, cancellationToken);
+            return RecipeExtractionResult.Success(extractedDto, mainImageUrl);
         }
         catch (HttpRequestException ex)
         {
@@ -227,6 +239,7 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
         {
             Title = title,
             Description = GetString(r, "description"),
+            ImageUrl = ExtractJsonLdImageUrl(r),
             PrepTime = ParseIsoDuration(GetString(r, "prepTime")),
             CookTime = ParseIsoDuration(GetString(r, "cookTime")) ?? ParseIsoDuration(GetString(r, "totalTime")),
         };
@@ -320,6 +333,38 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
         }
 
         return dto;
+    }
+
+    private static string? ExtractJsonLdImageUrl(JsonElement r)
+    {
+        if (!r.TryGetProperty("image", out var img)) return null;
+        if (img.ValueKind == JsonValueKind.String) return img.GetString();
+        if (img.ValueKind == JsonValueKind.Array)
+        {
+            var first = img.EnumerateArray().FirstOrDefault();
+            if (first.ValueKind == JsonValueKind.String) return first.GetString();
+            if (first.ValueKind == JsonValueKind.Object) return GetString(first, "url");
+        }
+        if (img.ValueKind == JsonValueKind.Object) return GetString(img, "url");
+        return null;
+    }
+
+    private async Task<string?> TryDownloadImageAsync(string? imageUrl, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(imageUrl)) return null;
+        try
+        {
+            using var httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+            var imageBytes = await httpClient.GetByteArrayAsync(imageUrl, cancellationToken);
+            var blobPath = $"recipes/pending/{Guid.NewGuid()}.jpg";
+            using var stream = new MemoryStream(imageBytes);
+            return await _blobStorage.UploadAsync(stream, blobPath, "image/jpeg", cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch image from {ImageUrl}, continuing without image", imageUrl);
+            return null;
+        }
     }
 
     private static string? GetString(JsonElement el, string prop)
@@ -422,7 +467,7 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
         foreach (var line in lines)
         {
             var trimmed = line.Trim();
-            if (trimmed.Length > 1)
+            if (trimmed.Length > 0)
                 sb.AppendLine(trimmed);
         }
 

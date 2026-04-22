@@ -2,11 +2,33 @@
   "version": "0.2.0",
   "configurations": [
     {
+      "type": "aspire",
+      "request": "launch",
+      "name": "Aspire: Launch AppHost (Plugin)",
+      "program": "${workspaceFolder}/aspire/FoodRecipesApp/FoodRecipesApp.csproj",
+      "logging": { "moduleLoad": false }
+    },
+    {
+      "name": "Launch Backend (.NET)",
+      "type": "coreclr",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend/RecipeApi/bin/Debug/net9.0/RecipeApi.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/backend/RecipeApi",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "LocalDevelopment"
+      },
+      "preLaunchTask": "dotnet: build",
+      "justMyCode": true,
+      "logging": { "moduleLoad": false }
+    },
+    {
       "name": "Attach to Backend (.NET)",
       "type": "coreclr",
       "request": "attach",
       "processId": "${command:pickProcess}",
-      "justMyCode": true
+      "justMyCode": true,
+      "logging": { "moduleLoad": false }
     },
     {
       "name": "Launch Frontend (Chrome)",
@@ -21,7 +43,8 @@
       "type": "coreclr",
       "request": "attach",
       "processId": "${command:pickProcess}",
-      "justMyCode": true
+      "justMyCode": true,
+      "logging": { "moduleLoad": false }
     }
   ],
   "compounds": [

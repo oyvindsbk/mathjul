@@ -58,6 +58,13 @@
       "type": "shell",
       "command": "dotnet",
       "args": ["run", "--project", "aspire/FoodRecipesApp/FoodRecipesApp.csproj"],
+      "options": {
+        "env": {
+          "PATH": "${env:PATH};C:\\Program Files\\Docker\\Docker\\resources\\bin",
+          "ASPNETCORE_ENVIRONMENT": "Development",
+          "DOTNET_ENVIRONMENT": "Development"
+        }
+      },
       "isBackground": true,
       "presentation": {
         "reveal": "always",
@@ -75,6 +82,7 @@
       "args": ["run", "--project", "aspire/FoodRecipesApp/FoodRecipesApp.csproj"],
       "options": {
         "env": {
+          "PATH": "${env:PATH};C:\\Program Files\\Docker\\Docker\\resources\\bin",
           "ASPNETCORE_URLS": "http://localhost:5000",
           "ASPIRE_DASHBOARD_OTLP_HTTP_ENDPOINT_URL": "http://localhost:4318",
           "ASPIRE_ALLOW_UNSECURED_TRANSPORT": "true"

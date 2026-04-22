@@ -361,6 +361,7 @@ public class RecipesController : ControllerBase
 
         var extractedFromUrl = MapToExtractedResponse(result.Recipe!);
         extractedFromUrl.SourceUrl = request.Url;
+        extractedFromUrl.MainImageUrl = result.MainImageUrl;
 
         return Ok(new RecipeExtractionResponse
         {

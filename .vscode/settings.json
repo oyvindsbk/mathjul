@@ -1,0 +1,6 @@
+{
+  "terminal.integrated.env.windows": {
+    "PATH": "${env:PATH};C:\\Program Files\\Docker\\Docker\\resources\\bin"
+  }
+}
+

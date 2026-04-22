@@ -21,10 +21,47 @@ internal sealed class FlexibleDecimalConverter : JsonConverter<decimal?>
         {
             var s = reader.GetString();
             if (string.IsNullOrWhiteSpace(s)) return null;
-            if (decimal.TryParse(s, System.Globalization.NumberStyles.Any,
+
+            // Try comma decimal separator (Norwegian: "1,5")
+            var normalized = s.Replace(',', '.');
+            if (decimal.TryParse(normalized, System.Globalization.NumberStyles.Any,
                     System.Globalization.CultureInfo.InvariantCulture, out var d))
                 return d;
-            // Fraction like "1/2" or range like "1/2-1" — return null (unparseable as decimal)
+
+            // Mixed number like "1 1/2"
+            var spaceIdx = normalized.IndexOf(' ');
+            if (spaceIdx > 0)
+            {
+                var wholePart = normalized[..spaceIdx];
+                var fracPart = normalized[(spaceIdx + 1)..];
+                if (decimal.TryParse(wholePart, System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture, out var whole))
+                {
+                    var slash = fracPart.IndexOf('/');
+                    if (slash > 0 && decimal.TryParse(fracPart[..slash], out var fn)
+                                  && decimal.TryParse(fracPart[(slash + 1)..], out var fd) && fd != 0)
+                        return whole + fn / fd;
+                }
+            }
+
+            // Simple fraction like "1/2"
+            var slashIdx = normalized.IndexOf('/');
+            if (slashIdx > 0 && slashIdx < normalized.Length - 1)
+            {
+                if (decimal.TryParse(normalized[..slashIdx], out var num)
+                    && decimal.TryParse(normalized[(slashIdx + 1)..], out var den) && den != 0)
+                    return num / den;
+            }
+
+            // Range like "1-2" — take the lower bound
+            var dashIdx = normalized.IndexOf('-');
+            if (dashIdx > 0)
+            {
+                if (decimal.TryParse(normalized[..dashIdx], System.Globalization.NumberStyles.Any,
+                        System.Globalization.CultureInfo.InvariantCulture, out var lower))
+                    return lower;
+            }
+
             return null;
         }
 
@@ -114,9 +151,10 @@ public class RecipeExtractionResult
     public bool IsSuccess { get; init; }
     public string? ErrorMessage { get; init; }
     public ExtractedRecipeDto? Recipe { get; init; }
+    public string? MainImageUrl { get; init; }
 
-    public static RecipeExtractionResult Success(ExtractedRecipeDto recipe) =>
-        new() { IsSuccess = true, Recipe = recipe };
+    public static RecipeExtractionResult Success(ExtractedRecipeDto recipe, string? mainImageUrl = null) =>
+        new() { IsSuccess = true, Recipe = recipe, MainImageUrl = mainImageUrl };
 
     public static RecipeExtractionResult Failure(string errorMessage) =>
         new() { IsSuccess = false, ErrorMessage = errorMessage };
@@ -138,6 +176,7 @@ public class ExtractedRecipeDto
 {
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public string? ImageUrl { get; set; }
     public List<StructuredIngredient> Ingredients { get; set; } = new();
     public List<string> Instructions { get; set; } = new();
     public List<ExtractedIngredientSectionDto> IngredientSections { get; set; } = new();
