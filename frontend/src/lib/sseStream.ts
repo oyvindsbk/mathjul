@@ -8,6 +8,8 @@ export interface SseCallbacks {
   onError: (message: string) => void;
 }
 
+const MIN_STAGE_MS = 300;
+
 export async function consumeSseStream(
   response: Response,
   callbacks: SseCallbacks,
@@ -20,6 +22,16 @@ export async function consumeSseStream(
 
   const decoder = new TextDecoder();
   let buffer = '';
+  let stageShownAt = 0;
+
+  const showStage = async (stage: string) => {
+    const elapsed = Date.now() - stageShownAt;
+    if (stageShownAt > 0 && elapsed < MIN_STAGE_MS) {
+      await new Promise((r) => setTimeout(r, MIN_STAGE_MS - elapsed));
+    }
+    callbacks.onStage(stage);
+    stageShownAt = Date.now();
+  };
 
   try {
     while (true) {
@@ -44,13 +56,17 @@ export async function consumeSseStream(
         }
 
         if (event.stage === 'done') {
+          const elapsed = Date.now() - stageShownAt;
+          if (stageShownAt > 0 && elapsed < MIN_STAGE_MS) {
+            await new Promise((r) => setTimeout(r, MIN_STAGE_MS - elapsed));
+          }
           callbacks.onDone((event as SseDoneEvent).result);
           return;
         } else if (event.stage === 'error') {
           callbacks.onError((event as SseErrorEvent).message ?? 'Unknown error');
           return;
         } else {
-          callbacks.onStage(event.stage);
+          await showStage(event.stage);
         }
       }
     }

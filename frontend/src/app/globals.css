@@ -25,6 +25,26 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-once {
+  0%   { opacity: 0.4; letter-spacing: 0.05em; }
+  50%  { opacity: 1;   letter-spacing: 0.08em; }
+  100% { opacity: 1;   letter-spacing: 0.05em; }
+}
+
+@layer utilities {
+  .animate-fade-in {
+    animation: fade-in 0.25s ease-out both;
+  }
+  .animate-pulse-once {
+    animation: pulse-once 0.4s ease-out both;
+  }
+}
+
 button:not(:disabled),
 a,
 [role="button"],

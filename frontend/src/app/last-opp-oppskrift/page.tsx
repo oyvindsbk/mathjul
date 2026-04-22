@@ -499,8 +499,17 @@ export default function UploadRecipe() {
 
         {/* Progress Message */}
         {isExtracting && progressMessage && (
-          <div className="mb-4 text-sm text-gray-500 dark:text-gray-400 italic text-center">
-            {progressMessage}
+          <div className="mb-4 flex items-center justify-center gap-2 animate-fade-in">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500" />
+            </span>
+            <span
+              key={progressMessage}
+              className="text-sm text-blue-600 dark:text-blue-400 font-medium tracking-wide animate-pulse-once"
+            >
+              {progressMessage}
+            </span>
           </div>
         )}
 
