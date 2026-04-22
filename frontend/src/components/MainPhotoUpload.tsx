@@ -83,6 +83,13 @@ export default function MainPhotoUpload({
     e.target.value = '';
   };
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const item = Array.from(e.clipboardData.items).find((i) => i.type.startsWith('image/'));
+    if (!item) return;
+    const file = item.getAsFile();
+    if (file) handleFile(file);
+  };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -175,6 +182,7 @@ export default function MainPhotoUpload({
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
+          onPaste={handlePaste}
           onClick={() => fileInputRef.current?.click()}
           role="button"
           tabIndex={0}
@@ -198,7 +206,8 @@ export default function MainPhotoUpload({
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Dra og slipp eller <span className="text-blue-500 underline">velg et bilde</span>
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">JPEG, PNG, WEBP · maks 10 MB</p>
+          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">eller lim inn bilde (Ctrl+V)</p>
+          <p className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">JPEG, PNG, WEBP · maks 10 MB</p>
         </div>
       )}
 

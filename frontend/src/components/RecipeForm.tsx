@@ -171,6 +171,13 @@ function SortableInstruction({ id, index, step, onChange, onRemove, onInsertBelo
     setCropTarget(file);
   };
 
+  const handlePhotoFilePaste = (e: React.ClipboardEvent) => {
+    const item = Array.from(e.clipboardData.items).find((i) => i.type.startsWith('image/'));
+    if (!item) return;
+    const file = item.getAsFile();
+    if (file) handlePhotoFile(file);
+  };
+
   const handlePhotoRemove = async () => {
     if (!onPhotoRemove) return;
     setIsPhotoLoading(true);
@@ -214,7 +221,7 @@ function SortableInstruction({ id, index, step, onChange, onRemove, onInsertBelo
         />
         {/* Per-step photo zone — only shown when photo callbacks are wired */}
         {onPhotoSelected && (
-          <div>
+          <div onPaste={handlePhotoFilePaste} tabIndex={-1}>
             {step.imageUrl ? (
               <div className="relative w-40">
                 {/* eslint-disable-next-line @next/next/no-img-element */}

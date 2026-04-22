@@ -170,6 +170,14 @@ export function MatkassePanelSidebar({ token, groupId, activeDayDate, onAddToWee
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFilesSelect(Array.from(e.dataTransfer.files)); }}
+        onPaste={(e) => {
+          const images = Array.from(e.clipboardData.items)
+            .filter((i) => i.type.startsWith('image/'))
+            .map((i) => i.getAsFile())
+            .filter((f): f is File => f !== null);
+          if (images.length > 0) handleFilesSelect(images);
+        }}
+        tabIndex={0}
       >
         <input
           ref={fileInputRef}
@@ -188,6 +196,7 @@ export function MatkassePanelSidebar({ token, groupId, activeDayDate, onAddToWee
             >
               Velg bilder
             </button>
+            <p className="text-xs text-gray-400 mt-1.5">eller lim inn bilde (Ctrl+V)</p>
           </div>
         ) : (
           <div>

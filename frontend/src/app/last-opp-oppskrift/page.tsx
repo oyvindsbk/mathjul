@@ -107,6 +107,14 @@ export default function UploadRecipe() {
     if (files.length > 0) handleFilesSelect(files);
   };
 
+  const handlePaste = (e: React.ClipboardEvent) => {
+    const images = Array.from(e.clipboardData.items)
+      .filter((i) => i.type.startsWith('image/'))
+      .map((i) => i.getAsFile())
+      .filter((f): f is File => f !== null);
+    if (images.length > 0) handleFilesSelect(images);
+  };
+
   const handleSwitchMode = (mode: InputMode) => {
     setInputMode(mode);
     setError(null);
@@ -387,6 +395,8 @@ export default function UploadRecipe() {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
+            onPaste={handlePaste}
+            tabIndex={0}
           >
             <input
               ref={fileInputRef}
@@ -422,7 +432,8 @@ export default function UploadRecipe() {
                 >
                   Velg bilder
                 </button>
-                <p className="mt-2 text-xs text-gray-500">PNG, JPG, WEBP opptil 10 MB per bilde · maks 5 bilder</p>
+                <p className="mt-2 text-xs text-gray-500">eller lim inn bilde (Ctrl+V)</p>
+                <p className="mt-0.5 text-xs text-gray-500">PNG, JPG, WEBP opptil 10 MB per bilde · maks 5 bilder</p>
               </div>
             ) : (
               <div>
