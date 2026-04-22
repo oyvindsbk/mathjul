@@ -94,6 +94,8 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
                 if (string.IsNullOrWhiteSpace(pageText))
                     return RecipeExtractionResult.Failure("Could not extract readable text from the page");
 
+                var htmlImageUrl = ExtractMainImageUrl(html, uri);
+
                 _logger.LogInformation("No JSON-LD found, sending {Length} chars of text to AI model {Model}", pageText.Length, _modelName);
 
                 if (reportStage != null) await reportStage("ai_processing");
@@ -110,6 +112,9 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
                 var aiResult = RecipeExtractionPrompt.ParseResponseContent(response.Value.Content[0].Text, _logger);
                 if (!aiResult.IsSuccess) return aiResult;
                 extractedDto = aiResult.Recipe!;
+
+                if (string.IsNullOrWhiteSpace(extractedDto.ImageUrl) && htmlImageUrl != null)
+                    extractedDto.ImageUrl = htmlImageUrl;
             }
 
             if (reportStage != null) await reportStage("downloading_image");
@@ -439,6 +444,41 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
                 return num / den;
         }
 
+        return null;
+    }
+
+    private static string? ExtractMainImageUrl(string html, Uri pageUri)
+    {
+        var doc = new HtmlDocument();
+        doc.LoadHtml(html);
+
+        // og:image is the most reliable signal for a page's primary image
+        var ogImage = doc.DocumentNode.SelectSingleNode("//meta[@property='og:image']")
+            ?? doc.DocumentNode.SelectSingleNode("//meta[@name='og:image']");
+        if (ogImage != null)
+        {
+            var content = ogImage.GetAttributeValue("content", null);
+            if (!string.IsNullOrWhiteSpace(content))
+                return ToAbsoluteUrl(content, pageUri);
+        }
+
+        // twitter:image as fallback
+        var twitterImage = doc.DocumentNode.SelectSingleNode("//meta[@name='twitter:image']")
+            ?? doc.DocumentNode.SelectSingleNode("//meta[@property='twitter:image']");
+        if (twitterImage != null)
+        {
+            var content = twitterImage.GetAttributeValue("content", null);
+            if (!string.IsNullOrWhiteSpace(content))
+                return ToAbsoluteUrl(content, pageUri);
+        }
+
+        return null;
+    }
+
+    private static string? ToAbsoluteUrl(string url, Uri baseUri)
+    {
+        if (Uri.TryCreate(url, UriKind.Absolute, out var abs)) return abs.ToString();
+        if (Uri.TryCreate(baseUri, url, out var rel)) return rel.ToString();
         return null;
     }
 
