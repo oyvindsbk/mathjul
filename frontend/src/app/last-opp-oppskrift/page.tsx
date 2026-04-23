@@ -22,7 +22,7 @@ type ApiExtractedRecipe = Omit<RecipeFormData, 'categoryIds' | 'instructionSteps
   mainImageUrl?: string | null;
 };
 
-type InputMode = 'image' | 'url';
+type InputMode = 'image' | 'url' | 'manual';
 
 export default function UploadRecipe() {
   const [inputMode, setInputMode] = useState<InputMode>('image');
@@ -115,15 +115,37 @@ export default function UploadRecipe() {
     if (images.length > 0) handleFilesSelect(images);
   };
 
+  const emptyRecipe = (): ExtractedRecipe => ({
+    title: '',
+    description: '',
+    ingredients: [],
+    instructionSteps: [],
+    ingredientSections: [],
+    instructionSections: [],
+    prepTime: null,
+    cookTime: null,
+    servings: null,
+    categoryIds: [],
+    tips: [],
+    mainImageUrl: null,
+    sourceUrl: null,
+    sourceImageUrl: null,
+  });
+
   const handleSwitchMode = (mode: InputMode) => {
     setInputMode(mode);
     setError(null);
     setExtractedRecipe(null);
     setSourceUrl(null);
     setSourceImageUrl(null);
+    setCurrentMainImageUrl(null);
+    setPendingMainImageFile(null);
     previewUrls.forEach((u) => URL.revokeObjectURL(u));
     setSelectedFiles([]);
     setPreviewUrls([]);
+    if (mode === 'manual') {
+      setExtractedRecipe(emptyRecipe());
+    }
   };
 
   const stageMessages: Record<string, string> = {
@@ -382,6 +404,16 @@ export default function UploadRecipe() {
           >
             Lim inn URL
           </button>
+          <button
+            onClick={() => handleSwitchMode('manual')}
+            className={`px-6 py-2 text-sm font-medium transition-colors ${
+              inputMode === 'manual'
+                ? 'bg-blue-500 text-white'
+                : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+            }`}
+          >
+            Manuelt
+          </button>
         </div>
 
         {/* Image Upload Area */}
@@ -541,10 +573,12 @@ export default function UploadRecipe() {
         {/* Extracted Recipe */}
         {extractedRecipe && (
           <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg p-6 mb-8">
-            <h2 className="text-2xl font-bold mb-4">Hentet oppskrift</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              Kontroller og rediger informasjonen før lagring
-            </p>
+            <h2 className="text-2xl font-bold mb-4">{inputMode === 'manual' ? 'Ny oppskrift' : 'Hentet oppskrift'}</h2>
+            {inputMode !== 'manual' && (
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+                Kontroller og rediger informasjonen før lagring
+              </p>
+            )}
             <MainPhotoUpload
               currentImageUrl={currentMainImageUrl}
               pendingFile={pendingMainImageFile}
