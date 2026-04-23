@@ -105,7 +105,7 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
                     new SystemChatMessage(systemPrompt),
                     new UserChatMessage($"Please extract the recipe information from the following webpage content:\n\n{pageText}")
                 };
-                var options = new ChatCompletionOptions { Temperature = 0.2f, MaxOutputTokenCount = 4096 };
+                var options = new ChatCompletionOptions { Temperature = 0.2f };
 
                 var response = await _chatClient.CompleteChatAsync(messages, options, cancellationToken);
 

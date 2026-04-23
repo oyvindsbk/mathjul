@@ -85,11 +85,7 @@ public class RecipeImageProcessor : IRecipeImageProcessor
                     ChatMessageContentPart.CreateImagePart(imageData, "image/jpeg"))
             };
 
-            var options = new ChatCompletionOptions
-            {
-                Temperature = 0.2f,
-                MaxOutputTokenCount = 4096
-            };
+            var options = new ChatCompletionOptions { Temperature = 0.2f };
 
             var response = await _chatClient.CompleteChatAsync(messages, options, cancellationToken);
 
@@ -172,11 +168,7 @@ public class RecipeImageProcessor : IRecipeImageProcessor
                 new UserChatMessage(userParts.ToArray())
             };
 
-            var options = new ChatCompletionOptions
-            {
-                Temperature = 0.2f,
-                MaxOutputTokenCount = 4096
-            };
+            var options = new ChatCompletionOptions { Temperature = 0.2f };
 
             var response = await _chatClient.CompleteChatAsync(messages, options, cancellationToken);
             var finishReason = response.Value.FinishReason;
@@ -210,7 +202,7 @@ public class RecipeImageProcessor : IRecipeImageProcessor
                     ChatMessageContentPart.CreateImagePart(imageData, "image/jpeg"))
             };
 
-            var options = new ChatCompletionOptions { Temperature = 0.1f, MaxOutputTokenCount = 256 };
+            var options = new ChatCompletionOptions { Temperature = 0.1f };
             var response = await _chatClient.CompleteChatAsync(messages, options, cancellationToken);
             var content = response.Value.Content[0].Text.Trim();
 
