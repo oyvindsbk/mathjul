@@ -30,7 +30,7 @@ public class RecipeImageProcessor : IRecipeImageProcessor
         var apiKey = configuration["AiFoundry:ImageApiKey"]
             ?? configuration["AiFoundry:ApiKey"]
             ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:ImageApiKey or AiFoundry:ApiKey");
-        var deploymentName = configuration["AiFoundry:ImageModelName"] ?? "gpt-4o-mini";
+        var deploymentName = configuration["AiFoundry:ImageModelName"] ?? "gpt-5.4-mini";
 
         var azureClient = new AzureOpenAIClient(
             new Uri(endpoint),

@@ -100,7 +100,7 @@ public class PrdGenerationService : IPrdGenerationService
         var apiKey = configuration["AiFoundry:ImageApiKey"]
             ?? configuration["AiFoundry:ApiKey"]
             ?? throw new InvalidOperationException("AiFoundry:ApiKey is required for PRD generation");
-        var modelName = configuration["AiFoundry:PrdModelName"] ?? "gpt-4o";
+        var modelName = configuration["AiFoundry:PrdModelName"] ?? "gpt-5.4-mini";
 
         var azureClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
         _chatClient = azureClient.GetChatClient(modelName);
@@ -122,8 +122,7 @@ public class PrdGenerationService : IPrdGenerationService
 
             var options = new ChatCompletionOptions
             {
-                Temperature = 0.4f,
-                MaxOutputTokenCount = 2048
+                Temperature = 0.4f
             };
 
             var response = await _chatClient.CompleteChatAsync(messages, options, cancellationToken);

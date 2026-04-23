@@ -50,7 +50,7 @@ public class MatkasseImageProcessor : IMatkasseImageProcessor
         var apiKey = configuration["AiFoundry:ImageApiKey"]
             ?? configuration["AiFoundry:ApiKey"]
             ?? throw new InvalidOperationException("Missing config: AiFoundry:ImageApiKey or AiFoundry:ApiKey");
-        var deploymentName = configuration["AiFoundry:ImageModelName"] ?? "gpt-4o-mini";
+        var deploymentName = configuration["AiFoundry:ImageModelName"] ?? "gpt-5.4-mini";
 
         var azureClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey));
         _chatClient = azureClient.GetChatClient(deploymentName);
@@ -105,7 +105,7 @@ public class MatkasseImageProcessor : IMatkasseImageProcessor
                 new UserChatMessage(userParts.ToArray())
             };
 
-            var options = new ChatCompletionOptions { Temperature = 0.1f, MaxOutputTokenCount = 8192 };
+            var options = new ChatCompletionOptions { Temperature = 0.1f };
             var response = await _chatClient.CompleteChatAsync(messages, options, cancellationToken);
 
             if (response.Value.FinishReason == ChatFinishReason.Length)

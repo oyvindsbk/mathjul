@@ -31,7 +31,7 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
             ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:Endpoint");
         var apiKey = configuration["AiFoundry:ApiKey"]
             ?? throw new InvalidOperationException("A required configuration value is missing: AiFoundry:ApiKey");
-        _modelName = configuration["AiFoundry:TextModelName"] ?? "gpt-4o-mini";
+        _modelName = configuration["AiFoundry:TextModelName"] ?? "gpt-5.4-mini";
 
         _chatClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey))
             .GetChatClient(_modelName);
