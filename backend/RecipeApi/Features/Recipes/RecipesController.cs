@@ -117,6 +117,9 @@ public class RecipesController : ControllerBase
         var recipe = await _context.Recipes
             .Include(r => r.Categories)
             .Include(r => r.Groups).ThenInclude(rg => rg.Group).ThenInclude(g => g.Members).ThenInclude(m => m.User)
+            .Include(r => r.SideDishes).ThenInclude(sd => sd.SideDishRecipe)
+            .Include(r => r.UsedAsSideDishIn).ThenInclude(sd => sd.Recipe)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(r => r.Id == id);
 
         if (recipe == null)
@@ -172,6 +175,27 @@ public class RecipesController : ControllerBase
             Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
             Groups = recipe.Groups.Select(rg => new GroupRefDto { Id = rg.GroupId, Name = rg.Group.Name }).ToList(),
             Tips = recipe.Tips,
+            SideDishes = recipe.SideDishes
+                .OrderBy(sd => sd.SortOrder)
+                .Select(sd => new RecipeRefDto
+                {
+                    Id = sd.SideDishRecipe.Id,
+                    Title = sd.SideDishRecipe.Title,
+                    ImageUrl = sd.SideDishRecipe.ImageUrl
+                }).ToList(),
+            // Reverse lookup is visibility-filtered so a private main dish's title
+            // cannot leak through a public tilbehør.
+            UsedAsSideDishIn = recipe.UsedAsSideDishIn
+                .Where(sd => isAdmin
+                    || sd.Recipe.Visibility == "Public"
+                    || sd.Recipe.OwnerEmail == callerEmail)
+                .OrderBy(sd => sd.Recipe.Title)
+                .Select(sd => new RecipeRefDto
+                {
+                    Id = sd.Recipe.Id,
+                    Title = sd.Recipe.Title,
+                    ImageUrl = sd.Recipe.ImageUrl
+                }).ToList(),
             CreatedAt = recipe.CreatedAt,
             UpdatedAt = recipe.UpdatedAt,
             IsLikedByMe = isLikedByMe
@@ -516,6 +540,11 @@ public class RecipesController : ControllerBase
             ? await _context.Categories.Where(c => request.CategoryIds.Contains(c.Id)).ToListAsync()
             : new List<Category>();
 
+        var sideDishIds = (request.SideDishIds ?? new List<int>()).Distinct().ToList();
+        var sideDishError = await ValidateSideDishesAsync(null, sideDishIds, categories);
+        if (sideDishError != null)
+            return BadRequest(new { message = sideDishError });
+
         var visibility = request.Visibility ?? "Public";
 
         var recipe = new Recipe
@@ -569,6 +598,22 @@ public class RecipesController : ControllerBase
             foreach (var gid in request.GroupIds)
             {
                 _context.RecipeGroups.Add(new RecipeGroup { RecipeId = recipe.Id, GroupId = gid });
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        // Attach side dishes after the recipe is saved (need recipe.Id)
+        if (sideDishIds.Count > 0)
+        {
+            var sideDishOrder = 0;
+            foreach (var sideDishId in sideDishIds)
+            {
+                _context.RecipeSideDishes.Add(new RecipeSideDish
+                {
+                    RecipeId = recipe.Id,
+                    SideDishRecipeId = sideDishId,
+                    SortOrder = sideDishOrder++
+                });
             }
             await _context.SaveChangesAsync();
         }
@@ -910,6 +955,13 @@ public class RecipesController : ControllerBase
         var mealPlanEntries = await _context.MealPlans.Where(mp => mp.RecipeId == id).ToListAsync();
         _context.MealPlans.RemoveRange(mealPlanEntries);
 
+        // Remove side-dish links where this recipe is the tilbehør. That FK is Restrict,
+        // so leaving them would fail the delete; the forward direction cascades.
+        var sideDishLinks = await _context.RecipeSideDishes
+            .Where(sd => sd.SideDishRecipeId == id)
+            .ToListAsync();
+        _context.RecipeSideDishes.RemoveRange(sideDishLinks);
+
         _context.Recipes.Remove(recipe);
         await _context.SaveChangesAsync();
 
@@ -1061,7 +1113,10 @@ public class RecipesController : ControllerBase
 
     private async Task<string> BuildCategoryListJsonAsync()
     {
+        // Tilbehør is withheld from the AI: marking a recipe as a side dish is a
+        // deliberate user choice, not something to infer from the recipe text.
         var categories = await _context.Categories
+            .Where(c => c.Id != RecipeCategories.TilbehorId)
             .OrderBy(c => c.Group).ThenBy(c => c.Name)
             .Select(c => new { c.Id, c.Name, c.Group })
             .ToListAsync();
@@ -1095,7 +1150,8 @@ public class RecipesController : ControllerBase
         Servings = dto.Servings,
         QuantityType = dto.QuantityType,
         CustomUnit = dto.CustomUnit,
-        SuggestedCategoryIds = dto.SuggestedCategoryIds,
+        // Defence in depth: the id is absent from the prompt's list, but the model could still emit it.
+        SuggestedCategoryIds = dto.SuggestedCategoryIds.Where(id => id != RecipeCategories.TilbehorId).ToList(),
         Tips = dto.Tips
     };
 }
