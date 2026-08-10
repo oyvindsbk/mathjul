@@ -144,6 +144,7 @@ export function DayCell({
                   <img
                     src={matkasseLogo}
                     alt={plan.matkasseRecipe!.leverandor}
+                    draggable={false}
                     className={single ? "w-8 h-8 object-contain rounded" : "w-4 h-4 object-contain rounded flex-shrink-0 mt-0.5"}
                   />
                 ) : (

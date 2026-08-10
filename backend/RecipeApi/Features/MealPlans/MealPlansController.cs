@@ -176,6 +176,60 @@ public class MealPlansController : ControllerBase
         });
     }
 
+    // PATCH /api/groups/{groupId}/mealplans/{entryId}
+    [HttpPatch("{entryId:int}")]
+    public async Task<ActionResult<MealPlanDto>> MoveMealPlan(int groupId, int entryId, [FromBody] MoveMealPlanRequest request)
+    {
+        var email = GetCallerEmail();
+        if (email == null) return Unauthorized();
+
+        if (!await IsGroupMemberAsync(groupId, email))
+            return StatusCode(403, new { error = "You are not a member of this group" });
+
+        if (!DateOnly.TryParse(request.Date, out var parsedDate))
+            return BadRequest(new { error = "Invalid date format. Use yyyy-MM-dd." });
+
+        var entry = await _db.MealPlans
+            .Include(p => p.Recipe).ThenInclude(r => r!.Categories)
+            .Include(p => p.MatkasseRecipe)
+            .FirstOrDefaultAsync(p => p.GroupId == groupId && p.Id == entryId);
+
+        if (entry == null) return NotFound();
+
+        entry.Date = parsedDate;
+        entry.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return Ok(new MealPlanDto
+        {
+            Id = entry.Id,
+            GroupId = entry.GroupId,
+            Date = entry.Date.ToString("yyyy-MM-dd"),
+            RecipeId = entry.RecipeId,
+            Recipe = entry.Recipe == null ? null : new MealPlanRecipeDto
+            {
+                Id = entry.Recipe.Id,
+                Title = entry.Recipe.Title,
+                ImageUrl = entry.Recipe.ImageUrl,
+                MealTypeCategory = ResolveMealTypeCategory(entry.Recipe),
+                MealTypeCategories = ResolveMealTypeCategories(entry.Recipe)
+            },
+            MatkasseRecipeId = entry.MatkasseRecipeId,
+            MatkasseRecipe = entry.MatkasseRecipe == null ? null : new MealPlanMatkasseDto
+            {
+                Id = entry.MatkasseRecipe.Id,
+                Tittel = entry.MatkasseRecipe.Tittel,
+                Beskrivelse = entry.MatkasseRecipe.Beskrivelse,
+                Leverandor = entry.MatkasseRecipe.Leverandor,
+                ImageUrl = entry.MatkasseRecipe.ImageUrl
+            },
+            CustomTitle = entry.CustomTitle,
+            CustomNote = entry.CustomNote,
+            IsCustom = entry.CustomTitle != null,
+            CreatedByEmail = entry.CreatedByEmail
+        });
+    }
+
     // DELETE /api/groups/{groupId}/mealplans/{entryId}
     [HttpDelete("{entryId:int}")]
     public async Task<IActionResult> DeleteMealPlan(int groupId, int entryId)
@@ -312,4 +366,9 @@ public class CreateMealPlanRequest
 public class AiPlanRequest
 {
     public string WeekStart { get; set; } = string.Empty;
+}
+
+public class MoveMealPlanRequest
+{
+    public string Date { get; set; } = string.Empty;
 }

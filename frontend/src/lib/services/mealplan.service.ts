@@ -93,6 +93,21 @@ class MealPlanService {
     return response.json();
   }
 
+  async moveMealPlan(groupId: number, entryId: number, date: string, token: string): Promise<MealPlan> {
+    const response = await apiFetch(`${appConfig.api.baseUrl}/api/groups/${groupId}/mealplans/${entryId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ date }),
+    });
+
+    if (!response.ok) throw new Error(`Failed to move meal plan: ${response.statusText}`);
+    return response.json();
+  }
+
   async deleteMealPlan(groupId: number, entryId: number, token: string): Promise<void> {
     const response = await apiFetch(`${appConfig.api.baseUrl}/api/groups/${groupId}/mealplans/${entryId}`, {
       method: 'DELETE',

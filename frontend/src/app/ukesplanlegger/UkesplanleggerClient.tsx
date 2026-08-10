@@ -229,18 +229,8 @@ export function UkesplanleggerClient() {
     if (!existing || formatDate(date) === existing.date) return;
     const dateStr = formatDate(date);
     try {
-      await mealPlanService.deleteMealPlan(selectedGroupId, planId, token);
-      let created: MealPlan;
-      if (existing.matkasseRecipeId != null) {
-        created = await mealPlanService.createMealPlanMatkasse(selectedGroupId, dateStr, existing.matkasseRecipeId, token);
-      } else if (existing.recipeId != null) {
-        created = await mealPlanService.createMealPlan(selectedGroupId, dateStr, existing.recipeId, token);
-      } else if (existing.isCustom && existing.customTitle) {
-        created = await mealPlanService.createCustomMealPlan(selectedGroupId, dateStr, existing.customTitle, existing.customNote, token);
-      } else {
-        return;
-      }
-      setPlans((prev) => [...prev.filter((p) => p.id !== planId), created]);
+      const moved = await mealPlanService.moveMealPlan(selectedGroupId, planId, dateStr, token);
+      setPlans((prev) => [...prev.filter((p) => p.id !== planId), moved]);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Kunne ikke flytte middag");
     }
