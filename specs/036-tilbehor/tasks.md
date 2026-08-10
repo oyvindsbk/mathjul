@@ -3,8 +3,8 @@
 ## Tasks
 
 - [x] Task 1: Add RecipeSideDish join entity, Recipe navigations, and RecipeCategories constants
-- [ ] Task 2: Configure RecipeSideDish in RecipeDbContext (Cascade/Restrict) and seed Tilbehør category Id=16
-- [ ] Task 3: Generate and verify the AddTilbehorSideDishes migration
+- [x] Task 2: Configure RecipeSideDish in RecipeDbContext (Cascade/Restrict) and seed Tilbehør category Id=16
+- [x] Task 3: Generate and verify the AddTilbehorSideDishes migration
 - [ ] Task 4: Add RecipeRefDto and side-dish fields to recipe DTOs
 - [ ] Task 5: Add side-dish validation helper and wire it into UpdateRecipe
 - [ ] Task 6: Wire side dishes into SaveExtractedRecipe
