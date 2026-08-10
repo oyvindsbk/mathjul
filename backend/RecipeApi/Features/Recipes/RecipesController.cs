@@ -589,6 +589,45 @@ public class RecipesController : ControllerBase
         return CreatedAtAction(nameof(GetAllRecipes), new { id = recipe.Id }, recipeDto);
     }
 
+    /// <summary>
+    /// Validates side-dish ids against the tilbehør rules. Returns an error message, or null if valid.
+    /// <paramref name="selfId"/> is null when creating, where no self-reference is possible yet.
+    /// <paramref name="newCategories"/> is the incoming category set, not the persisted one, so that
+    /// dropping side dishes and marking the recipe as Tilbehør in the same request is accepted.
+    /// </summary>
+    private async Task<string?> ValidateSideDishesAsync(int? selfId, List<int> sideDishIds, List<Category> newCategories)
+    {
+        if (sideDishIds.Count == 0)
+            return null;
+
+        if (newCategories.Any(c => c.Id == RecipeCategories.TilbehorId))
+            return "En oppskrift som er merket Tilbehør kan ikke ha tilbehør selv.";
+
+        if (selfId.HasValue && sideDishIds.Contains(selfId.Value))
+            return "En oppskrift kan ikke være tilbehør til seg selv.";
+
+        var distinctIds = sideDishIds.Distinct().ToList();
+
+        var found = await _context.Recipes
+            .Where(r => distinctIds.Contains(r.Id))
+            .Select(r => new
+            {
+                r.Id,
+                r.Title,
+                IsTilbehor = r.Categories.Any(c => c.Id == RecipeCategories.TilbehorId)
+            })
+            .ToListAsync();
+
+        if (found.Count != distinctIds.Count)
+            return "En eller flere av de valgte oppskriftene finnes ikke.";
+
+        var notTilbehor = found.Where(f => !f.IsTilbehor).Select(f => f.Title).ToList();
+        if (notTilbehor.Count > 0)
+            return $"Følgende oppskrifter er ikke merket Tilbehør: {string.Join(", ", notTilbehor)}.";
+
+        return null;
+    }
+
     [HttpPut("{id:int}")]
     public async Task<ActionResult<RecipeDetailDto>> UpdateRecipe(int id, [FromBody] UpdateRecipeRequest request)
     {
@@ -597,6 +636,7 @@ public class RecipesController : ControllerBase
         var recipe = await _context.Recipes
             .Include(r => r.Categories)
             .Include(r => r.Groups)
+            .Include(r => r.SideDishes)
             .FirstOrDefaultAsync(r => r.Id == id);
 
         if (recipe == null)
@@ -641,9 +681,39 @@ public class RecipesController : ControllerBase
         var newCategories = request.CategoryIds?.Count > 0
             ? await _context.Categories.Where(c => request.CategoryIds.Contains(c.Id)).ToListAsync()
             : new List<Category>();
+
+        var sideDishIds = (request.SideDishIds ?? new List<int>()).Distinct().ToList();
+        var sideDishError = await ValidateSideDishesAsync(id, sideDishIds, newCategories);
+        if (sideDishError != null)
+            return BadRequest(new { message = sideDishError });
+
+        var wasTilbehor = recipe.Categories.Any(c => c.Id == RecipeCategories.TilbehorId);
+        var isTilbehor = newCategories.Any(c => c.Id == RecipeCategories.TilbehorId);
+
         recipe.Categories.Clear();
         foreach (var cat in newCategories)
             recipe.Categories.Add(cat);
+
+        // Replace side dishes; list order becomes SortOrder.
+        recipe.SideDishes.Clear();
+        var sideDishOrder = 0;
+        foreach (var sideDishId in sideDishIds)
+            recipe.SideDishes.Add(new RecipeSideDish
+            {
+                RecipeId = recipe.Id,
+                SideDishRecipeId = sideDishId,
+                SortOrder = sideDishOrder++
+            });
+
+        // Dropping the Tilbehør mark detaches this recipe from every main dish using it,
+        // so "everything in SideDishes is a Tilbehør" stays true at all times.
+        if (wasTilbehor && !isTilbehor)
+        {
+            var reverseLinks = await _context.RecipeSideDishes
+                .Where(sd => sd.SideDishRecipeId == id)
+                .ToListAsync();
+            _context.RecipeSideDishes.RemoveRange(reverseLinks);
+        }
 
         // Update visibility and groups
         recipe.Visibility = request.Visibility ?? recipe.Visibility;
@@ -659,6 +729,11 @@ public class RecipesController : ControllerBase
         // Reload groups with names for the response
         await _context.Entry(recipe).Collection(r => r.Groups).Query()
             .Include(rg => rg.Group)
+            .LoadAsync();
+
+        // Reload side dishes with titles for the response
+        await _context.Entry(recipe).Collection(r => r.SideDishes).Query()
+            .Include(sd => sd.SideDishRecipe)
             .LoadAsync();
 
         var recipeDetail = new RecipeDetailDto
@@ -697,6 +772,14 @@ public class RecipesController : ControllerBase
             Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
             Groups = recipe.Groups.Select(rg => new GroupRefDto { Id = rg.GroupId, Name = rg.Group.Name }).ToList(),
             Tips = recipe.Tips,
+            SideDishes = recipe.SideDishes
+                .OrderBy(sd => sd.SortOrder)
+                .Select(sd => new RecipeRefDto
+                {
+                    Id = sd.SideDishRecipe.Id,
+                    Title = sd.SideDishRecipe.Title,
+                    ImageUrl = sd.SideDishRecipe.ImageUrl
+                }).ToList(),
             CreatedAt = recipe.CreatedAt,
             UpdatedAt = recipe.UpdatedAt
         };
@@ -1030,6 +1113,14 @@ public class GroupRefDto
     public string Name { get; set; } = string.Empty;
 }
 
+/// <summary>Lightweight reference to a recipe used in a side-dish (tilbehør) relationship.</summary>
+public class RecipeRefDto
+{
+    public int Id { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? ImageUrl { get; set; }
+}
+
 public class RecipeDto
 {
     public int Id { get; set; }
@@ -1083,6 +1174,10 @@ public class RecipeDetailDto
     public List<CategoryDto> Categories { get; set; } = new();
     public List<GroupRefDto> Groups { get; set; } = new();
     public List<string> Tips { get; set; } = new();
+    /// <summary>Side dishes attached to this recipe, in SortOrder.</summary>
+    public List<RecipeRefDto> SideDishes { get; set; } = new();
+    /// <summary>Recipes this one is attached to as a side dish. Read-only.</summary>
+    public List<RecipeRefDto> UsedAsSideDishIn { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public string? SourceUrl { get; set; }
@@ -1154,6 +1249,8 @@ public class SaveExtractedRecipeRequest
     public string? SourceImageUrl { get; set; }
     public string? Visibility { get; set; }
     public List<int>? GroupIds { get; set; }
+    /// <summary>Ids of Tilbehør-marked recipes to attach. List order becomes SortOrder.</summary>
+    public List<int>? SideDishIds { get; set; }
 }
 
 public class UpdateRecipeRequest
@@ -1173,4 +1270,6 @@ public class UpdateRecipeRequest
     public List<string>? Tips { get; set; }
     public string? Visibility { get; set; }
     public List<int>? GroupIds { get; set; }
+    /// <summary>Ids of Tilbehør-marked recipes to attach. List order becomes SortOrder.</summary>
+    public List<int>? SideDishIds { get; set; }
 }
