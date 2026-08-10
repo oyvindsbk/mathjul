@@ -97,6 +97,12 @@ public class Recipe
     public List<RecipeGroup> Groups { get; set; } = new();
 
     public List<string> Tips { get; set; } = new();
+
+    /// <summary>Side dishes attached to this recipe (this recipe is the main dish).</summary>
+    public List<RecipeSideDish> SideDishes { get; set; } = new();
+
+    /// <summary>Main dishes this recipe is attached to as a side dish (reverse lookup).</summary>
+    public List<RecipeSideDish> UsedAsSideDishIn { get; set; } = new();
 }
 
 public class RecipeGroup
@@ -106,6 +112,21 @@ public class RecipeGroup
 
     public int GroupId { get; set; }
     public Group Group { get; set; } = null!;
+}
+
+/// <summary>
+/// One-way link: a main dish has an ordered list of side dishes (Tilbehør recipes).
+/// Edited only from the main dish; the side dish surfaces the reverse direction read-only.
+/// </summary>
+public class RecipeSideDish
+{
+    public int RecipeId { get; set; }
+    public Recipe Recipe { get; set; } = null!;
+
+    public int SideDishRecipeId { get; set; }
+    public Recipe SideDishRecipe { get; set; } = null!;
+
+    public int SortOrder { get; set; }
 }
 
 public class RecipeLike
