@@ -17,8 +17,8 @@
 - [x] Task 13: Add the Tilbehør picker section to RecipeForm
 - [x] Task 14: Wire side dishes into the edit page
 - [x] Task 15: Wire side dishes into the upload page
-- [ ] Task 16: Render Tilbehør and "Brukes som tilbehør til" on the recipe detail page
-- [ ] Task 17: Exclude tilbehør recipes from RecipePickerPanel
-- [ ] Task 18: Render side dishes in DayCell and MealPlanPreviewModal
+- [x] Task 16: Render Tilbehør and "Brukes som tilbehør til" on the recipe detail page
+- [x] Task 17: Exclude tilbehør recipes from RecipePickerPanel
+- [x] Task 18: Render side dishes in DayCell and MealPlanPreviewModal
 - [ ] Task 19: Add Playwright E2E coverage for tilbehør
 - [ ] Task 20: Inner loop — backend build + test, frontend lint, typecheck, build

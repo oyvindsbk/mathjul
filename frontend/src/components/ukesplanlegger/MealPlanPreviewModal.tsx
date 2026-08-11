@@ -25,6 +25,7 @@ export function MealPlanPreviewModal({ plan, onClose }: Props) {
   const leverandor = isMatkasse && !isCustom ? (plan.matkasseRecipe!.leverandor as Leverandor) : null;
   const colors = leverandor ? (LEVERANDOR_COLORS[leverandor] ?? { bg: "bg-gray-100", text: "text-gray-800", border: "border-gray-200" }) : null;
   const leverandorLabel = leverandor ? (LEVERANDOR_LABELS[leverandor] ?? leverandor) : null;
+  const sideDishTitles = isCustom || isMatkasse ? [] : (plan.recipe?.sideDishTitles ?? []);
 
   return (
     <div
@@ -63,7 +64,17 @@ export function MealPlanPreviewModal({ plan, onClose }: Props) {
           {description && (
             <p className="text-sm text-gray-600 leading-relaxed">{description}</p>
           )}
-          {!description && !imageUrl && !isCustom && (
+          {sideDishTitles.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-gray-100">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Tilbehør</p>
+              <ul className="text-sm text-gray-700 space-y-0.5">
+                {sideDishTitles.map((sideDish) => (
+                  <li key={sideDish}>{sideDish}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {!description && !imageUrl && !isCustom && sideDishTitles.length === 0 && (
             <p className="text-sm text-gray-400 italic">Ingen beskrivelse tilgjengelig.</p>
           )}
         </div>
