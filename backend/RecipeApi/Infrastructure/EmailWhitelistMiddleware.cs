@@ -50,6 +50,7 @@ public class EmailWhitelistMiddleware
         // Skip authentication for health checks and auth endpoints only
         var path = context.Request.Path.Value?.ToLower() ?? "";
         if (path.StartsWith("/health") ||
+            path.StartsWith("/api/public/") ||   // Deliberately public APIs (9-kamp). Trailing slash keeps the prefix tight.
             path == "/api/auth/google-token" ||  // Google OAuth callback
             path == "/api/auth/dev-token")        // Dev fake login
         {
