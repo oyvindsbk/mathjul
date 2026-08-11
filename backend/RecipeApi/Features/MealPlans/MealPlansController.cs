@@ -27,14 +27,34 @@ public class MealPlansController : ControllerBase
 
     private static string? ResolveMealTypeCategory(Recipe recipe) =>
         recipe.Categories
-            .FirstOrDefault(c => c.Group == "Måltidstype")
+            .FirstOrDefault(c => c.Group == RecipeCategories.MealTypeGroup)
             ?.Name;
 
     private static List<string> ResolveMealTypeCategories(Recipe recipe) =>
         recipe.Categories
-            .Where(c => c.Group == "Måltidstype")
+            .Where(c => c.Group == RecipeCategories.MealTypeGroup)
             .Select(c => c.Name)
             .ToList();
+
+    private static List<string> ResolveSideDishTitles(Recipe recipe) =>
+        recipe.SideDishes
+            .OrderBy(sd => sd.SortOrder)
+            .Select(sd => sd.SideDishRecipe.Title)
+            .ToList();
+
+    /// <summary>
+    /// Single construction point for the recipe half of a meal plan entry, so every
+    /// endpoint returns the same shape. Requires Categories and SideDishes to be loaded.
+    /// </summary>
+    private static MealPlanRecipeDto BuildRecipeDto(Recipe recipe) => new()
+    {
+        Id = recipe.Id,
+        Title = recipe.Title,
+        ImageUrl = recipe.ImageUrl,
+        MealTypeCategory = ResolveMealTypeCategory(recipe),
+        MealTypeCategories = ResolveMealTypeCategories(recipe),
+        SideDishTitles = ResolveSideDishTitles(recipe)
+    };
 
     // GET /api/groups/{groupId}/mealplans?from=2026-04-14&to=2026-04-20
     [HttpGet]
@@ -55,7 +75,9 @@ public class MealPlansController : ControllerBase
         var plans = await _db.MealPlans
             .Where(p => p.GroupId == groupId && p.Date >= fromDate && p.Date <= toDate)
             .Include(p => p.Recipe).ThenInclude(r => r!.Categories)
+            .Include(p => p.Recipe).ThenInclude(r => r!.SideDishes).ThenInclude(sd => sd.SideDishRecipe)
             .Include(p => p.MatkasseRecipe)
+            .AsSplitQuery()
             .ToListAsync();
 
         var planDtos = plans.Select(p => new MealPlanDto
@@ -64,20 +86,7 @@ public class MealPlansController : ControllerBase
             GroupId = p.GroupId,
             Date = p.Date.ToString("yyyy-MM-dd"),
             RecipeId = p.RecipeId,
-            Recipe = p.Recipe == null ? null : new MealPlanRecipeDto
-            {
-                Id = p.Recipe.Id,
-                Title = p.Recipe.Title,
-                ImageUrl = p.Recipe.ImageUrl,
-                MealTypeCategory = p.Recipe.Categories
-                    .Where(c => c.Group == "Måltidstype")
-                    .Select(c => c.Name)
-                    .FirstOrDefault(),
-                MealTypeCategories = p.Recipe.Categories
-                    .Where(c => c.Group == "Måltidstype")
-                    .Select(c => c.Name)
-                    .ToList()
-            },
+            Recipe = p.Recipe == null ? null : BuildRecipeDto(p.Recipe),
             MatkasseRecipe = p.MatkasseRecipe == null ? null : new MealPlanMatkasseDto
             {
                 Id = p.MatkasseRecipe.Id,
@@ -121,7 +130,11 @@ public class MealPlansController : ControllerBase
 
         if (request.RecipeId != null)
         {
-            recipe = await _db.Recipes.Include(r => r.Categories).FirstOrDefaultAsync(r => r.Id == request.RecipeId);
+            recipe = await _db.Recipes
+                .Include(r => r.Categories)
+                .Include(r => r.SideDishes).ThenInclude(sd => sd.SideDishRecipe)
+                .AsSplitQuery()
+                .FirstOrDefaultAsync(r => r.Id == request.RecipeId);
             if (recipe == null) return NotFound(new { error = "Recipe not found" });
         }
 
@@ -152,14 +165,7 @@ public class MealPlansController : ControllerBase
             GroupId = entry.GroupId,
             Date = entry.Date.ToString("yyyy-MM-dd"),
             RecipeId = entry.RecipeId,
-            Recipe = recipe == null ? null : new MealPlanRecipeDto
-            {
-                Id = recipe.Id,
-                Title = recipe.Title,
-                ImageUrl = recipe.ImageUrl,
-                MealTypeCategory = ResolveMealTypeCategory(recipe),
-                MealTypeCategories = ResolveMealTypeCategories(recipe)
-            },
+            Recipe = recipe == null ? null : BuildRecipeDto(recipe),
             MatkasseRecipeId = entry.MatkasseRecipeId,
             MatkasseRecipe = matkasseRecipe == null ? null : new MealPlanMatkasseDto
             {
@@ -191,7 +197,9 @@ public class MealPlansController : ControllerBase
 
         var entry = await _db.MealPlans
             .Include(p => p.Recipe).ThenInclude(r => r!.Categories)
+            .Include(p => p.Recipe).ThenInclude(r => r!.SideDishes).ThenInclude(sd => sd.SideDishRecipe)
             .Include(p => p.MatkasseRecipe)
+            .AsSplitQuery()
             .FirstOrDefaultAsync(p => p.GroupId == groupId && p.Id == entryId);
 
         if (entry == null) return NotFound();
@@ -206,14 +214,7 @@ public class MealPlansController : ControllerBase
             GroupId = entry.GroupId,
             Date = entry.Date.ToString("yyyy-MM-dd"),
             RecipeId = entry.RecipeId,
-            Recipe = entry.Recipe == null ? null : new MealPlanRecipeDto
-            {
-                Id = entry.Recipe.Id,
-                Title = entry.Recipe.Title,
-                ImageUrl = entry.Recipe.ImageUrl,
-                MealTypeCategory = ResolveMealTypeCategory(entry.Recipe),
-                MealTypeCategories = ResolveMealTypeCategories(entry.Recipe)
-            },
+            Recipe = entry.Recipe == null ? null : BuildRecipeDto(entry.Recipe),
             MatkasseRecipeId = entry.MatkasseRecipeId,
             MatkasseRecipe = entry.MatkasseRecipe == null ? null : new MealPlanMatkasseDto
             {
@@ -267,8 +268,10 @@ public class MealPlansController : ControllerBase
         // Get all recipes visible to this group or public
         var recipes = await _db.Recipes
             .Include(r => r.Categories)
+            .Include(r => r.SideDishes).ThenInclude(sd => sd.SideDishRecipe)
             .Where(r => r.Visibility == "Public"
                 || (r.Visibility == "Group" && r.Groups.Any(rg => rg.GroupId == groupId)))
+            .AsSplitQuery()
             .ToListAsync();
 
         if (recipes.Count == 0)
@@ -303,14 +306,7 @@ public class MealPlansController : ControllerBase
                 GroupId = entry.GroupId,
                 Date = entry.Date.ToString("yyyy-MM-dd"),
                 RecipeId = recipe.Id,
-                Recipe = new MealPlanRecipeDto
-                {
-                    Id = recipe.Id,
-                    Title = recipe.Title,
-                    ImageUrl = recipe.ImageUrl,
-                    MealTypeCategory = ResolveMealTypeCategory(recipe),
-                    MealTypeCategories = ResolveMealTypeCategories(recipe)
-                },
+                Recipe = BuildRecipeDto(recipe),
                 MatkasseRecipe = null,
                 CreatedByEmail = entry.CreatedByEmail
             });
@@ -352,6 +348,8 @@ public class MealPlanRecipeDto
     public string? ImageUrl { get; set; }
     public string? MealTypeCategory { get; set; }
     public List<string> MealTypeCategories { get; set; } = new();
+    /// <summary>Titles of side dishes attached to this recipe, in SortOrder.</summary>
+    public List<string> SideDishTitles { get; set; } = new();
 }
 
 public class CreateMealPlanRequest
