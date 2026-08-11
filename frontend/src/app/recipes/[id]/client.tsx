@@ -234,6 +234,23 @@ export default function RecipeDetailClient({ id }: { id: string }) {
               </div>
             )}
 
+            {recipe.sideDishes && recipe.sideDishes.length > 0 && (
+              <div className="mb-6" data-testid="side-dishes">
+                <h2 className="text-sm font-semibold text-gray-700 mb-2">Tilbehør</h2>
+                <div className="flex flex-wrap gap-2">
+                  {recipe.sideDishes.map((side) => (
+                    <Link
+                      key={side.id}
+                      href={`/recipes/${side.id}`}
+                      className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm hover:bg-emerald-200 transition-colors"
+                    >
+                      {side.title}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 py-4 md:py-6 border-y border-gray-200">
               {recipe.prepTime && (
                 <div className="text-center">
@@ -471,6 +488,23 @@ export default function RecipeDetailClient({ id }: { id: string }) {
                   </li>
                 ))}
               </ul>
+            </div>
+          </div>
+        )}
+
+        {recipe.usedAsSideDishIn && recipe.usedAsSideDishIn.length > 0 && (
+          <div className="mt-8" data-testid="used-as-side-dish-in">
+            <h2 className="text-sm font-semibold text-gray-700 mb-2">Brukes som tilbehør til</h2>
+            <div className="flex flex-wrap gap-2">
+              {recipe.usedAsSideDishIn.map((main) => (
+                <Link
+                  key={main.id}
+                  href={`/recipes/${main.id}`}
+                  className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
+                >
+                  {main.title}
+                </Link>
+              ))}
             </div>
           </div>
         )}

@@ -10,7 +10,7 @@ import VisibilitySelector, { type Visibility } from '@/components/VisibilitySele
 import { recipeService } from '@/lib/services/recipe.service';
 import { consumeSseStream } from '@/lib/sseStream';
 import type { RecipeFormData } from '@/lib/services/recipe.service';
-import type { Category } from '@/lib/mock-data';
+import type { Category, Recipe } from '@/lib/mock-data';
 
 type ExtractedRecipe = RecipeFormData;
 
@@ -36,6 +36,7 @@ export default function UploadRecipe() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
+  const [availableSideDishes, setAvailableSideDishes] = useState<Recipe[]>([]);
   // Provenance: original source URL or source image blob URL
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
@@ -54,6 +55,7 @@ export default function UploadRecipe() {
   useEffect(() => {
     if (tokenLoading) return;
     recipeService.getAllCategories(token || undefined).then(setAvailableCategories).catch(() => {});
+    recipeService.getTilbehorRecipes(token || undefined).then(setAvailableSideDishes).catch(() => {});
   }, [tokenLoading, token]);
 
   const handleFilesSelect = (files: File[]) => {
@@ -126,6 +128,7 @@ export default function UploadRecipe() {
     cookTime: null,
     servings: null,
     categoryIds: [],
+    sideDishIds: [],
     tips: [],
     mainImageUrl: null,
     sourceUrl: null,
@@ -606,6 +609,7 @@ export default function UploadRecipe() {
               isSaving={isSaving}
               submitLabel="Lagre oppskrift"
               availableCategories={availableCategories}
+              availableSideDishes={availableSideDishes}
               onStepPhotoSelected={async (_, file) => {
                 const url = URL.createObjectURL(file);
                 pendingStepPhotosRef.current.set(url, file);

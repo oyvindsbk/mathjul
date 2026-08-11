@@ -23,6 +23,7 @@ public class RecipeDbContext : DbContext
     public DbSet<GroupMember> GroupMembers { get; set; }
     public DbSet<RecipeGroup> RecipeGroups { get; set; }
     public DbSet<RecipeLike> RecipeLikes { get; set; }
+    public DbSet<RecipeSideDish> RecipeSideDishes { get; set; }
     public DbSet<MealPlan> MealPlans { get; set; }
     public DbSet<MatkasseRecipe> MatkasseRecipes { get; set; }
     public DbSet<FeatureColumn> FeatureColumns { get; set; }
@@ -94,6 +95,24 @@ public class RecipeDbContext : DbContext
                   .WithMany()
                   .HasForeignKey(e => e.RecipeId)
                   .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure RecipeSideDish self-referencing join table.
+        // Both foreign keys point at Recipes.Id, and SQL Server rejects two cascading
+        // paths from one table to itself, so the reverse side must be Restrict.
+        // Deleting a recipe used as a side dish is handled explicitly in DeleteRecipe.
+        modelBuilder.Entity<RecipeSideDish>(entity =>
+        {
+            entity.HasKey(e => new { e.RecipeId, e.SideDishRecipeId });
+            entity.HasIndex(e => new { e.RecipeId, e.SortOrder });
+            entity.HasOne(e => e.Recipe)
+                  .WithMany(r => r.SideDishes)
+                  .HasForeignKey(e => e.RecipeId)
+                  .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne(e => e.SideDishRecipe)
+                  .WithMany(r => r.UsedAsSideDishIn)
+                  .HasForeignKey(e => e.SideDishRecipeId)
+                  .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Configure Category entity
@@ -293,7 +312,9 @@ public class RecipeDbContext : DbContext
             new Category { Id = 12, Name = "Under 15 min", Group = "Tilberedningstid" },
             new Category { Id = 13, Name = "Under 30 min", Group = "Tilberedningstid" },
             new Category { Id = 14, Name = "Under 1 time", Group = "Tilberedningstid" },
-            new Category { Id = 15, Name = "Over 1 time", Group = "Tilberedningstid" }
+            new Category { Id = 15, Name = "Over 1 time", Group = "Tilberedningstid" },
+            // Tilbehør — marks a recipe as attachable as a side dish to other recipes
+            new Category { Id = RecipeCategories.TilbehorId, Name = RecipeCategories.TilbehorName, Group = RecipeCategories.MealTypeGroup }
         );
 
         modelBuilder.Entity<Recipe>().HasData(

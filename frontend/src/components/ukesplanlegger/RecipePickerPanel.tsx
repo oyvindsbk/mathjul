@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Recipe } from "@/lib/mock-data";
+import { TILBEHOR_CATEGORY_ID, type Recipe } from "@/lib/mock-data";
 import type { MealType } from "./MealTypeFilter";
 import { MEAL_TYPE_ICONS } from "./MealTypeFilter";
 import { recipeService } from "@/lib/services/recipe.service";
@@ -54,11 +54,17 @@ function PanelContent({
       .finally(() => setLoading(false));
   }, [token]);
 
+  // Tilbehør is served alongside a main dish, never planned as its own day card.
+  // Excluded before the meal-type filter so "Alle" hides it too.
+  const selectable = allRecipes.filter(
+    (r) => !r.categories?.some((c) => c.id === TILBEHOR_CATEGORY_ID)
+  );
+
   // Filter by active meal type
   const recipes =
     activeMealType === "Alle"
-      ? allRecipes
-      : allRecipes.filter((r) =>
+      ? selectable
+      : selectable.filter((r) =>
           r.categories?.some(
             (c) => c.group === "Måltidstype" && c.name === activeMealType
           )

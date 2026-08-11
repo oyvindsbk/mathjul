@@ -7,6 +7,8 @@ export interface MealPlanRecipe {
   imageUrl: string | null;
   mealTypeCategory: string | null;
   mealTypeCategories: string[];
+  /** Titles of side dishes attached to this recipe, in order. */
+  sideDishTitles: string[];
 }
 
 export interface MealPlanMatkasse {

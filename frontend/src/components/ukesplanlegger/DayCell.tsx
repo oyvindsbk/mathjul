@@ -113,6 +113,9 @@ export function DayCell({
             const matkasseLogo = isMatkasse
               ? LEVERANDOR_LOGOS[plan.matkasseRecipe!.leverandor as Leverandor]
               : null;
+            const sideDishTitles = isCustom || isMatkasse
+              ? []
+              : (plan.recipe?.sideDishTitles ?? []);
             const single = plans.length === 1;
             return (
               <div
@@ -150,9 +153,17 @@ export function DayCell({
                 ) : (
                   <span className={single ? "text-xl leading-none" : "text-[10px] flex-shrink-0 mt-0.5"}>{icon}</span>
                 )}
-                <p className={`font-medium leading-tight flex-1 ${isPast ? "text-gray-400" : isCustom ? "text-amber-800" : "text-gray-800"} ${single ? "text-xs line-clamp-3" : "text-[10px] line-clamp-2"}`}>
-                  {title}
-                </p>
+                {/* Title and side dishes share a wrapper so the delete button stays on the row */}
+                <div className={single ? "" : "flex-1 min-w-0"}>
+                  <p className={`font-medium leading-tight ${isPast ? "text-gray-400" : isCustom ? "text-amber-800" : "text-gray-800"} ${single ? "text-xs line-clamp-3" : "text-[10px] line-clamp-2"}`}>
+                    {title}
+                  </p>
+                  {sideDishTitles.length > 0 && (
+                    <p className={`leading-tight ${isPast ? "text-gray-300" : "text-gray-500"} ${single ? "text-[10px] line-clamp-2" : "text-[9px] line-clamp-1"}`}>
+                      + {sideDishTitles.join(", ")}
+                    </p>
+                  )}
+                </div>
                 <button
                   className={`hidden group-hover/entry:flex items-center justify-center w-4 h-4 bg-red-100 hover:bg-red-200 text-red-600 rounded-full text-[10px] flex-shrink-0 transition-colors ${single ? "absolute top-1 right-1" : ""}`}
                   onClick={(e) => {

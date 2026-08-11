@@ -7,7 +7,7 @@
 
 import { apiFetch } from '../api-fetch';
 import { appConfig } from '../config';
-import { mockCategories, mockRecipes, type Category, type IngredientSection, type InstructionSection, type InstructionStep, type Recipe, type StructuredIngredient } from '../mock-data';
+import { mockCategories, mockRecipes, TILBEHOR_CATEGORY_ID, type Category, type IngredientSection, type InstructionSection, type InstructionStep, type Recipe, type StructuredIngredient } from '../mock-data';
 
 export interface RecipeFormData {
   title: string;
@@ -22,6 +22,8 @@ export interface RecipeFormData {
   quantityType?: string;
   customUnit?: string | null;
   categoryIds?: number[];
+  /** Ids of Tilbehør-marked recipes to attach. List order becomes the display order. */
+  sideDishIds?: number[];
   tips?: string[];
   mainImageUrl?: string | null;
   sourceUrl?: string | null;
@@ -85,6 +87,19 @@ class RecipeService {
   }
 
   /**
+   * Fetch recipes marked as Tilbehør, for the side-dish picker
+   */
+  async getTilbehorRecipes(token?: string): Promise<Recipe[]> {
+    if (appConfig.mocking.enabled) {
+      return mockRecipes.filter((r) =>
+        r.categories?.some((c) => c.id === TILBEHOR_CATEGORY_ID)
+      );
+    }
+
+    return this.getAllRecipes(token, [TILBEHOR_CATEGORY_ID]);
+  }
+
+  /**
    * Fetch a single recipe by ID
    */
   async getRecipeById(id: string | number, token?: string): Promise<Recipe | null> {
@@ -132,7 +147,12 @@ class RecipeService {
       if (response.status === 403) {
         throw new Error('Du har ikke tilgang til å redigere denne oppskriften');
       }
-      throw new Error(`Failed to update recipe: ${response.statusText}`);
+      // Surface the server's validation message (e.g. the tilbehør rules) when present.
+      const message = await response
+        .json()
+        .then((body: { message?: string }) => body?.message)
+        .catch(() => undefined);
+      throw new Error(message ?? `Failed to update recipe: ${response.statusText}`);
     }
 
     return await response.json();

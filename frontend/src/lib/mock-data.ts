@@ -15,6 +15,19 @@ export interface Category {
   group: string;
 }
 
+/**
+ * Id of the seeded "Tilbehør" category.
+ * Must match RecipeCategories.TilbehorId on the backend.
+ */
+export const TILBEHOR_CATEGORY_ID = 16;
+
+/** Lightweight reference to a recipe in a side-dish (tilbehør) relationship. */
+export interface RecipeRef {
+  id: number;
+  title: string;
+  imageUrl?: string | null;
+}
+
 export interface InstructionStep {
   text: string;
   imageUrl?: string | null;
@@ -48,6 +61,10 @@ export interface Recipe {
   isLikedByMe?: boolean;
   ownerEmail?: string | null;
   sourceUrl?: string | null;
+  /** Side dishes attached to this recipe, in order. */
+  sideDishes?: RecipeRef[];
+  /** Recipes this one is attached to as a side dish. Read-only. */
+  usedAsSideDishIn?: RecipeRef[];
 }
 
 export const mockCategories: Category[] = [
@@ -66,6 +83,7 @@ export const mockCategories: Category[] = [
   { id: 13, name: 'Under 30 min', group: 'Tilberedningstid' },
   { id: 14, name: 'Under 1 time', group: 'Tilberedningstid' },
   { id: 15, name: 'Over 1 time', group: 'Tilberedningstid' },
+  { id: TILBEHOR_CATEGORY_ID, name: 'Tilbehør', group: 'Måltidstype' },
 ];
 
 export const mockRecipes: Recipe[] = [

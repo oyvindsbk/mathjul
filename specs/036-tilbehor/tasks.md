@@ -1,0 +1,24 @@
+# Tasks: Tilbehør
+
+## Tasks
+
+- [x] Task 1: Add RecipeSideDish join entity, Recipe navigations, and RecipeCategories constants
+- [x] Task 2: Configure RecipeSideDish in RecipeDbContext (Cascade/Restrict) and seed Tilbehør category Id=16
+- [x] Task 3: Generate and verify the AddTilbehorSideDishes migration
+- [x] Task 4: Add RecipeRefDto and side-dish fields to recipe DTOs
+- [x] Task 5: Add side-dish validation helper and wire it into UpdateRecipe
+- [x] Task 6: Wire side dishes into SaveExtractedRecipe
+- [x] Task 7: Return sideDishes and usedAsSideDishIn from GetRecipeById
+- [x] Task 8: Clean up side-dish links in DeleteRecipe and when Tilbehør is un-marked
+- [x] Task 9: Exclude Tilbehør from BuildCategoryListJsonAsync and suggested category ids
+- [x] Task 10: Add SideDishTitles to MealPlanRecipeDto and all four projection sites
+- [x] Task 11: Add xUnit test infrastructure for recipes and side-dish validation tests
+- [x] Task 12: Add side-dish types to mock-data.ts and getTilbehorRecipes to recipe.service.ts
+- [x] Task 13: Add the Tilbehør picker section to RecipeForm
+- [x] Task 14: Wire side dishes into the edit page
+- [x] Task 15: Wire side dishes into the upload page
+- [x] Task 16: Render Tilbehør and "Brukes som tilbehør til" on the recipe detail page
+- [x] Task 17: Exclude tilbehør recipes from RecipePickerPanel
+- [x] Task 18: Render side dishes in DayCell and MealPlanPreviewModal
+- [x] Task 19: Add Playwright E2E coverage for tilbehør (written; needs a running API to execute)
+- [x] Task 20: Inner loop — backend build + test, frontend lint, typecheck, build
