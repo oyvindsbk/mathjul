@@ -235,7 +235,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
             )}
 
             {recipe.sideDishes && recipe.sideDishes.length > 0 && (
-              <div className="mb-6">
+              <div className="mb-6" data-testid="side-dishes">
                 <h2 className="text-sm font-semibold text-gray-700 mb-2">Tilbehør</h2>
                 <div className="flex flex-wrap gap-2">
                   {recipe.sideDishes.map((side) => (
@@ -493,7 +493,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
         )}
 
         {recipe.usedAsSideDishIn && recipe.usedAsSideDishIn.length > 0 && (
-          <div className="mt-8">
+          <div className="mt-8" data-testid="used-as-side-dish-in">
             <h2 className="text-sm font-semibold text-gray-700 mb-2">Brukes som tilbehør til</h2>
             <div className="flex flex-wrap gap-2">
               {recipe.usedAsSideDishIn.map((main) => (

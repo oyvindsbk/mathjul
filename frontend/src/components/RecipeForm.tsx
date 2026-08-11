@@ -1117,7 +1117,7 @@ export default function RecipeForm({
         const unselected = selectable.filter((r) => !selectedIds.includes(r.id));
 
         return (
-          <div>
+          <div data-testid="side-dish-picker">
             <label className="block text-sm font-medium mb-2">Tilbehør</label>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
               Velg oppskrifter som serveres som tilbehør til denne retten.
@@ -1167,6 +1167,7 @@ export default function RecipeForm({
                 <button
                   key={recipe.id}
                   type="button"
+                  data-testid={`side-dish-option-${recipe.id}`}
                   onClick={() => handleToggleSideDish(recipe.id)}
                   className="px-3 py-1 rounded-full text-sm border transition-colors bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-400"
                 >
