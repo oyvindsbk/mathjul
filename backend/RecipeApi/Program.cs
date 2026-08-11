@@ -204,6 +204,9 @@ app.UseExceptionHandler(errorApp =>
 // to handle preflight OPTIONS requests correctly
 app.UseCors("AllowFrontend");
 
+// Serve wwwroot before the whitelist middleware -- the 9-kamp app at /9-kamp.html is public
+app.UseStaticFiles();
+
 // Add email whitelist middleware after CORS
 app.UseMiddleware<EmailWhitelistMiddleware>();
 

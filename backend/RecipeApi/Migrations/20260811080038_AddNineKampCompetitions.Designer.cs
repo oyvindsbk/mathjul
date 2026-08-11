@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using RecipeApi.Infrastructure;
 
@@ -11,9 +12,11 @@ using RecipeApi.Infrastructure;
 namespace RecipeApi.Migrations
 {
     [DbContext(typeof(RecipeDbContext))]
-    partial class RecipeDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260811080038_AddNineKampCompetitions")]
+    partial class AddNineKampCompetitions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -471,12 +474,6 @@ namespace RecipeApi.Migrations
                             Id = 15,
                             Group = "Tilberedningstid",
                             Name = "Over 1 time"
-                        },
-                        new
-                        {
-                            Id = 16,
-                            Group = "Måltidstype",
-                            Name = "Tilbehør"
                         });
                 });
 
@@ -674,26 +671,6 @@ namespace RecipeApi.Migrations
                     b.ToTable("RecipeLikes");
                 });
 
-            modelBuilder.Entity("RecipeApi.Features.Recipes.RecipeSideDish", b =>
-                {
-                    b.Property<int>("RecipeId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SideDishRecipeId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
-                    b.HasKey("RecipeId", "SideDishRecipeId");
-
-                    b.HasIndex("SideDishRecipeId");
-
-                    b.HasIndex("RecipeId", "SortOrder");
-
-                    b.ToTable("RecipeSideDishes");
-                });
-
             modelBuilder.Entity("RecipeApi.Features.FeaturePlanner.BugCard", b =>
                 {
                     b.HasBaseType("RecipeApi.Features.FeaturePlanner.FeatureCard");
@@ -858,25 +835,6 @@ namespace RecipeApi.Migrations
                     b.Navigation("Recipe");
                 });
 
-            modelBuilder.Entity("RecipeApi.Features.Recipes.RecipeSideDish", b =>
-                {
-                    b.HasOne("RecipeApi.Features.Recipes.Recipe", "Recipe")
-                        .WithMany("SideDishes")
-                        .HasForeignKey("RecipeId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("RecipeApi.Features.Recipes.Recipe", "SideDishRecipe")
-                        .WithMany("UsedAsSideDishIn")
-                        .HasForeignKey("SideDishRecipeId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Recipe");
-
-                    b.Navigation("SideDishRecipe");
-                });
-
             modelBuilder.Entity("RecipeApi.Features.FeaturePlanner.FeatureColumn", b =>
                 {
                     b.Navigation("Cards");
@@ -890,10 +848,6 @@ namespace RecipeApi.Migrations
             modelBuilder.Entity("RecipeApi.Features.Recipes.Recipe", b =>
                 {
                     b.Navigation("Groups");
-
-                    b.Navigation("SideDishes");
-
-                    b.Navigation("UsedAsSideDishIn");
                 });
 #pragma warning restore 612, 618
         }

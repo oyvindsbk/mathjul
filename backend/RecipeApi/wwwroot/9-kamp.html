@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>9-kamp — Resultatregistrering</title>
+<link rel="icon" href="/favicon.ico" sizes="16x16">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --track-red:#a8362a;
+    --track-red-dark:#7c2820;
+    --sand:#f3eee3;
+    --sand-dark:#e8e0cf;
+    --card:#fbf8f1;
+    --ink:#1e2233;
+    --ink-soft:#5a5e6e;
+    --line:#d8cfc0;
+    --gold:#c9a227;
+    --silver:#9aa0ab;
+    --bronze:#b5723a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--sand);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:980px;
+    margin:0 auto;
+    padding:0 20px 80px;
+  }
+  header{
+    padding:36px 20px 22px;
+    text-align:center;
+  }
+  .lanes{
+    height:6px;
+    background:repeating-linear-gradient(90deg,var(--track-red) 0 26px,var(--sand-dark) 26px 34px);
+    margin:0 0 26px;
+  }
+  h1{
+    font-family:'Oswald',sans-serif;
+    font-weight:700;
+    font-size:44px;
+    letter-spacing:4px;
+    margin:0;
+    color:var(--ink);
+  }
+  h1 span{color:var(--track-red);}
+  .sub{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:13px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-top:6px;
+  }
+  .card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:22px 24px;
+    margin-bottom:22px;
+  }
+  .card h2{
+    font-family:'Oswald',sans-serif;
+    font-size:15px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin:0 0 14px;
+  }
+  /* Deltakere */
+  .add-row{display:flex;gap:8px;margin-bottom:14px;}
+  input[type=text]{
+    flex:1;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    background:#fff;
+  }
+  input[type=text]:focus{outline:2px solid var(--track-red); outline-offset:1px;}
+  select{
+    flex:1;
+    padding:10px 12px;
+    border:1px solid var(--line);
+    border-radius:6px;
+    font-family:'Inter',sans-serif;
+    font-size:14px;
+    background:#fff;
+    color:var(--ink);
+  }
+  select:focus{outline:2px solid var(--track-red); outline-offset:1px;}
+  button{
+    font-family:'Inter',sans-serif;
+    font-weight:600;
+    font-size:14px;
+    border:none;
+    border-radius:6px;
+    padding:10px 16px;
+    cursor:pointer;
+  }
+  .btn-primary{background:var(--track-red); color:#fff;}
+  .btn-primary:hover{background:var(--track-red-dark);}
+  .btn-ghost{background:transparent; color:var(--ink-soft); border:1px solid var(--line);}
+  .btn-ghost:hover{border-color:var(--track-red); color:var(--track-red);}
+  .chips{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{
+    display:flex; align-items:center; gap:8px;
+    background:var(--sand-dark);
+    border-radius:20px;
+    padding:6px 8px 6px 14px;
+    font-size:14px;
+  }
+  .chip button{
+    background:none; border:none; color:var(--ink-soft);
+    font-size:16px; line-height:1; padding:0 6px; cursor:pointer;
+  }
+  .chip button:hover{color:var(--track-red);}
+  .empty{color:var(--ink-soft); font-size:14px; font-style:italic;}
+
+  /* Event nav */
+  .bibs{
+    display:flex; gap:10px; overflow-x:auto; padding:4px 2px 14px;
+  }
+  .bib{
+    flex:0 0 auto;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    cursor:pointer; padding:6px 4px 0;
+    border:none; background:none;
+  }
+  .bib .num{
+    width:40px; height:40px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:14px;
+    background:#fff; border:2px solid var(--line); color:var(--ink-soft);
+  }
+  .bib.active .num{background:var(--track-red); border-color:var(--track-red); color:#fff;}
+  .bib .lbl{font-size:11px; letter-spacing:.5px; text-transform:uppercase; color:var(--ink-soft); white-space:nowrap;}
+  .bib.active .lbl{color:var(--track-red); font-weight:600;}
+
+  .event-head{
+    display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px;
+  }
+  .event-head h3{
+    font-family:'Oswald',sans-serif; font-size:26px; margin:0; letter-spacing:1px;
+  }
+  .event-meta{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft);}
+  .progress{font-size:12px; color:var(--ink-soft); margin-bottom:18px;}
+
+  .input-grid{
+    display:grid;
+    grid-template-columns:1fr 130px;
+    gap:8px 12px;
+    margin-bottom:20px;
+  }
+  .input-grid .name{
+    display:flex; align-items:center; font-size:14px;
+  }
+  .input-grid input[type=text]{
+    font-family:'IBM Plex Mono',monospace;
+  }
+
+  table{width:100%; border-collapse:collapse;}
+  th{
+    text-align:left; font-family:'Oswald',sans-serif; font-size:12px;
+    letter-spacing:1px; text-transform:uppercase; color:var(--ink-soft);
+    padding:8px 10px; border-bottom:2px solid var(--line);
+  }
+  td{
+    padding:10px 10px; border-bottom:1px solid var(--line); font-size:14px;
+  }
+  tr.rank-1 td:first-child{border-left:4px solid var(--gold); padding-left:6px;}
+  tr.rank-2 td:first-child{border-left:4px solid var(--silver); padding-left:6px;}
+  tr.rank-3 td:first-child{border-left:4px solid var(--bronze); padding-left:6px;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+  .pts{font-weight:600; color:var(--track-red);}
+  .totrow.leader td:first-child{border-left:4px solid var(--gold); padding-left:6px;}
+  .totrow .tot{font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:16px;}
+  .small{font-size:12px; color:var(--ink-soft);}
+
+  .total-table th, .total-table td{padding:8px 6px; font-size:13px;}
+  .total-table td.name-cell, .total-table th.name-th{position:sticky; left:0; background:var(--card);}
+
+  footer{text-align:center; margin-top:30px;}
+  footer button{margin-top:6px;}
+
+  @media (max-width:600px){
+    h1{font-size:30px; letter-spacing:2px;}
+    .input-grid{grid-template-columns:1fr 100px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>9-<span>KAMP</span></h1>
+    <div class="sub">Resultatregistrering</div>
+  </header>
+  <div class="lanes"></div>
+
+  <div id="loading" class="card"><span class="empty">Laster inn…</span></div>
+
+  <div id="app" style="display:none;">
+
+    <div class="card">
+      <h2>Konkurranse</h2>
+      <div class="add-row">
+        <select id="compSelect"></select>
+        <button class="btn-primary" id="newCompBtn">Ny konkurranse</button>
+      </div>
+      <div class="small" id="status"></div>
+    </div>
+
+    <div id="competition" style="display:none;">
+
+    <div class="card">
+      <h2>Deltakere</h2>
+      <div class="add-row">
+        <input type="text" id="newName" placeholder="Navn på deltaker">
+        <button class="btn-primary" id="addBtn">Legg til</button>
+      </div>
+      <div class="chips" id="chips"></div>
+    </div>
+
+    <div class="card">
+      <h2>Øvelser</h2>
+      <div class="bibs" id="bibs"></div>
+      <div id="eventPanel"></div>
+    </div>
+
+    <div class="card">
+      <h2>Sammenlagt resultatliste</h2>
+      <div id="totalPanel"></div>
+    </div>
+
+    <footer>
+      <button class="btn-ghost" id="resetBtn">Nullstill denne konkurransen</button>
+      <div class="small" style="margin-top:10px;">
+        Poeng etter plassering: 1.=12 · 2.=10 · 3.=8 · 4.=6 · 5.=5 · 6.=4 · 7.=3 · 8.=2 · 9.=1. Ved lik plassering får deltakerne samme poeng.
+      </div>
+    </footer>
+
+    </div><!-- /#competition -->
+
+    <div class="card" id="noComp">
+      <p class="empty">Velg en konkurranse ovenfor, eller opprett en ny for å komme i gang.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const EVENTS = [
+  {id:'100m',   name:'100 m',        unit:'sek', type:'time'},
+  {id:'spyd',   name:'Spyd',         unit:'m',   type:'dist'},
+  {id:'lengde', name:'Lengde',       unit:'m',   type:'dist'},
+  {id:'diskos', name:'Diskos',       unit:'m',   type:'dist'},
+  {id:'400m',   name:'400 m',        unit:'sek', type:'time'},
+  {id:'hekk',   name:'100 m hekk',   unit:'sek', type:'time'},
+  {id:'tresteg',name:'Tresteg',      unit:'m',   type:'dist'},
+  {id:'kule',   name:'Kule',         unit:'m',   type:'dist'},
+  {id:'800m',   name:'800 m',        unit:'sek/min', type:'time'},
+];
+const POINTS = {1:12,2:10,3:8,4:6,5:5,6:4,7:3,8:2,9:1};
+const API = '/api/public/ninekamp';
+
+let state = { participants: [], results: {} }; // results[eventId][participantId] = "raw string"
+let activeEvent = EVENTS[0].id;
+let version = null;      // RowVersion of the loaded competition, for optimistic concurrency
+let dirty = false;       // unsaved local changes
+let saveTimer = null;
+let retryTimer = null;
+
+function uid(){ return Math.random().toString(36).slice(2,9); }
+
+function parseTimeToSeconds(str){
+  str = str.trim();
+  if(str.includes(':')){
+    const [m,s] = str.split(':');
+    const mm = parseFloat(m.replace(',','.'));
+    const ss = parseFloat(s.replace(',','.'));
+    if(isNaN(mm) || isNaN(ss)) return null;
+    return mm*60+ss;
+  }
+  const v = parseFloat(str.replace(',','.'));
+  return isNaN(v) ? null : v;
+}
+function parseDist(str){
+  const v = parseFloat(str.trim().replace(',','.'));
+  return isNaN(v) ? null : v;
+}
+function numericValue(ev, raw){
+  if(!raw) return null;
+  return ev.type === 'time' ? parseTimeToSeconds(raw) : parseDist(raw);
+}
+
+/* ---------- Konkurranse-URL (?c=<slug>) ---------- */
+function currentSlug(){
+  return new URLSearchParams(location.search).get('c');
+}
+function setSlug(slug){
+  const u = new URL(location.href);
+  if(slug) u.searchParams.set('c', slug); else u.searchParams.delete('c');
+  history.replaceState(null, '', u);
+}
+
+/* ---------- Statuslinje ---------- */
+function setStatus(msg, warn){
+  const el = document.getElementById('status');
+  if(!el) return;
+  el.textContent = msg || '';
+  el.style.color = warn ? 'var(--track-red)' : 'var(--ink-soft)';
+}
+
+/* ---------- Server ---------- */
+function applyCompetition(c){
+  state.participants = (c.state && c.state.participants) || [];
+  state.results = (c.state && c.state.results) || {};
+  version = c.version;
+}
+
+async function loadCompetitionList(){
+  const sel = document.getElementById('compSelect');
+  try{
+    const res = await fetch(`${API}/competitions`);
+    if(!res.ok) throw new Error('feil');
+    const list = await res.json();
+    const slug = currentSlug();
+    sel.innerHTML = '<option value="">— Velg konkurranse —</option>' +
+      list.map(c=>`<option value="${escapeHtml(c.slug)}" ${c.slug===slug?'selected':''}>${escapeHtml(c.name)}</option>`).join('');
+  }catch(e){
+    sel.innerHTML = '<option value="">Kunne ikke hente konkurranser</option>';
+  }
+}
+
+async function loadCompetition(slug){
+  const res = await fetch(`${API}/competitions/${encodeURIComponent(slug)}`);
+  if(!res.ok) throw new Error('not found');
+  applyCompetition(await res.json());
+}
+
+async function flushSave(){
+  if(!dirty) return;
+  const slug = currentSlug();
+  if(!slug) return;
+  clearTimeout(retryTimer);
+  dirty = false;
+  setStatus('Lagrer…');
+  try{
+    const res = await fetch(`${API}/competitions/${encodeURIComponent(slug)}/state`, {
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ state, version })
+    });
+    if(res.status === 409){
+      // Noen andre lagret først — vis deres versjon i stedet for å overskrive den.
+      applyCompetition(await res.json());
+      setStatus('Oppdatert av noen andre — viser nyeste versjon', true);
+      // Behold fokus: denne re-renderingen skjer asynkront, kanskje mens noen skriver.
+      const focused = document.activeElement;
+      const focusedPid = focused && focused.classList && focused.classList.contains('resultInput')
+        ? focused.getAttribute('data-pid') : null;
+      render();
+      if(focusedPid){
+        const again = document.querySelector(`.resultInput[data-pid="${focusedPid}"]`);
+        if(again) again.focus();
+      }
+      return;
+    }
+    if(!res.ok){
+      let msg = 'Kunne ikke lagre';
+      try{ const body = await res.json(); if(body && body.error) msg = body.error; }catch(e){}
+      setStatus(msg, true);
+      return;
+    }
+    version = (await res.json()).version;
+    setStatus('Lagret');
+  }catch(e){
+    dirty = true;   // behold endringen og prøv igjen
+    setStatus('Ingen forbindelse — prøver igjen…', true);
+    clearTimeout(retryTimer);
+    retryTimer = setTimeout(flushSave, 5000);
+  }
+}
+
+// Samme navn som før, så alle eksisterende kallsteder er uendret — nå bare debounced.
+function saveState(){
+  if(!currentSlug()) return;
+  dirty = true;
+  setStatus('Ulagrede endringer');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(flushSave, 800);
+}
+
+window.addEventListener('beforeunload', (e)=>{
+  if(dirty){ e.preventDefault(); e.returnValue = ''; }
+});
+
+function computeEventRanking(eventId){
+  const ev = EVENTS.find(e=>e.id===eventId);
+  const rows = state.participants
+    .map(p=>{
+      const raw = (state.results[eventId]||{})[p.id];
+      const val = numericValue(ev, raw);
+      return { participant:p, raw, val };
+    })
+    .filter(r=>r.val !== null);
+
+  rows.sort((a,b)=> ev.type==='time' ? a.val-b.val : b.val-a.val);
+
+  // competition ranking with ties (1,1,3,4...)
+  let rank = 0, prevVal = null, seen = 0;
+  rows.forEach(r=>{
+    seen++;
+    if(prevVal === null || r.val !== prevVal){
+      rank = seen;
+    }
+    r.rank = rank;
+    r.points = POINTS[rank] || 0;
+    prevVal = r.val;
+  });
+  return rows;
+}
+
+function computeTotals(){
+  const totals = {};
+  state.participants.forEach(p=> totals[p.id] = { participant:p, byEvent:{}, total:0 });
+  EVENTS.forEach(ev=>{
+    const ranking = computeEventRanking(ev.id);
+    ranking.forEach(r=>{
+      totals[r.participant.id].byEvent[ev.id] = r.points;
+      totals[r.participant.id].total += r.points;
+    });
+  });
+  return Object.values(totals).sort((a,b)=> b.total-a.total);
+}
+
+function fmtVal(ev, raw){
+  if(!raw) return '–';
+  return ev.type==='time' ? raw + ' s' : raw + ' m';
+}
+
+function render(){
+  renderChips();
+  renderBibs();
+  renderEventPanel();
+  renderTotals();
+}
+
+function renderChips(){
+  const el = document.getElementById('chips');
+  if(state.participants.length===0){
+    el.innerHTML = '<span class="empty">Ingen deltakere lagt til enda.</span>';
+    return;
+  }
+  el.innerHTML = state.participants.map(p=>`
+    <div class="chip">
+      <span>${escapeHtml(p.name)}</span>
+      <button data-id="${p.id}" class="removeP" title="Fjern deltaker">×</button>
+    </div>`).join('');
+  el.querySelectorAll('.removeP').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-id');
+      state.participants = state.participants.filter(p=>p.id!==id);
+      EVENTS.forEach(ev=>{ if(state.results[ev.id]) delete state.results[ev.id][id]; });
+      saveState(); render();
+    });
+  });
+}
+
+function renderBibs(){
+  const el = document.getElementById('bibs');
+  el.innerHTML = EVENTS.map((ev,i)=>{
+    const done = state.participants.length ? (state.results[ev.id] ? Object.keys(state.results[ev.id]).filter(k=>state.results[ev.id][k]).length : 0) : 0;
+    return `
+    <button class="bib ${ev.id===activeEvent?'active':''}" data-id="${ev.id}">
+      <span class="num">${String(i+1).padStart(2,'0')}</span>
+      <span class="lbl">${ev.name}</span>
+    </button>`;
+  }).join('');
+  el.querySelectorAll('.bib').forEach(b=>{
+    b.addEventListener('click', ()=>{ activeEvent = b.getAttribute('data-id'); render(); });
+  });
+}
+
+function renderEventPanel(){
+  const ev = EVENTS.find(e=>e.id===activeEvent);
+  const panel = document.getElementById('eventPanel');
+  if(state.participants.length===0){
+    panel.innerHTML = '<p class="empty">Legg til deltakere ovenfor for å registrere resultater.</p>';
+    return;
+  }
+  const doneCount = state.participants.filter(p=> (state.results[ev.id]||{})[p.id]).length;
+
+  let html = `
+    <div class="event-head">
+      <h3>${ev.name}</h3>
+      <span class="event-meta">${ev.type==='time' ? 'Tid (sek, eller mm:ss)' : 'Lengde (meter)'}</span>
+    </div>
+    <div class="progress">${doneCount} av ${state.participants.length} deltakere registrert</div>
+    <div class="input-grid">`;
+
+  state.participants.forEach(p=>{
+    const raw = (state.results[ev.id]||{})[p.id] || '';
+    html += `
+      <div class="name">${escapeHtml(p.name)}</div>
+      <input type="text" class="mono resultInput" data-pid="${p.id}" value="${escapeHtml(raw)}" placeholder="${ev.type==='time'?'f.eks. 12.4':'f.eks. 6.20'}">
+    `;
+  });
+  html += `</div>`;
+
+  const ranking = computeEventRanking(ev.id);
+  if(ranking.length){
+    html += `<table><thead><tr><th>Plass</th><th>Deltaker</th><th>Resultat</th><th>Poeng</th></tr></thead><tbody>`;
+    ranking.forEach(r=>{
+      html += `<tr class="rank-${r.rank}">
+        <td class="mono">${r.rank}.</td>
+        <td>${escapeHtml(r.participant.name)}</td>
+        <td class="mono">${fmtVal(ev, r.raw)}</td>
+        <td class="mono pts">${r.points}</td>
+      </tr>`;
+    });
+    html += `</tbody></table>`;
+  } else {
+    html += `<p class="empty">Ingen resultater registrert for denne øvelsen enda.</p>`;
+  }
+
+  panel.innerHTML = html;
+
+  panel.querySelectorAll('.resultInput').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const pid = inp.getAttribute('data-pid');
+      if(!state.results[ev.id]) state.results[ev.id] = {};
+      state.results[ev.id][pid] = inp.value.trim();
+      saveState(); render();
+      // restore focus to same field after re-render
+      const again = document.querySelector(`.resultInput[data-pid="${pid}"]`);
+      if(again) again.focus();
+    });
+  });
+}
+
+function renderTotals(){
+  const panel = document.getElementById('totalPanel');
+  if(state.participants.length===0){
+    panel.innerHTML = '<p class="empty">Ingen deltakere enda.</p>';
+    return;
+  }
+  const totals = computeTotals();
+  let html = `<table class="total-table"><thead><tr>
+    <th class="name-th">Deltaker</th>
+    ${EVENTS.map(e=>`<th>${e.name}</th>`).join('')}
+    <th>Sum</th>
+  </tr></thead><tbody>`;
+  totals.forEach((t,i)=>{
+    html += `<tr class="totrow ${i===0 && t.total>0 ? 'leader':''}">
+      <td class="name-cell">${escapeHtml(t.participant.name)}</td>
+      ${EVENTS.map(e=>`<td class="mono">${t.byEvent[e.id] ?? '–'}</td>`).join('')}
+      <td class="tot">${t.total}</td>
+    </tr>`;
+  });
+  html += `</tbody></table>`;
+  panel.innerHTML = html;
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+document.getElementById('addBtn').addEventListener('click', ()=>{
+  const inp = document.getElementById('newName');
+  const name = inp.value.trim();
+  if(!name) return;
+  state.participants.push({ id: uid(), name });
+  inp.value = '';
+  saveState(); render();
+});
+document.getElementById('newName').addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter') document.getElementById('addBtn').click();
+});
+document.getElementById('resetBtn').addEventListener('click', ()=>{
+  if(confirm('Slette alle deltakere og resultater i denne konkurransen? Dette kan ikke angres.')){
+    state = { participants: [], results: {} };
+    saveState(); render();
+  }
+});
+
+/* ---------- Konkurransevelger ---------- */
+function showCompetition(show){
+  document.getElementById('competition').style.display = show ? 'block' : 'none';
+  document.getElementById('noComp').style.display = show ? 'none' : 'block';
+}
+
+async function switchTo(slug){
+  setSlug(slug);
+  if(!slug){
+    state = { participants: [], results: {} };
+    version = null;
+    showCompetition(false);
+    setStatus('');
+    return;
+  }
+  try{
+    await loadCompetition(slug);
+    activeEvent = EVENTS[0].id;
+    showCompetition(true);
+    setStatus('');
+    render();
+  }catch(e){
+    showCompetition(false);
+    setStatus('Fant ikke konkurransen', true);
+  }
+}
+
+document.getElementById('compSelect').addEventListener('change', async (e)=>{
+  await flushSave();
+  await switchTo(e.target.value);
+});
+
+document.getElementById('newCompBtn').addEventListener('click', async ()=>{
+  const name = prompt('Navn på konkurransen (f.eks. "9-kamp 2026")');
+  if(!name || !name.trim()) return;
+  await flushSave();
+  setStatus('Oppretter…');
+  try{
+    const res = await fetch(`${API}/competitions`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name: name.trim() })
+    });
+    if(!res.ok){
+      let msg = 'Kunne ikke opprette konkurransen';
+      try{ const body = await res.json(); if(body && body.error) msg = body.error; }catch(e){}
+      setStatus(msg, true);
+      return;
+    }
+    const created = await res.json();
+    applyCompetition(created);
+    setSlug(created.slug);
+    activeEvent = EVENTS[0].id;
+    await loadCompetitionList();
+    showCompetition(true);
+    setStatus('');
+    render();
+  }catch(e){
+    setStatus('Ingen forbindelse — kunne ikke opprette konkurransen', true);
+  }
+});
+
+(async function init(){
+  await loadCompetitionList();
+  const slug = currentSlug();
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  if(slug){
+    await switchTo(slug);
+  }else{
+    showCompetition(false);
+  }
+})();
+</script>
+</body>
+</html>

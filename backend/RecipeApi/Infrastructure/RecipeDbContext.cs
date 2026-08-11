@@ -6,6 +6,7 @@ using RecipeApi.Features.FeaturePlanner;
 using RecipeApi.Features.Groups;
 using RecipeApi.Features.Matkasse;
 using RecipeApi.Features.MealPlans;
+using RecipeApi.Features.NineKamp;
 using RecipeApi.Features.Recipes;
 
 namespace RecipeApi.Infrastructure;
@@ -28,6 +29,7 @@ public class RecipeDbContext : DbContext
     public DbSet<MatkasseRecipe> MatkasseRecipes { get; set; }
     public DbSet<FeatureColumn> FeatureColumns { get; set; }
     public DbSet<FeatureCard> FeatureCards { get; set; }
+    public DbSet<NineKampCompetition> NineKampCompetitions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -193,6 +195,29 @@ public class RecipeDbContext : DbContext
                     (c1, c2) => JsonSerializer.Serialize(c1, (JsonSerializerOptions?)null) == JsonSerializer.Serialize(c2, (JsonSerializerOptions?)null),
                     c => c == null ? 0 : JsonSerializer.Serialize(c, (JsonSerializerOptions?)null).GetHashCode(),
                     c => JsonSerializer.Deserialize<List<string>>(JsonSerializer.Serialize(c, (JsonSerializerOptions?)null), (JsonSerializerOptions?)null)!));
+        });
+
+        // Configure NineKampCompetition entity
+        modelBuilder.Entity<NineKampCompetition>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.Slug).IsRequired().HasMaxLength(32);
+            entity.HasIndex(e => e.Slug).IsUnique();
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
+            entity.Property(e => e.RowVersion).IsRowVersion();
+
+            entity.Property(e => e.State)
+                .HasConversion(
+                    v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                    v => string.IsNullOrWhiteSpace(v) ? new() : JsonSerializer.Deserialize<NineKampState>(v, (JsonSerializerOptions?)null) ?? new())
+                .HasColumnType("nvarchar(max)")
+                .Metadata.SetValueComparer(new ValueComparer<NineKampState>(
+                    (c1, c2) => JsonSerializer.Serialize(c1, (JsonSerializerOptions?)null) == JsonSerializer.Serialize(c2, (JsonSerializerOptions?)null),
+                    c => c == null ? 0 : JsonSerializer.Serialize(c, (JsonSerializerOptions?)null).GetHashCode(),
+                    c => JsonSerializer.Deserialize<NineKampState>(JsonSerializer.Serialize(c, (JsonSerializerOptions?)null), (JsonSerializerOptions?)null)!));
         });
 
         // Configure MealPlan entity
