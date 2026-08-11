@@ -19,7 +19,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { RecipeFormData } from '@/lib/services/recipe.service';
-import type { Category, IngredientSection, InstructionSection, InstructionStep, StructuredIngredient } from '@/lib/mock-data';
+import { TILBEHOR_CATEGORY_ID, type Category, type IngredientSection, type InstructionSection, type InstructionStep, type Recipe, type StructuredIngredient } from '@/lib/mock-data';
 
 interface RecipeFormProps {
   initialData: RecipeFormData;
@@ -28,6 +28,10 @@ interface RecipeFormProps {
   isSaving: boolean;
   submitLabel?: string;
   availableCategories?: Category[];
+  /** Tilbehør-marked recipes available to attach. Omit to hide the side-dish picker. */
+  availableSideDishes?: Recipe[];
+  /** Id of the recipe being edited, so it cannot be attached to itself. */
+  currentRecipeId?: number;
   /** Called when user selects a photo for a step. Return the URL to display (blob: or remote). */
   onStepPhotoSelected?: (index: number, file: File) => Promise<string | null>;
   /** Called when user removes a step photo. */
@@ -326,6 +330,8 @@ export default function RecipeForm({
   isSaving,
   submitLabel = 'Lagre oppskrift',
   availableCategories = [],
+  availableSideDishes = [],
+  currentRecipeId,
   onStepPhotoSelected,
   onStepPhotoRemove,
 }: RecipeFormProps) {
@@ -681,7 +687,28 @@ export default function RecipeForm({
   const handleToggleCategory = (id: number) => {
     const current = formData.categoryIds ?? [];
     const next = current.includes(id) ? current.filter((c) => c !== id) : [...current, id];
+
+    // A tilbehør cannot itself have tilbehør, so marking it as such drops any selection.
+    if (id === TILBEHOR_CATEGORY_ID && next.includes(TILBEHOR_CATEGORY_ID)) {
+      setFormData((prev) => ({ ...prev, categoryIds: next, sideDishIds: [] }));
+      return;
+    }
+
     handleField('categoryIds', next);
+  };
+
+  const handleToggleSideDish = (id: number) => {
+    const current = formData.sideDishIds ?? [];
+    const next = current.includes(id) ? current.filter((s) => s !== id) : [...current, id];
+    handleField('sideDishIds', next);
+  };
+
+  const handleMoveSideDish = (id: number, direction: -1 | 1) => {
+    const current = [...(formData.sideDishIds ?? [])];
+    const from = current.indexOf(id);
+    const to = from + direction;
+    if (from === -1 || to < 0 || to >= current.length) return;
+    handleField('sideDishIds', arrayMove(current, from, to));
   };
 
   const handleSubmit = async () => {
@@ -1071,6 +1098,80 @@ export default function RecipeForm({
                     })}
                   </div>
                 </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Tilbehør — hidden when this recipe is itself a tilbehør (one level only) */}
+      {availableSideDishes.length > 0 && !(formData.categoryIds ?? []).includes(TILBEHOR_CATEGORY_ID) && (() => {
+        const selectedIds = formData.sideDishIds ?? [];
+        const selectable = availableSideDishes.filter((r) => r.id !== currentRecipeId);
+        if (selectable.length === 0) return null;
+
+        // Selected first, in the order they will be saved, so the ordering is visible.
+        const selected = selectedIds
+          .map((id) => selectable.find((r) => r.id === id))
+          .filter((r): r is Recipe => r !== undefined);
+        const unselected = selectable.filter((r) => !selectedIds.includes(r.id));
+
+        return (
+          <div>
+            <label className="block text-sm font-medium mb-2">Tilbehør</label>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+              Velg oppskrifter som serveres som tilbehør til denne retten.
+            </p>
+
+            {selected.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-3">
+                {selected.map((recipe, index) => (
+                  <span
+                    key={recipe.id}
+                    className="inline-flex items-center gap-1 pl-3 pr-1 py-1 rounded-full text-sm border bg-blue-500 text-white border-blue-500"
+                  >
+                    {recipe.title}
+                    <button
+                      type="button"
+                      onClick={() => handleMoveSideDish(recipe.id, -1)}
+                      disabled={index === 0}
+                      aria-label={`Flytt ${recipe.title} opp`}
+                      className="px-1 leading-none disabled:opacity-30 hover:text-blue-100"
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleMoveSideDish(recipe.id, 1)}
+                      disabled={index === selected.length - 1}
+                      aria-label={`Flytt ${recipe.title} ned`}
+                      className="px-1 leading-none disabled:opacity-30 hover:text-blue-100"
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSideDish(recipe.id)}
+                      aria-label={`Fjern ${recipe.title}`}
+                      className="px-1 leading-none hover:text-blue-100"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              {unselected.map((recipe) => (
+                <button
+                  key={recipe.id}
+                  type="button"
+                  onClick={() => handleToggleSideDish(recipe.id)}
+                  className="px-3 py-1 rounded-full text-sm border transition-colors bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-400"
+                >
+                  {recipe.title}
+                </button>
               ))}
             </div>
           </div>

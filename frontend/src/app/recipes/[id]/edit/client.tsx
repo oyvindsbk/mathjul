@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { recipeService } from '@/lib/services/recipe.service';
 import type { RecipeFormData } from '@/lib/services/recipe.service';
-import type { Category } from '@/lib/mock-data';
+import type { Category, Recipe } from '@/lib/mock-data';
 import { useAuth } from '@/lib/context/AuthContext';
 import RecipeForm from '@/components/RecipeForm';
 import MainPhotoUpload from '@/components/MainPhotoUpload';
@@ -15,6 +15,7 @@ import EditRecipeLoading from './loading';
 export default function EditRecipeClient({ id }: { id: string }) {
   const [initialData, setInitialData] = useState<RecipeFormData | null>(null);
   const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
+  const [availableSideDishes, setAvailableSideDishes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -30,15 +31,17 @@ export default function EditRecipeClient({ id }: { id: string }) {
   useEffect(() => {
     const fetchRecipe = async () => {
       try {
-        const [data, categories] = await Promise.all([
+        const [data, categories, tilbehor] = await Promise.all([
           recipeService.getRecipeById(id, token || undefined),
           recipeService.getAllCategories(token || undefined),
+          recipeService.getTilbehorRecipes(token || undefined),
         ]);
         if (!data) {
           setError('Oppskrift ikke funnet');
           return;
         }
         setAvailableCategories(categories);
+        setAvailableSideDishes(tilbehor);
         const detail = data as {
           title: string;
           description?: string;
@@ -56,6 +59,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
           visibility?: string;
           groups?: { id: number; name: string }[];
           tips?: string[];
+          sideDishes?: { id: number; title: string }[];
         };
         setCurrentMainImageUrl(detail.imageUrl ?? null);
         setVisibility((detail.visibility as Visibility) ?? 'Public');
@@ -73,6 +77,9 @@ export default function EditRecipeClient({ id }: { id: string }) {
           quantityType: detail.quantityType ?? 'porsjoner',
           customUnit: detail.customUnit ?? null,
           categoryIds: detail.categories?.map((c) => c.id) ?? [],
+          // Load-bearing: the API replaces side dishes on every save, so omitting
+          // this would silently drop them.
+          sideDishIds: detail.sideDishes?.map((s) => s.id) ?? [],
           tips: detail.tips ?? [],
         });
       } catch (err) {
@@ -192,6 +199,8 @@ export default function EditRecipeClient({ id }: { id: string }) {
             isSaving={isSaving}
             submitLabel="Lagre endringer"
             availableCategories={availableCategories}
+            availableSideDishes={availableSideDishes}
+            currentRecipeId={Number(id)}
             onStepPhotoSelected={async (index, file) => {
               const updated = await recipeService.uploadStepImage(id, index, file, token || undefined);
               return (updated as { imageUrl?: string | null }).imageUrl ?? null;

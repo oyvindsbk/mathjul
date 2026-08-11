@@ -14,9 +14,9 @@
 - [x] Task 10: Add SideDishTitles to MealPlanRecipeDto and all four projection sites
 - [x] Task 11: Add xUnit test infrastructure for recipes and side-dish validation tests
 - [x] Task 12: Add side-dish types to mock-data.ts and getTilbehorRecipes to recipe.service.ts
-- [ ] Task 13: Add the Tilbehør picker section to RecipeForm
-- [ ] Task 14: Wire side dishes into the edit page
-- [ ] Task 15: Wire side dishes into the upload page
+- [x] Task 13: Add the Tilbehør picker section to RecipeForm
+- [x] Task 14: Wire side dishes into the edit page
+- [x] Task 15: Wire side dishes into the upload page
 - [ ] Task 16: Render Tilbehør and "Brukes som tilbehør til" on the recipe detail page
 - [ ] Task 17: Exclude tilbehør recipes from RecipePickerPanel
 - [ ] Task 18: Render side dishes in DayCell and MealPlanPreviewModal
