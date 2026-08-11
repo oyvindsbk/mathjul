@@ -12,7 +12,7 @@
 - [x] Task 8: Clean up side-dish links in DeleteRecipe and when Tilbehør is un-marked
 - [x] Task 9: Exclude Tilbehør from BuildCategoryListJsonAsync and suggested category ids
 - [x] Task 10: Add SideDishTitles to MealPlanRecipeDto and all four projection sites
-- [ ] Task 11: Add xUnit test infrastructure for recipes and side-dish validation tests
+- [x] Task 11: Add xUnit test infrastructure for recipes and side-dish validation tests
 - [ ] Task 12: Add side-dish types to mock-data.ts and getTilbehorRecipes to recipe.service.ts
 - [ ] Task 13: Add the Tilbehør picker section to RecipeForm
 - [ ] Task 14: Wire side dishes into the edit page
