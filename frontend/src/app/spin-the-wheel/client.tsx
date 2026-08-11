@@ -72,7 +72,7 @@ export default function SpinClient() {
   const filteredRecipes = selectedCategoryIds.length === 0
     ? allRecipes
     : allRecipes.filter(r =>
-        selectedCategoryIds.every(id => r.categories?.some(c => c.id === id))
+        r.categories?.some(c => selectedCategoryIds.includes(c.id))
       );
 
   const recipes = filteredRecipes.slice(0, MAX_SEGMENTS);

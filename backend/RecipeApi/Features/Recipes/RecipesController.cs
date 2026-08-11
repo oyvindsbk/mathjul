@@ -76,8 +76,10 @@ public class RecipesController : ControllerBase
                 .Select(n => n!.Value)
                 .ToList();
 
-            foreach (var categoryId in ids)
-                query = query.Where(r => r.Categories.Any(c => c.Id == categoryId));
+            // Flere valgte kategorier er et ELLER-filter: vis oppskrifter som
+            // treffer minst én av dem, ikke bare de som treffer alle.
+            if (ids.Count > 0)
+                query = query.Where(r => r.Categories.Any(c => ids.Contains(c.Id)));
         }
 
         var likedIds = callerEmail != null
