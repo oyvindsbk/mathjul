@@ -21,4 +21,4 @@
 - [x] Task 17: Exclude tilbehør recipes from RecipePickerPanel
 - [x] Task 18: Render side dishes in DayCell and MealPlanPreviewModal
 - [x] Task 19: Add Playwright E2E coverage for tilbehør (written; needs a running API to execute)
-- [ ] Task 20: Inner loop — backend build + test, frontend lint, typecheck, build
+- [x] Task 20: Inner loop — backend build + test, frontend lint, typecheck, build
