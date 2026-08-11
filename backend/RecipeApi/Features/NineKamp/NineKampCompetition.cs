@@ -26,6 +26,12 @@ public class NineKampCompetition
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
+    /// <summary>
+    /// Soft delete marker. Anyone with the link can delete, so keep the row around --
+    /// an accidental delete is recoverable straight from the database.
+    /// </summary>
+    public DateTime? DeletedAt { get; set; }
+
     /// <summary>Optimistic concurrency token -- two scorekeepers on phones is the expected case.</summary>
     public byte[]? RowVersion { get; set; }
 }

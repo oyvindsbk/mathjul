@@ -98,6 +98,25 @@ public class NineKampController : ControllerBase
         return Ok(ToDto(competition));
     }
 
+    // DELETE /api/public/ninekamp/competitions/{slug}
+    [HttpDelete("competitions/{slug}")]
+    public async Task<IActionResult> DeleteCompetition(string slug)
+    {
+        var competition = await _db.NineKampCompetitions.FirstOrDefaultAsync(c => c.Slug == slug);
+        if (competition == null)
+        {
+            return NotFound(new { error = "Fant ikke konkurransen" });
+        }
+
+        // Soft delete -- the global query filter hides it from every other endpoint, but the
+        // row survives so a misclick by an anonymous caller can be undone in the database.
+        competition.DeletedAt = DateTime.UtcNow;
+        competition.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
     // PUT /api/public/ninekamp/competitions/{slug}/state
     [HttpPut("competitions/{slug}/state")]
     [RequestSizeLimit(256_000)]

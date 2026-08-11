@@ -209,6 +209,9 @@ public class RecipeDbContext : DbContext
             entity.Property(e => e.UpdatedAt).IsRequired();
             entity.Property(e => e.RowVersion).IsRowVersion();
 
+            // Soft delete: deleted competitions stay in the table but are invisible to the app.
+            entity.HasQueryFilter(e => e.DeletedAt == null);
+
             entity.Property(e => e.State)
                 .HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
