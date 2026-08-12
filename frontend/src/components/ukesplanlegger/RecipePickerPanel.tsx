@@ -31,10 +31,13 @@ function PanelContent({
   token,
   activeMealType,
   onSelect,
+  autoFocusSearch,
 }: {
   token: string;
   activeMealType: MealType;
   onSelect: (recipe: Recipe) => void;
+  // Off on mobile: focusing the search field pops the keyboard over the whole screen.
+  autoFocusSearch?: boolean;
 }) {
   const [allRecipes, setAllRecipes] = useState<Recipe[]>([]);
   const [search, setSearch] = useState("");
@@ -145,7 +148,7 @@ function PanelContent({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              autoFocus
+              autoFocus={autoFocusSearch}
             />
           </div>
 
@@ -355,7 +358,7 @@ interface RecipePickerSidebarProps extends RecipePickerPanelProps {
 // Pass embedded=true to render only the content (no outer container/header), for use inside a custom wrapper.
 export function RecipePickerSidebar({ token, activeMealType, onSelect, onClose, embedded }: RecipePickerSidebarProps) {
   if (embedded) {
-    return <PanelContent token={token} activeMealType={activeMealType} onSelect={onSelect} />;
+    return <PanelContent token={token} activeMealType={activeMealType} onSelect={onSelect} autoFocusSearch />;
   }
   return (
     <div className="hidden lg:flex flex-col w-72 xl:w-88 2xl:w-96 bg-white border border-gray-200 rounded-xl shadow-sm h-[calc(100vh-8rem)] sticky top-8 overflow-hidden flex-shrink-0">
@@ -371,7 +374,7 @@ export function RecipePickerSidebar({ token, activeMealType, onSelect, onClose, 
           </svg>
         </button>
       </div>
-      <PanelContent token={token} activeMealType={activeMealType} onSelect={onSelect} />
+      <PanelContent token={token} activeMealType={activeMealType} onSelect={onSelect} autoFocusSearch />
     </div>
   );
 }

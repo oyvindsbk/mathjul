@@ -10,7 +10,7 @@ const tabs = [
     testId: "bottom-nav-hjem",
     icon: (
       // eslint-disable-next-line @next/next/no-img-element
-      <img src="/icons/icon-192.png" alt="Matjul" className="w-7 h-7 rounded-md" />
+      <img src="/icons/icon-192.png" alt="Mathjul" className="w-7 h-7 rounded-md" />
     ),
   },
   {

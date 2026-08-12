@@ -5,6 +5,14 @@ import type { MealPlan } from "@/lib/services/mealplan.service";
 import type { Leverandor } from "@/lib/services/matkasse.service";
 import { MEAL_TYPE_ICONS } from "./MealTypeFilter";
 
+// On mobile a day column is ~43px wide, so the cell is kept near-square.
+const CELL_HEIGHT = "min-h-[64px] lg:min-h-[110px] xl:min-h-[130px]";
+
+const SHORT_MONTH_NAMES = [
+  "jan", "feb", "mar", "apr", "mai", "jun",
+  "jul", "aug", "sep", "okt", "nov", "des",
+];
+
 const LEVERANDOR_LOGOS: Record<Leverandor, string> = {
   Hellofresh: "/icons/logo-hellofresh.png",
   Kokkeloren: "/icons/logo-kokkeloren.png",
@@ -18,6 +26,8 @@ interface DayCellProps {
   isSelected: boolean;
   isHighlighted: boolean;
   isDragOver: boolean;
+  /** Day belongs to a neighbouring month but is shown to complete the week. */
+  isOtherMonth?: boolean;
   onClick: (date: Date) => void;
   onDeleteEntry: (entryId: number) => void;
   onEntryClick?: (plan: MealPlan) => void;
@@ -38,6 +48,7 @@ export function DayCell({
   isSelected,
   isHighlighted,
   isDragOver,
+  isOtherMonth = false,
   onClick,
   onDeleteEntry,
   onEntryClick,
@@ -53,8 +64,9 @@ export function DayCell({
 
   return (
     <div
+      data-testid="day-cell"
       className={`
-        relative min-h-[80px] lg:min-h-[110px] xl:min-h-[130px] border rounded-lg p-1.5 lg:p-2 cursor-pointer group transition-colors duration-150 flex flex-col
+        relative ${CELL_HEIGHT} border rounded-lg p-1 lg:p-2 cursor-pointer group transition-colors duration-150 flex flex-col
         ${isToday
           ? "bg-blue-50 border-blue-400 shadow-sm"
           : isPast
@@ -63,7 +75,9 @@ export function DayCell({
               ? "bg-green-50 border-green-400"
               : isSelected
                 ? "bg-blue-50 border-blue-500"
-                : "bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-200"}
+                : isOtherMonth
+                  ? "bg-gray-50/70 border-gray-200 border-dashed hover:bg-blue-50 hover:border-blue-200 hover:border-solid"
+                  : "bg-white border-gray-200 hover:bg-blue-50 hover:border-blue-200"}
         ${isSelected && !isToday ? "ring-2 ring-blue-500" : ""}
         ${isHighlighted ? "ring-2 ring-blue-400" : ""}
       `}
@@ -74,8 +88,14 @@ export function DayCell({
       title={plans.length > 0 ? `Legg til / endre` : "Legg til middag"}
     >
       <div className="flex items-center justify-between mb-1">
-        <div className={`text-xs lg:text-sm font-semibold ${isToday ? "text-blue-700" : isPast ? "text-gray-400" : "text-gray-700"}`}>
+        <div className={`text-xs lg:text-sm font-semibold ${isToday ? "text-blue-700" : isPast ? "text-gray-400" : isOtherMonth ? "text-gray-400" : "text-gray-700"}`}>
           {date.getDate()}
+          {/* Name the month on overflow days so "1" next to "31" isn't ambiguous. */}
+          {isOtherMonth && (
+            <span className="ml-0.5 font-normal text-[9px] lg:text-[10px]">
+              {SHORT_MONTH_NAMES[date.getMonth()]}
+            </span>
+          )}
         </div>
         {!isPast && onAddCustomCard && (
           <button
@@ -135,10 +155,10 @@ export function DayCell({
                 className={`relative group/entry cursor-grab active:cursor-grabbing active:opacity-50 ${
                   isCustom
                     ? single
-                      ? "flex flex-col items-center justify-center flex-1 gap-1 rounded-md bg-amber-50 border border-amber-200 px-1 py-2 text-center"
+                      ? "flex flex-col items-center justify-center flex-1 gap-1 rounded-md bg-amber-50 border border-amber-200 px-0.5 py-1 lg:px-1 lg:py-2 text-center"
                       : "flex items-start gap-1"
                     : single
-                      ? "flex flex-col items-center justify-center flex-1 gap-1 rounded-md bg-blue-50 border border-blue-100 px-1 py-2 text-center"
+                      ? "flex flex-col items-center justify-center flex-1 gap-1 rounded-md bg-blue-50 border border-blue-100 px-0.5 py-1 lg:px-1 lg:py-2 text-center"
                       : "flex items-start gap-1"
                 }`}
               >
@@ -148,14 +168,14 @@ export function DayCell({
                     src={matkasseLogo}
                     alt={plan.matkasseRecipe!.leverandor}
                     draggable={false}
-                    className={single ? "w-8 h-8 object-contain rounded" : "w-4 h-4 object-contain rounded flex-shrink-0 mt-0.5"}
+                    className={single ? "w-6 h-6 lg:w-8 lg:h-8 object-contain rounded" : "w-4 h-4 object-contain rounded flex-shrink-0 mt-0.5"}
                   />
                 ) : (
-                  <span className={single ? "text-xl leading-none" : "text-[10px] flex-shrink-0 mt-0.5"}>{icon}</span>
+                  <span className={single ? "text-base lg:text-xl leading-none" : "text-[10px] flex-shrink-0 mt-0.5"}>{icon}</span>
                 )}
                 {/* Title and side dishes share a wrapper so the delete button stays on the row */}
                 <div className={single ? "" : "flex-1 min-w-0"}>
-                  <p className={`font-medium leading-tight ${isPast ? "text-gray-400" : isCustom ? "text-amber-800" : "text-gray-800"} ${single ? "text-xs line-clamp-3" : "text-[10px] line-clamp-2"}`}>
+                  <p className={`font-medium leading-tight ${isPast ? "text-gray-400" : isCustom ? "text-amber-800" : "text-gray-800"} ${single ? "text-[11px] line-clamp-2 lg:text-xs lg:line-clamp-3" : "text-[10px] line-clamp-2"}`}>
                     {title}
                   </p>
                   {sideDishTitles.length > 0 && (
@@ -180,11 +200,11 @@ export function DayCell({
           })}
         </div>
       ) : (
-        <div className={`flex items-center justify-center h-10 lg:h-16 xl:h-20 transition-colors ${isPast ? "text-gray-200" : "text-gray-300 group-hover:text-blue-400"}`}>
+        <div className={`flex items-center justify-center h-6 lg:h-16 xl:h-20 transition-colors ${isPast ? "text-gray-200" : "text-gray-300 group-hover:text-blue-400"}`}>
           {isDragOver ? (
             <span className="text-green-400 text-lg">+</span>
           ) : (
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-4 h-4 lg:w-5 lg:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
             </svg>
           )}

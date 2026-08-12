@@ -41,11 +41,19 @@ export function UkesplanleggerClient() {
   const [error, setError] = useState<string | null>(null);
 
   const today = new Date();
-  const [viewYear] = useState(today.getFullYear());
-  const [viewMonth] = useState(today.getMonth());
+  // Owned here rather than in WeekCalendar so navigating months re-runs fetchPlans.
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+
+  const handleMonthChange = useCallback((year: number, month: number) => {
+    setViewYear(year);
+    setViewMonth(month);
+  }, []);
 
   const [activeDayDate, setActiveDayDate] = useState<Date | null>(today);
+  // Desktop sidebar starts open; the mobile modal must not appear until a day is tapped.
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobilePickerOpen, setMobilePickerOpen] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<"oppskrifter" | "matkasse">("oppskrifter");
   const [aiLoading, setAiLoading] = useState(false);
   const [matkasseWeekMonday, setMatkasseWeekMonday] = useState<Date | null>(null);
@@ -262,6 +270,7 @@ export function UkesplanleggerClient() {
   function handleDayClick(date: Date) {
     setActiveDayDate(date);
     setSidebarOpen(true);
+    setMobilePickerOpen(true);
   }
 
   if (authLoading || loadingGroups) {
@@ -356,7 +365,7 @@ export function UkesplanleggerClient() {
             )}
           </div>
         ) : (
-          <div className="flex gap-6 items-start">
+          <div className="flex lg:gap-6 items-start">
             {/* Calendar */}
             <div className="flex-1 min-w-0 bg-white rounded-xl shadow-sm border border-gray-200 p-4 lg:p-6 xl:p-8">
               <MealTypeFilter value={activeMealType} onChange={handleMealTypeChange} />
@@ -365,10 +374,13 @@ export function UkesplanleggerClient() {
                 <div className="flex items-center justify-center py-16 text-gray-400">Laster plan...</div>
               ) : (
                 <div className="overflow-x-auto -mx-4 lg:-mx-6 xl:-mx-8 px-4 lg:px-6 xl:px-8">
-                  <div className="min-w-[700px]">
+                  <div className="lg:min-w-[700px]">
                     <WeekCalendar
                       plans={plans}
                       selectedDate={activeDayDate}
+                      viewYear={viewYear}
+                      viewMonth={viewMonth}
+                      onMonthChange={handleMonthChange}
                       onDayClick={handleDayClick}
                       onDeleteEntry={handleDeleteEntry}
                       onEntryClick={setPreviewPlan}
@@ -386,7 +398,7 @@ export function UkesplanleggerClient() {
 
             {/* Desktop sidebar */}
             {sidebarOpen && token && selectedGroupId && (
-              <div className="w-72 xl:w-80 shrink-0 bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col overflow-hidden">
+              <div className="hidden lg:flex w-72 xl:w-80 shrink-0 bg-white rounded-xl shadow-sm border border-gray-200 flex-col overflow-hidden">
                 {/* Sidebar tab bar */}
                 <div className="flex border-b border-gray-200">
                   <button
@@ -449,16 +461,15 @@ export function UkesplanleggerClient() {
       )}
 
       {/* Mobile modal */}
-      {sidebarOpen && token && (
+      {mobilePickerOpen && token && (
         <RecipePickerPanel
           token={token}
           activeMealType={activeMealType}
           onSelect={async (recipe) => {
             await handleRecipePicked(recipe);
-            setSidebarOpen(false);
-            setActiveDayDate(null);
+            setMobilePickerOpen(false);
           }}
-          onClose={() => { setSidebarOpen(false); setActiveDayDate(null); }}
+          onClose={() => setMobilePickerOpen(false)}
         />
       )}
     </div>

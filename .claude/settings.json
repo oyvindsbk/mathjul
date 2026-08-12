@@ -2,6 +2,33 @@
   "env": {
     "LC_ALL": "C"
   },
+  "permissions": {
+    "allow": [
+      "PowerShell(rtk dotnet test C:\\\\git\\\\privat\\\\mathjul\\\\backend\\\\RecipeApi.Tests\\\\RecipeApi.Tests.csproj 2>&1)",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_evaluate",
+      "PowerShell(cd C:\\\\git\\\\privat\\\\mathjul\\\\backend\\\\RecipeApi; $env:ASPNETCORE_ENVIRONMENT='LocalDevelopment'; dotnet run --urls http://localhost:5238)",
+      "Bash(curl -s -o /dev/null -m 2 http://localhost:5238/api/recipes)",
+      "Read(//c/Users/oyvin/AppData/Local/Temp/claude/c--git-privat-mathjul/aa9168e0-6546-4d9a-a5f3-3133eea2c810/tasks/**)",
+      "Bash(docker version *)",
+      "Bash(cp \"/c/Users/oyvin/AppData/Local/Temp/claude/c--git-privat-mathjul/e612c395-9129-4d96-b139-312179812065/scratchpad/grid-harness.spec.ts\" tests/e2e/zz-harness.spec.ts)",
+      "Bash(npx playwright *)",
+      "mcp__playwright__browser_take_screenshot",
+      "Bash(find / -name \"mobile-375.png\" -newermt \"-10 minutes\" 2>/dev/null | head -5)",
+      "Read(//c//**)",
+      "PowerShell(git checkout -- ../.playwright-mcp)",
+      "Bash(echo \"--- TSC EXIT: $?\")",
+      "PowerShell(git stash push -u -- src tests 2>&1)",
+      "PowerShell(npx playwright test tests/e2e/smoke.spec.ts --project=chromium --reporter=list 2>&1)",
+      "PowerShell(git stash pop 2>&1)",
+      "Bash(echo \"TSC: $?\")",
+      "Bash(cat)",
+      "Bash(node /tmp/wk.mjs)"
+    ]
+  },
   "hooks": {
     "PostToolUse": [
       {
@@ -23,11 +50,6 @@
           }
         ]
       }
-    ]
-  },
-  "permissions": {
-    "allow": [
-      "PowerShell(rtk dotnet test C:\\\\git\\\\privat\\\\mathjul\\\\backend\\\\RecipeApi.Tests\\\\RecipeApi.Tests.csproj 2>&1)"
     ]
   }
 }

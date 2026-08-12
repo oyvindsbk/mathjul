@@ -6,6 +6,12 @@ import { DayCell, formatDate } from "./DayCell";
 import { WeekContextMenu } from "./WeekContextMenu";
 
 const DAY_NAMES = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
+
+// Mobile: 7 equal day columns so the month fits a 375px screen without scrolling.
+// lg+: a leading auto-width gutter for the ISO week number. The gutter is
+// display:none below lg, which takes it out of the grid entirely — that is why
+// the column count differs rather than just the gutter width.
+const GRID_COLS = "grid grid-cols-7 lg:grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-1";
 const MONTH_NAMES = [
   "Januar", "Februar", "Mars", "April", "Mai", "Juni",
   "Juli", "August", "September", "Oktober", "November", "Desember",
@@ -20,6 +26,10 @@ interface ContextMenuState {
 interface WeekCalendarProps {
   plans: MealPlan[];
   selectedDate: Date | null;
+  /** Month being viewed. Owned by the parent so plan fetching follows navigation. */
+  viewYear: number;
+  viewMonth: number;
+  onMonthChange: (year: number, month: number) => void;
   onDayClick: (date: Date) => void;
   onDeleteEntry: (entryId: number) => void;
   onEntryClick?: (plan: MealPlan) => void;
@@ -64,6 +74,9 @@ function getWeeksInMonth(year: number, month: number): Date[][] {
 export function WeekCalendar({
   plans,
   selectedDate,
+  viewYear,
+  viewMonth,
+  onMonthChange,
   onDayClick,
   onDeleteEntry,
   onEntryClick,
@@ -77,8 +90,6 @@ export function WeekCalendar({
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [dragOverDate, setDragOverDate] = useState<string | null>(null);
 
@@ -94,13 +105,13 @@ export function WeekCalendar({
   const weeks = getWeeksInMonth(viewYear, viewMonth);
 
   function prevMonth() {
-    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
-    else setViewMonth(m => m - 1);
+    if (viewMonth === 0) onMonthChange(viewYear - 1, 11);
+    else onMonthChange(viewYear, viewMonth - 1);
   }
 
   function nextMonth() {
-    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); }
-    else setViewMonth(m => m + 1);
+    if (viewMonth === 11) onMonthChange(viewYear + 1, 0);
+    else onMonthChange(viewYear, viewMonth + 1);
   }
 
   function handleWeekContextMenu(e: React.MouseEvent, weekStart: Date) {
@@ -160,10 +171,10 @@ export function WeekCalendar({
       </div>
 
       {/* Day headers */}
-      <div className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-1 mb-1">
-        <div className="w-8" />
+      <div className={`${GRID_COLS} mb-1`}>
+        <div className="hidden lg:block w-8" />
         {DAY_NAMES.map((d) => (
-          <div key={d} className="text-center text-xs font-semibold text-gray-500 py-1">
+          <div key={d} className="text-center text-[10px] lg:text-xs font-semibold text-gray-500 py-1">
             {d}
           </div>
         ))}
@@ -177,11 +188,11 @@ export function WeekCalendar({
         return (
           <div
             key={wi}
-            className="grid grid-cols-[auto_1fr_1fr_1fr_1fr_1fr_1fr_1fr] gap-1 mb-1 group/row"
+            className={`${GRID_COLS} mb-1 group/row`}
             onContextMenu={(e) => handleWeekContextMenu(e, weekStart)}
           >
-            {/* Week number */}
-            <div className="w-8 flex items-center justify-center">
+            {/* Week number — desktop only; its only affordance is right-click. */}
+            <div data-testid="week-gutter" className="hidden lg:flex w-8 items-center justify-center">
               <span
                 className="text-xs text-gray-400 group-hover/row:text-blue-500 cursor-context-menu font-medium"
                 title="Høyreklikk for ukemeny"
@@ -192,12 +203,12 @@ export function WeekCalendar({
 
             {week.map((day) => {
               const key = formatDate(day);
-              const isCurrentMonth = day.getMonth() === viewMonth;
               const isToday = day.getTime() === today.getTime();
 
-              if (!isCurrentMonth) {
-                return <div key={key} className="min-h-[80px] lg:min-h-[110px] xl:min-h-[130px] bg-gray-50 rounded-lg border border-dashed border-gray-100" />;
-              }
+              // Days from the neighbouring month stay fully editable so a whole
+              // week can be planned without switching month. They are dimmed to
+              // keep the current month readable as the primary context.
+              const isOtherMonth = day.getMonth() !== viewMonth;
 
               return (
                 <DayCell
@@ -208,6 +219,7 @@ export function WeekCalendar({
                   isSelected={selectedDateKey === key}
                   isHighlighted={highlightedDays.has(key)}
                   isDragOver={dragOverDate === key}
+                  isOtherMonth={isOtherMonth}
                   onClick={onDayClick}
                   onDeleteEntry={onDeleteEntry}
                   onEntryClick={onEntryClick}
