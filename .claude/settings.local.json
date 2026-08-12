@@ -12,7 +12,8 @@
       "mcp__playwright__browser_click",
       "Bash(rtk npx *)",
       "Bash(sed -i \"s|'/api/auth/fake-callback'\\\\]|'/api/auth/fake-callback', '/harness-ukesplanlegger']|\" src/components/ProtectedRoute.tsx)",
-      "Bash(npx playwright *)"
+      "Bash(npx playwright *)",
+      "PowerShell(rtk npm run build)"
     ]
   }
 }

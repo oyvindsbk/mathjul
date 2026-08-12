@@ -66,7 +66,7 @@ export function DayCell({
     <div
       data-testid="day-cell"
       className={`
-        relative ${CELL_HEIGHT} border rounded-lg p-1 lg:p-2 cursor-pointer group transition-colors duration-150 flex flex-col
+        relative ${CELL_HEIGHT} overflow-hidden border rounded-lg p-1 lg:p-2 cursor-pointer group transition-colors duration-150 flex flex-col
         ${isToday
           ? "bg-blue-50 border-blue-400 shadow-sm"
           : isPast
@@ -174,12 +174,15 @@ export function DayCell({
                   <span className={single ? "text-base lg:text-xl leading-none" : "text-[10px] flex-shrink-0 mt-0.5"}>{icon}</span>
                 )}
                 {/* Title and side dishes share a wrapper so the delete button stays on the row */}
-                <div className={single ? "" : "flex-1 min-w-0"}>
-                  <p className={`font-medium leading-tight ${isPast ? "text-gray-400" : isCustom ? "text-amber-800" : "text-gray-800"} ${single ? "text-[11px] line-clamp-2 lg:text-xs lg:line-clamp-3" : "text-[10px] line-clamp-2"}`}>
+                {/* min-w-0 + break-words: long single words (e.g. "gyroskjøttdeig")
+                    are wider than a ~43px mobile column, and line-clamp only limits
+                    line count — without these they render past the cell edge. */}
+                <div className={single ? "w-full min-w-0" : "flex-1 min-w-0"}>
+                  <p className={`font-medium leading-tight break-words hyphens-auto ${isPast ? "text-gray-400" : isCustom ? "text-amber-800" : "text-gray-800"} ${single ? "text-[11px] line-clamp-2 lg:text-xs lg:line-clamp-3" : "text-[10px] line-clamp-2"}`}>
                     {title}
                   </p>
                   {sideDishTitles.length > 0 && (
-                    <p className={`leading-tight ${isPast ? "text-gray-300" : "text-gray-500"} ${single ? "text-[10px] line-clamp-2" : "text-[9px] line-clamp-1"}`}>
+                    <p className={`leading-tight break-words hyphens-auto ${isPast ? "text-gray-300" : "text-gray-500"} ${single ? "text-[10px] line-clamp-2" : "text-[9px] line-clamp-1"}`}>
                       + {sideDishTitles.join(", ")}
                     </p>
                   )}
