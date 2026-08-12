@@ -261,7 +261,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
               {recipe.cookTimeMinutes && (
                 <div className="text-center">
                   <div className="text-2xl font-bold text-gray-900">{recipe.cookTimeMinutes}</div>
-                  <div className="text-sm text-gray-600">Stektid (min)</div>
+                  <div className="text-sm text-gray-600">Steketid (min)</div>
                 </div>
               )}
               <div className="hidden md:block text-center">

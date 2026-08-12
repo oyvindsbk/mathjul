@@ -90,6 +90,8 @@ public class RecipesController : ControllerBase
             : new HashSet<int>();
 
         var recipes = await query
+            .OrderByDescending(r => r.CreatedAt)
+            .ThenByDescending(r => r.Id)
             .Select(r => new RecipeDto
             {
                 Id = r.Id,
@@ -689,9 +691,7 @@ public class RecipesController : ControllerBase
         if (recipe == null)
             return NotFound(new { message = "Recipe not found" });
 
-        var isAdmin = callerEmail != null && _adminService.IsAdmin(callerEmail);
-        if (!isAdmin && recipe.OwnerEmail != callerEmail)
-            return StatusCode(403, new { message = "You do not have permission to edit this recipe" });
+        // Alle innloggede brukere kan redigere alle oppskrifter.
 
         recipe.Title = request.Title;
         recipe.Description = request.Description ?? string.Empty;
@@ -946,9 +946,7 @@ public class RecipesController : ControllerBase
         if (recipe == null)
             return NotFound(new { message = "Recipe not found" });
 
-        var isAdmin = callerEmail != null && _adminService.IsAdmin(callerEmail);
-        if (!isAdmin && recipe.OwnerEmail != callerEmail)
-            return StatusCode(403, new { message = "You do not have permission to delete this recipe" });
+        // Alle innloggede brukere kan slette alle oppskrifter.
 
         // Delete all blobs for this recipe (main image + all step images)
         await _blobStorage.DeleteByPrefixAsync($"recipes/{id}/");
