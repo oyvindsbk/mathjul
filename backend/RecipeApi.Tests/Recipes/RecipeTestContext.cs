@@ -112,6 +112,24 @@ public sealed class RecipeTestContext : IDisposable
         return recipe;
     }
 
+    /// <summary>Seeds a recipe carrying the given categories.</summary>
+    public Recipe SeedRecipeWithCategories(string title, params Category[] categories)
+    {
+        var recipe = new Recipe
+        {
+            Title = title,
+            OwnerEmail = OwnerEmail,
+            Visibility = "Public"
+        };
+
+        foreach (var category in categories)
+            recipe.Categories.Add(category);
+
+        Db.Recipes.Add(recipe);
+        Db.SaveChanges();
+        return recipe;
+    }
+
     /// <summary>Reads the persisted side-dish links for a recipe, in SortOrder.</summary>
     public List<RecipeSideDish> GetSideDishLinks(int recipeId) =>
         Db.RecipeSideDishes

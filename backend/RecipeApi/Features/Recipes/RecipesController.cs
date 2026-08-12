@@ -76,10 +76,27 @@ public class RecipesController : ControllerBase
                 .Select(n => n!.Value)
                 .ToList();
 
-            // Flere valgte kategorier er et ELLER-filter: vis oppskrifter som
-            // treffer minst én av dem, ikke bare de som treffer alle.
+            // Innenfor samme kategorigruppe (f.eks. Måltidstype) er valgene et
+            // ELLER-filter, mens ulike grupper kombineres med OG: velger du
+            // "Lunsj" + "Middag" + "Enkel" får du enkle lunsj- og middagsretter.
             if (ids.Count > 0)
-                query = query.Where(r => r.Categories.Any(c => ids.Contains(c.Id)));
+            {
+                var idsByGroup = await _context.Categories
+                    .Where(c => ids.Contains(c.Id))
+                    .GroupBy(c => c.Group)
+                    .Select(g => new { Group = g.Key, Ids = g.Select(c => c.Id).ToList() })
+                    .ToListAsync();
+
+                foreach (var group in idsByGroup)
+                {
+                    var groupIds = group.Ids;
+                    query = query.Where(r => r.Categories.Any(c => groupIds.Contains(c.Id)));
+                }
+
+                // Ukjente id-er tilhører ingen gruppe; da skal ingenting matche.
+                if (idsByGroup.Count == 0)
+                    query = query.Where(r => false);
+            }
         }
 
         var likedIds = callerEmail != null

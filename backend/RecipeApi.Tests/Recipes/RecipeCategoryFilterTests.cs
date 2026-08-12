@@ -5,77 +5,109 @@ using Xunit;
 namespace RecipeApi.Tests.Recipes;
 
 /// <summary>
-/// Covers the <c>categories</c> query filter on GET /api/recipes: several selected
-/// categories widen the result (OR), they do not narrow it (AND).
+/// Covers how GetAllRecipes combines the category filter: choices inside one
+/// category group (Måltidstype, Tilberedningstid, Vanskelighetsgrad) are OR-ed,
+/// while separate groups are AND-ed together.
 /// </summary>
 public class RecipeCategoryFilterTests
 {
-    private static Recipe SeedWithCategories(RecipeTestContext ctx, string title, params Category[] categories)
+    private const int Lunsj = 2;
+    private const int Middag = 3;
+    private const int Dessert = 4;
+    private const int Enkel = 9;
+    private const int Middels = 10;
+    private const int Under30Min = 13;
+
+    private static async Task<List<string>> FilterTitlesAsync(RecipeTestContext ctx, string? categories)
     {
-        var recipe = ctx.SeedRecipe(title);
-        foreach (var category in categories)
-            recipe.Categories.Add(category);
-        ctx.Db.SaveChanges();
-        return recipe;
+        var controller = ctx.CreateController();
+        var result = await controller.GetAllRecipes(categories);
+        var recipes = result.Value
+            ?? Assert.IsType<List<RecipeDto>>(Assert.IsType<OkObjectResult>(result.Result).Value);
+        return recipes.Select(r => r.Title).OrderBy(t => t).ToList();
     }
 
-    private static List<RecipeDto> Ok(ActionResult<List<RecipeDto>> result) =>
-        Assert.IsType<List<RecipeDto>>(Assert.IsType<OkObjectResult>(result.Result).Value);
-
-    [Fact]
-    public async Task GetAllRecipes_WithTwoCategories_ReturnsRecipesMatchingEither()
+    /// <summary>Seeds one recipe per meal-type/difficulty combination used by the tests.</summary>
+    private static RecipeTestContext SeedFixture()
     {
-        using var ctx = new RecipeTestContext();
-        var middag = ctx.SeedCategory(901, "Middag", "Måltidstype");
-        var dessert = ctx.SeedCategory(902, "Dessert", "Måltidstype");
-        var frokost = ctx.SeedCategory(903, "Frokost", "Måltidstype");
+        var ctx = new RecipeTestContext();
 
-        SeedWithCategories(ctx, "Lasagne", middag);
-        SeedWithCategories(ctx, "Sjokoladekake", dessert);
-        SeedWithCategories(ctx, "Begge deler", middag, dessert);
-        SeedWithCategories(ctx, "Grøt", frokost);
+        var lunsj = ctx.SeedCategory(Lunsj, "Lunsj", RecipeCategories.MealTypeGroup);
+        var middag = ctx.SeedCategory(Middag, "Middag", RecipeCategories.MealTypeGroup);
+        var dessert = ctx.SeedCategory(Dessert, "Dessert", RecipeCategories.MealTypeGroup);
+        var enkel = ctx.SeedCategory(Enkel, "Enkel", "Vanskelighetsgrad");
+        var middels = ctx.SeedCategory(Middels, "Middels", "Vanskelighetsgrad");
+        var under30 = ctx.SeedCategory(Under30Min, "Under 30 min", "Tilberedningstid");
 
-        var controller = ctx.CreateController();
+        ctx.SeedRecipeWithCategories("Enkel lunsj", lunsj, enkel, under30);
+        ctx.SeedRecipeWithCategories("Enkel middag", middag, enkel);
+        ctx.SeedRecipeWithCategories("Avansert middag", middag, middels);
+        ctx.SeedRecipeWithCategories("Enkel dessert", dessert, enkel);
 
-        var recipes = Ok(await controller.GetAllRecipes($"{middag.Id},{dessert.Id}"));
-
-        Assert.Equal(
-            ["Begge deler", "Lasagne", "Sjokoladekake"],
-            recipes.Select(r => r.Title).OrderBy(t => t));
-    }
-
-    [Fact]
-    public async Task GetAllRecipes_WithSingleCategory_ReturnsOnlyThatCategory()
-    {
-        using var ctx = new RecipeTestContext();
-        var middag = ctx.SeedCategory(901, "Middag", "Måltidstype");
-        var dessert = ctx.SeedCategory(902, "Dessert", "Måltidstype");
-
-        SeedWithCategories(ctx, "Lasagne", middag);
-        SeedWithCategories(ctx, "Sjokoladekake", dessert);
-
-        var controller = ctx.CreateController();
-
-        var recipes = Ok(await controller.GetAllRecipes(middag.Id.ToString()));
-
-        Assert.Equal(["Lasagne"], recipes.Select(r => r.Title));
+        return ctx;
     }
 
     [Fact]
-    public async Task GetAllRecipes_WithoutCategories_ReturnsAll()
+    public async Task NoCategories_ReturnsEverything()
     {
-        using var ctx = new RecipeTestContext();
-        var middag = ctx.SeedCategory(901, "Middag", "Måltidstype");
+        using var ctx = SeedFixture();
 
-        SeedWithCategories(ctx, "Lasagne", middag);
-        ctx.SeedRecipe("Ukategorisert");
+        var titles = await FilterTitlesAsync(ctx, null);
 
-        var controller = ctx.CreateController();
+        // EnsureCreated also seeds the default recipes, so assert containment
+        // rather than an exact list.
+        foreach (var expected in new[] { "Avansert middag", "Enkel dessert", "Enkel lunsj", "Enkel middag" })
+            Assert.Contains(expected, titles);
+    }
 
-        // The DbContext seeds default recipes too, so assert on the two seeded here.
-        var recipes = Ok(await controller.GetAllRecipes());
+    [Fact]
+    public async Task TwoChoicesInSameGroup_AreOred()
+    {
+        using var ctx = SeedFixture();
 
-        Assert.Contains(recipes, r => r.Title == "Lasagne");
-        Assert.Contains(recipes, r => r.Title == "Ukategorisert");
+        var titles = await FilterTitlesAsync(ctx, $"{Lunsj},{Middag}");
+
+        Assert.Equal(["Avansert middag", "Enkel lunsj", "Enkel middag"], titles);
+    }
+
+    [Fact]
+    public async Task ChoicesInDifferentGroups_AreAnded()
+    {
+        using var ctx = SeedFixture();
+
+        // Lunsj OR Middag, and additionally Enkel — "Avansert middag" drops out.
+        var titles = await FilterTitlesAsync(ctx, $"{Lunsj},{Middag},{Enkel}");
+
+        Assert.Equal(["Enkel lunsj", "Enkel middag"], titles);
+    }
+
+    [Fact]
+    public async Task ThreeGroupsCombined_NarrowToTheIntersection()
+    {
+        using var ctx = SeedFixture();
+
+        var titles = await FilterTitlesAsync(ctx, $"{Lunsj},{Middag},{Enkel},{Under30Min}");
+
+        Assert.Equal(["Enkel lunsj"], titles);
+    }
+
+    [Fact]
+    public async Task GroupsWithNoOverlap_ReturnNothing()
+    {
+        using var ctx = SeedFixture();
+
+        var titles = await FilterTitlesAsync(ctx, $"{Dessert},{Middels}");
+
+        Assert.Empty(titles);
+    }
+
+    [Fact]
+    public async Task UnknownCategoryId_MatchesNothing()
+    {
+        using var ctx = SeedFixture();
+
+        var titles = await FilterTitlesAsync(ctx, "9999");
+
+        Assert.Empty(titles);
     }
 }

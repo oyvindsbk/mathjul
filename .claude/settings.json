@@ -24,5 +24,10 @@
         ]
       }
     ]
+  },
+  "permissions": {
+    "allow": [
+      "PowerShell(rtk dotnet test C:\\\\git\\\\privat\\\\mathjul\\\\backend\\\\RecipeApi.Tests\\\\RecipeApi.Tests.csproj 2>&1)"
+    ]
   }
 }

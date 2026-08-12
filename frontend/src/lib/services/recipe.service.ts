@@ -32,7 +32,8 @@ export interface RecipeFormData {
 
 class RecipeService {
   /**
-   * Fetch all recipes, optionally filtered by category IDs (AND-logic)
+   * Fetch all recipes, optionally filtered by category IDs. Ids in the same
+   * category group are OR-ed together; different groups are AND-ed.
    */
   async getAllRecipes(token?: string, categoryIds?: number[], groupId?: number): Promise<Recipe[]> {
     if (appConfig.mocking.enabled) {
