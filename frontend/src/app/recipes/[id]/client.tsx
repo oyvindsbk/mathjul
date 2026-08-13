@@ -285,24 +285,40 @@ export default function RecipeDetailClient({ id }: { id: string }) {
               </div>
             )}
 
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 py-4 md:py-6 border-y border-gray-200">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 py-3 md:py-4 border-y border-gray-200">
               {recipe.prepTime && (
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">{recipe.prepTime}</div>
-                  <div className="text-sm text-gray-600">Forberedelsestid (min)</div>
+                <div
+                  className="flex items-center gap-1.5 text-gray-900"
+                  title="Forberedelsestid"
+                  aria-label={`Forberedelsestid ${recipe.prepTime} minutter`}
+                >
+                  {/* Clock */}
+                  <svg className="w-5 h-5 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="12" cy="12" r="9" strokeWidth={2} />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 7v5l3 2" />
+                  </svg>
+                  <span className="text-lg font-semibold">{recipe.prepTime} min</span>
                 </div>
               )}
               {recipe.cookTimeMinutes && (
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">{recipe.cookTimeMinutes}</div>
-                  <div className="text-sm text-gray-600">Steketid (min)</div>
+                <div
+                  className="flex items-center gap-1.5 text-gray-900"
+                  title="Steketid"
+                  aria-label={`Steketid ${recipe.cookTimeMinutes} minutter`}
+                >
+                  {/* Boiling pot */}
+                  <svg className="w-5 h-5 text-gray-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3c0 1.2-1 1.6-1 2.5S9 7 9 7M13 3c0 1.2-1 1.6-1 2.5S13 7 13 7M17 3c0 1.2-1 1.6-1 2.5S17 7 17 7" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 11h16M5 11v5a4 4 0 004 4h6a4 4 0 004-4v-5M19 12h2v3h-2M5 12H3v3h2" />
+                  </svg>
+                  <span className="text-lg font-semibold">{recipe.cookTimeMinutes} min</span>
                 </div>
               )}
-              <div className="hidden md:block text-center">
-                <div className="text-sm text-gray-500">Sist oppdatert</div>
-                <div className="text-sm text-gray-600">
+              <div className="hidden md:flex items-center gap-1.5 text-sm text-gray-500 ml-auto">
+                <span>Sist oppdatert</span>
+                <span className="text-gray-600">
                   {recipe.updatedAt ? new Date(recipe.updatedAt).toLocaleDateString() : '–'}
-                </div>
+                </span>
               </div>
             </div>
           </div>
