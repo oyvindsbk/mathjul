@@ -89,6 +89,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
   const [desiredServings, setDesiredServings] = useState<number>(0);
   const [isDeleting, setIsDeleting] = useState(false);
   const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set());
+  const [showMeta, setShowMeta] = useState(false);
 
   const toggleStep = (index: number) => {
     setCheckedSteps((prev) => {
@@ -168,6 +169,35 @@ export default function RecipeDetailClient({ id }: { id: string }) {
     );
   }
 
+  const hasMeta = Boolean(
+    recipe.ownerEmail || recipe.sourceUrl || (recipe.categories && recipe.categories.length > 0)
+  );
+
+  const metaContent = (
+    <>
+      {(recipe.ownerEmail || recipe.sourceUrl) && (
+        <div className="text-sm text-gray-500 mb-4 flex flex-col gap-1">
+          {recipe.ownerEmail && (
+            <span>Lagt til av {recipe.ownerEmail}</span>
+          )}
+          {recipe.sourceUrl && (
+            <span>Kilde: <a href={recipe.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{recipe.sourceUrl}</a></span>
+          )}
+        </div>
+      )}
+
+      {recipe.categories && recipe.categories.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-6">
+          {recipe.categories.map((cat) => (
+            <span key={cat.id} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
+              {cat.name}
+            </span>
+          ))}
+        </div>
+      )}
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 py-4 md:py-12 px-3 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto">
@@ -184,6 +214,19 @@ export default function RecipeDetailClient({ id }: { id: string }) {
           <div className="p-4 md:p-8">
             <div className="flex items-start gap-2 md:gap-3 mb-4">
                 <h1 className="text-2xl md:text-4xl font-bold text-gray-900 flex-1">{recipe.title}</h1>
+                {hasMeta && (
+                  <button
+                    onClick={() => setShowMeta((v) => !v)}
+                    aria-label="Vis detaljer"
+                    aria-expanded={showMeta}
+                    data-testid="recipe-meta-toggle"
+                    className={`md:hidden mt-1 flex items-center justify-center transition-colors hover:scale-110 active:scale-95 ${showMeta ? 'text-blue-500' : 'text-gray-400 hover:text-blue-500'}`}
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </button>
+                )}
                 <HeartButton
                   recipeId={recipe.id}
                   initialLiked={recipe.isLikedByMe ?? false}
@@ -213,25 +256,16 @@ export default function RecipeDetailClient({ id }: { id: string }) {
 
             <p className="text-sm md:text-lg text-gray-600 mb-4">{recipe.description}</p>
 
-            {(recipe.ownerEmail || recipe.sourceUrl) && (
-              <div className="text-sm text-gray-500 mb-4 flex flex-col gap-1">
-                {recipe.ownerEmail && (
-                  <span>Lagt til av {recipe.ownerEmail}</span>
+            {hasMeta && (
+              <>
+                {/* Mobile: hidden behind the info icon in the title row */}
+                {showMeta && (
+                  <div className="md:hidden mb-4" data-testid="recipe-meta-mobile">{metaContent}</div>
                 )}
-                {recipe.sourceUrl && (
-                  <span>Kilde: <a href={recipe.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{recipe.sourceUrl}</a></span>
-                )}
-              </div>
-            )}
 
-            {recipe.categories && recipe.categories.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-6">
-                {recipe.categories.map((cat) => (
-                  <span key={cat.id} className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">
-                    {cat.name}
-                  </span>
-                ))}
-              </div>
+                {/* Desktop: always visible */}
+                <div className="hidden md:block" data-testid="recipe-meta-desktop">{metaContent}</div>
+              </>
             )}
 
             {recipe.sideDishes && recipe.sideDishes.length > 0 && (
