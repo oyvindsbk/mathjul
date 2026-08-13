@@ -32,7 +32,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Matjul",
+    title: "Mathjul",
   },
   other: {
     "mobile-web-app-capable": "yes",
