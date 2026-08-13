@@ -5,103 +5,35 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { recipeService } from "@/lib/services/recipe.service";
 import { HeartButton } from "@/components/HeartButton";
-import { FloatingIngredientsButton } from "@/components/FloatingIngredientsButton";
+import { MatlagingsmodusButton } from "@/components/MatlagingsmodusButton";
+import { MatlagingsmodusOverlay } from "@/components/matlagingsmodus/MatlagingsmodusOverlay";
 import { useAuth } from "@/lib/context/AuthContext";
-import type { Category, IngredientSection, InstructionSection, InstructionStep, Recipe, StructuredIngredient } from "@/lib/mock-data";
+import { useCookingProgress } from "@/hooks/useCookingProgress";
+import type { InstructionStep, Recipe } from "@/lib/mock-data";
+import { formatIngredientParts } from "@/lib/recipe-format";
+import { ServingsStepper } from "@/components/matlagingsmodus/ServingsStepper";
 import RecipeDetailLoading from "./loading";
 
-interface RecipeDetail extends Recipe {
-  cookTime?: string;
-  cookTimeMinutes?: number;
-  prepTime?: number;
-  imageUrl?: string | null;
-  servings?: number;
-  quantityType?: string;
-  customUnit?: string | null;
-  ingredients?: StructuredIngredient[];
-  instructionSteps?: InstructionStep[];
-  ingredientSections?: IngredientSection[];
-  instructionSections?: InstructionSection[];
-  categories?: Category[];
-  tips?: string[];
-  createdAt?: string;
-  updatedAt?: string;
-  ownerEmail?: string | null;
-  sourceUrl?: string | null;
-}
-
-function servingsLabel(quantityType?: string, customUnit?: string | null): string {
-  if (quantityType === 'antall') return 'stk';
-  if (quantityType === 'custom' && customUnit) return customUnit;
-  return 'porsjoner';
-}
-
-function formatQuantity(quantity: number): string {
-  if (quantity % 1 === 0) return quantity.toString();
-  // Show up to 2 decimal places, trim trailing zeros
-  return parseFloat(quantity.toFixed(2)).toString();
-}
-
-function formatIngredient(
-  ingredient: StructuredIngredient,
-  baseServings: number | null | undefined,
-  desiredServings: number
-): string {
-  let qtyStr = "";
-  if (ingredient.quantity != null) {
-    if (baseServings && baseServings > 0) {
-      const scaled = (ingredient.quantity * desiredServings) / baseServings;
-      qtyStr = formatQuantity(scaled);
-    } else {
-      qtyStr = formatQuantity(ingredient.quantity);
-    }
-  }
-
-  const parts: string[] = [];
-  if (qtyStr) parts.push(qtyStr);
-  if (ingredient.unit) parts.push(ingredient.unit);
-  parts.push(ingredient.name);
-  return parts.join(" ");
-}
-
-function formatIngredientParts(
-  ingredient: StructuredIngredient,
-  baseServings: number | null | undefined,
-  desiredServings: number
-): { qtyUnit: string; name: string } {
-  let qtyStr = "";
-  if (ingredient.quantity != null) {
-    if (baseServings && baseServings > 0) {
-      const scaled = (ingredient.quantity * desiredServings) / baseServings;
-      qtyStr = formatQuantity(scaled);
-    } else {
-      qtyStr = formatQuantity(ingredient.quantity);
-    }
-  }
-  const qtyUnit = [qtyStr, ingredient.unit].filter(Boolean).join(" ");
-  return { qtyUnit, name: ingredient.name };
-}
-
 export default function RecipeDetailClient({ id }: { id: string }) {
-  const [recipe, setRecipe] = useState<RecipeDetail | null>(null);
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [desiredServings, setDesiredServings] = useState<number>(0);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [checkedSteps, setCheckedSteps] = useState<Set<number>>(new Set());
   const [showMeta, setShowMeta] = useState(false);
+  const [cookingMode, setCookingMode] = useState(false);
 
-  const toggleStep = (index: number) => {
-    setCheckedSteps((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
-      return next;
-    });
-  };
+  // Called once here and shared with matlagingsmodus, so ticking a step in
+  // either surface is reflected in the other.
+  const {
+    checkedIngredients,
+    checkedSteps,
+    toggleIngredient,
+    toggleStep,
+    reset: resetProgress,
+    hasProgress,
+  } = useCookingProgress(recipe?.id, recipe?.updatedAt);
+
   const { token, isLoading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -127,8 +59,8 @@ export default function RecipeDetailClient({ id }: { id: string }) {
           setError('Oppskrift ikke funnet');
           setRecipe(null);
         } else {
-          setRecipe(data as RecipeDetail);
-          setDesiredServings((data as RecipeDetail).servings ?? 0);
+          setRecipe(data);
+          setDesiredServings(data.servings ?? 0);
         }
       } catch (err) {
         console.error('Error fetching recipe:', err);
@@ -256,6 +188,21 @@ export default function RecipeDetailClient({ id }: { id: string }) {
 
             <p className="text-sm md:text-lg text-gray-600 mb-4">{recipe.description}</p>
 
+            {/* Mobile reaches matlagingsmodus through the floating button; on
+                desktop a floating pill would be out of place, so it lives here. */}
+            <button
+              type="button"
+              onClick={() => setCookingMode(true)}
+              data-testid="matlagingsmodus-open"
+              className="hidden md:inline-flex items-center gap-2 mb-4 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3c0 1.2-1 1.6-1 2.5S9 7 9 7M13 3c0 1.2-1 1.6-1 2.5S13 7 13 7M17 3c0 1.2-1 1.6-1 2.5S17 7 17 7" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 11h16M5 11v5a4 4 0 004 4h6a4 4 0 004-4v-5M19 12h2v3h-2M5 12H3v3h2" />
+              </svg>
+              Start matlagingsmodus
+            </button>
+
             {hasMeta && (
               <>
                 {/* Mobile: hidden behind the info icon in the title row */}
@@ -329,34 +276,13 @@ export default function RecipeDetailClient({ id }: { id: string }) {
             <div className="bg-white rounded-lg shadow-md p-4 md:p-8">
               <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4" data-testid="ingredients-heading">Ingredienser</h2>
               {recipe.servings ? (
-                <div className="flex items-center gap-3 mb-5 pb-4 border-b border-gray-100">
-                  <button
-                    onClick={() => setDesiredServings(Math.max(0.5, desiredServings - 1))}
-                    className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold text-lg flex items-center justify-center"
-                    aria-label="Færre"
-                  >
-                    −
-                  </button>
-                  <input
-                    type="number"
-                    step="any"
-                    min="0"
+                <div className="mb-5 pb-4 border-b border-gray-100">
+                  <ServingsStepper
                     value={desiredServings}
-                    onChange={(e) => {
-                      const v = parseFloat(e.target.value);
-                      if (!isNaN(v) && v > 0) setDesiredServings(v);
-                    }}
-                    className="text-xl font-bold text-gray-900 text-center w-16 border border-gray-200 rounded-lg px-1 py-0.5 bg-white focus:outline-none focus:border-blue-400 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                    aria-label="Antall"
+                    onChange={setDesiredServings}
+                    quantityType={recipe.quantityType}
+                    customUnit={recipe.customUnit}
                   />
-                  <button
-                    onClick={() => setDesiredServings(desiredServings + 1)}
-                    className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold text-lg flex items-center justify-center"
-                    aria-label="Flere"
-                  >
-                    +
-                  </button>
-                  <span className="text-gray-600 text-sm">{servingsLabel(recipe.quantityType, recipe.customUnit)}</span>
                 </div>
               ) : null}
               {recipe.ingredientSections && recipe.ingredientSections.length > 0 ? (
@@ -402,9 +328,9 @@ export default function RecipeDetailClient({ id }: { id: string }) {
             <div className="bg-white rounded-lg shadow-md p-4 md:p-8">
               <div className="flex items-center justify-between mb-4 md:mb-6">
                 <h2 className="text-xl md:text-2xl font-bold text-gray-900" data-testid="instructions-heading">Instruksjoner</h2>
-                {checkedSteps.size > 0 && (
+                {hasProgress && (
                   <button
-                    onClick={() => setCheckedSteps(new Set())}
+                    onClick={resetProgress}
                     className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                   >
                     Begynn på nytt
@@ -560,15 +486,23 @@ export default function RecipeDetailClient({ id }: { id: string }) {
         )}
       </div>
 
-      <FloatingIngredientsButton
-        ingredients={recipe.ingredients}
-        ingredientSections={recipe.ingredientSections}
-        servings={recipe.servings}
-        quantityType={recipe.quantityType}
-        customUnit={recipe.customUnit}
+      <MatlagingsmodusButton
+        onClick={() => setCookingMode(true)}
+        ingredientsSectionId="ingredients-section"
+      />
+
+      <MatlagingsmodusOverlay
+        open={cookingMode}
+        onClose={() => setCookingMode(false)}
+        recipe={recipe}
         desiredServings={desiredServings}
         onServingsChange={setDesiredServings}
-        ingredientsSectionId="ingredients-section"
+        checkedIngredients={checkedIngredients}
+        checkedSteps={checkedSteps}
+        onToggleIngredient={toggleIngredient}
+        onToggleStep={toggleStep}
+        onReset={resetProgress}
+        hasProgress={hasProgress}
       />
     </div>
   );

@@ -1,20 +1,5 @@
 {
   "permissions": {
-    "allow": [
-      "Bash(dotnet package search Aspire.Hosting.NodeJs --take 1)",
-      "Bash(dotnet package search Aspire.Hosting.SqlServer --take 1)",
-      "Bash(dotnet package search Aspire.Microsoft.EntityFrameworkCore.SqlServer --take 1)",
-      "Bash(dotnet build backend/RecipeApi/RecipeApi.csproj)",
-      "Bash(rtk npm:*)",
-      "mcp__playwright__browser_navigate",
-      "mcp__playwright__browser_evaluate",
-      "mcp__playwright__browser_type",
-      "mcp__playwright__browser_click",
-      "Bash(rtk npx *)",
-      "Bash(sed -i \"s|'/api/auth/fake-callback'\\\\]|'/api/auth/fake-callback', '/harness-ukesplanlegger']|\" src/components/ProtectedRoute.tsx)",
-      "Bash(npx playwright *)",
-      "PowerShell(rtk npm run build)",
-      "PowerShell(rtk npm run lint)"
-    ]
+    "allow": []
   }
 }

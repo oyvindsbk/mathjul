@@ -55,12 +55,19 @@ export interface Recipe {
   cookTime?: string | null;
   cookTimeMinutes?: number | null;
   servings?: number | null;
+  /** How `servings` is counted: "porsjoner" (default), "antall", or "custom". */
+  quantityType?: string;
+  /** Unit label used when quantityType is "custom". */
+  customUnit?: string | null;
   imageUrl?: string | null;
   categories?: Category[];
   tips?: string[];
   isLikedByMe?: boolean;
   ownerEmail?: string | null;
   sourceUrl?: string | null;
+  createdAt?: string;
+  /** Last edit timestamp. Scopes persisted cooking progress — see lib/cooking-progress.ts. */
+  updatedAt?: string;
   /** Side dishes attached to this recipe, in order. */
   sideDishes?: RecipeRef[];
   /** Recipes this one is attached to as a side dish. Read-only. */
