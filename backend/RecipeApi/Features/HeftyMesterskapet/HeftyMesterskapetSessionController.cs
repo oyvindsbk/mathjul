@@ -20,20 +20,50 @@ public class HeftyMesterskapetSessionController : ControllerBase
     private readonly IHeftyMesterskapetEditorService _editorService;
     private readonly ITokenService _tokenService;
     private readonly IWebHostEnvironment _environment;
+    private readonly IConfiguration _configuration;
 
     public HeftyMesterskapetSessionController(
         IHeftyMesterskapetCallerResolver callerResolver,
         IHeftyMesterskapetHandoffStore handoffStore,
         IHeftyMesterskapetEditorService editorService,
         ITokenService tokenService,
-        IWebHostEnvironment environment)
+        IWebHostEnvironment environment,
+        IConfiguration configuration)
     {
         _callerResolver = callerResolver;
         _handoffStore = handoffStore;
         _editorService = editorService;
         _tokenService = tokenService;
         _environment = environment;
+        _configuration = configuration;
     }
+
+    /// <summary>
+    /// Where the page should send an editor to log in. The scoring page is served from this origin
+    /// but the Google flow lives in the frontend app, and the page has no way to know that address
+    /// on its own. Derived from the configured CORS origin so there is one source of truth.
+    /// </summary>
+    // GET /api/heftymesterskapet/config
+    [HttpGet("config")]
+    public ActionResult<HeftyMesterskapetConfigDto> GetConfig()
+    {
+        var configured = _configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+        var frontendUrl = configured?.FirstOrDefault();
+
+        if (string.IsNullOrWhiteSpace(frontendUrl) && IsLocalDev())
+        {
+            // Local dev has no configured origin list (CORS allows any localhost port there).
+            frontendUrl = "http://localhost:3000";
+        }
+
+        return Ok(new HeftyMesterskapetConfigDto
+        {
+            FrontendUrl = frontendUrl?.TrimEnd('/') ?? string.Empty
+        });
+    }
+
+    private bool IsLocalDev() =>
+        _environment.IsDevelopment() || _environment.IsEnvironment("LocalDevelopment");
 
     // GET /api/heftymesterskapet/me
     [HttpGet("me")]
@@ -134,6 +164,12 @@ public class HeftyMesterskapetSessionController : ControllerBase
     private string? EmailFrom(string token) =>
         _tokenService.ValidateToken(token)?.Claims.FirstOrDefault(c =>
             c.Type == System.Security.Claims.ClaimTypes.Email || c.Type == "emails")?.Value;
+}
+
+public class HeftyMesterskapetConfigDto
+{
+    /// <summary>Origin of the frontend app, where the Google login flow lives.</summary>
+    public string FrontendUrl { get; set; } = string.Empty;
 }
 
 public class HeftyMesterskapetSessionDto

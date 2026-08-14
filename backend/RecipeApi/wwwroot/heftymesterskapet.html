@@ -108,6 +108,11 @@
     color:var(--ink-soft);
     margin:0 0 14px;
   }
+  /* Innlogging / lesemodus */
+  .session-row{display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;}
+  .session-text{color:var(--ink-soft); font-size:14px; min-width:0;}
+  .session-text strong{color:var(--ink); font-weight:700;}
+  .session-actions{display:flex; gap:8px; flex:0 0 auto;}
   /* Deltakere */
   .add-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
   /* A flex item's default min-width:auto refuses to shrink below its content, which pushed
@@ -270,9 +275,19 @@
 
     <div id="competition" style="display:none;">
 
+    <div class="card" id="sessionCard">
+      <div class="session-row">
+        <div class="session-text" id="sessionText"></div>
+        <div class="session-actions">
+          <button class="btn-primary" id="loginBtn" style="display:none;">Logg inn for å redigere</button>
+          <button class="btn-ghost" id="logoutBtn" style="display:none;">Logg ut</button>
+        </div>
+      </div>
+    </div>
+
     <div class="card">
       <h2>Deltakere</h2>
-      <div class="add-row">
+      <div class="add-row" id="addRow">
         <input type="text" id="newName" placeholder="Navn på deltaker">
         <button class="btn-primary" id="addBtn">Legg til</button>
       </div>
@@ -292,7 +307,7 @@
     </div>
 
     <footer>
-      <button class="btn-ghost" id="resetBtn">Nullstill denne konkurransen</button>
+      <button class="btn-ghost" id="resetBtn" style="display:none;">Nullstill denne konkurransen</button>
       <div class="small" style="margin-top:10px;">
         Poeng etter plassering: 1.=12 · 2.=10 · 3.=8 · 4.=6 · 5.=5 · 6.=4 · 7.=3 · 8.=2 · 9.=1. Ved lik plassering får deltakerne samme poeng.
       </div>
@@ -331,6 +346,14 @@ let version = null;      // RowVersion of the loaded competition, for optimistic
 let dirty = false;       // unsaved local changes
 let saveTimer = null;
 let retryTimer = null;
+
+/* Lesemodus er standard. canEdit settes bare av /me eller etter innlogging, og styrer
+   utelukkende hva som VISES -- serveren avviser skriving uansett hva som skjer her. */
+let canEdit = false;
+let session = { signedIn:false, email:null, isEditor:false };
+/* Innloggingen ligger i frontend-appen på et annet domene. Serveren oppgir adressen, så den
+   ikke er hardkodet to steder. */
+let FRONTEND_URL = '';
 
 function uid(){ return Math.random().toString(36).slice(2,9); }
 
@@ -408,6 +431,18 @@ async function flushSave(){
       }
       return;
     }
+    if(res.status === 401 || res.status === 403){
+      // Sesjonen er borte eller kontoen mangler tilgang. Behold endringene i minnet slik at
+      // ingenting går tapt, og fall tilbake til lesemodus i stedet for å vise felter som
+      // uansett ikke kan lagres.
+      dirty = true;
+      session = { signedIn: res.status === 403, email: session.email, isEditor:false };
+      setEditMode(false);
+      setStatus(res.status === 403
+        ? 'Du har ikke tilgang til å endre denne konkurransen. Endringene er ikke lagret.'
+        : 'Du er logget ut. Logg inn på nytt for å lagre endringene.', true);
+      return;
+    }
     if(!res.ok){
       let msg = 'Kunne ikke lagre';
       try{ const body = await res.json(); if(body && body.error) msg = body.error; }catch(e){}
@@ -434,6 +469,105 @@ function saveState(){
 
 window.addEventListener('beforeunload', (e)=>{
   if(dirty){ e.preventDefault(); e.returnValue = ''; }
+});
+
+/* ---------- Innlogging og modus ----------
+   Å skjule knapper er bare presentasjon. Serveren avviser skriving fra alle som ikke står på
+   redaktørlista, så dette handler om å slippe å vise felter som ikke kan lagres. */
+function setEditMode(on){
+  canEdit = !!on;
+  document.getElementById('addRow').style.display = canEdit ? '' : 'none';
+  document.getElementById('resetBtn').style.display = canEdit ? '' : 'none';
+  document.getElementById('status').style.display = canEdit ? '' : 'none';
+  renderSession();
+  render();
+}
+
+function renderSession(){
+  const text = document.getElementById('sessionText');
+  const loginBtn = document.getElementById('loginBtn');
+  const logoutBtn = document.getElementById('logoutBtn');
+
+  if(canEdit){
+    text.innerHTML = `Innlogget som <strong>${escapeHtml(session.email || '')}</strong> — du kan redigere resultater.`;
+    loginBtn.style.display = 'none';
+    logoutBtn.style.display = '';
+    return;
+  }
+
+  if(session.signedIn){
+    // Innlogget, men ikke redaktør: ikke send dem gjennom en ny innlogging som ikke hjelper.
+    text.innerHTML = `Innlogget som <strong>${escapeHtml(session.email || '')}</strong>, men du har ikke tilgang til å endre resultater.`;
+    loginBtn.style.display = 'none';
+    logoutBtn.style.display = '';
+    return;
+  }
+
+  text.textContent = 'Du ser resultatene i lesemodus.';
+  // Uten kjent innloggingsadresse ville knappen ikke ført noe sted.
+  loginBtn.style.display = FRONTEND_URL ? '' : 'none';
+  logoutBtn.style.display = 'none';
+}
+
+async function loadSession(){
+  try{
+    const res = await fetch(`${EDIT_API}/me`, { credentials:'same-origin' });
+    if(!res.ok) return;
+    session = await res.json();
+  }catch(e){
+    // Ingen forbindelse: bli stående i lesemodus.
+  }
+}
+
+async function loadConfig(){
+  try{
+    const res = await fetch(`${EDIT_API}/config`);
+    if(!res.ok) return;
+    FRONTEND_URL = (await res.json()).frontendUrl || '';
+  }catch(e){
+    // Uten adressen skjuler vi innloggingsknappen i stedet for å sende folk ingensteds.
+  }
+}
+
+/* Bytter engangskoden fra innloggingen mot en sesjon på dette domenet, og fjerner den fra
+   URL-en slik at den ikke blir liggende i historikk eller blir delt videre. */
+async function consumeHandoff(){
+  const params = new URLSearchParams(location.search);
+  const code = params.get('code');
+  const notEditor = params.get('notEditor');
+  if(!code && !notEditor) return;
+
+  if(code){
+    try{
+      const res = await fetch(`${EDIT_API}/handoff/exchange`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        credentials:'same-origin',
+        body: JSON.stringify({ code })
+      });
+      if(res.ok) session = await res.json();
+    }catch(e){
+      // Behandles som "ikke innlogget" nedenfor.
+    }
+  }
+
+  params.delete('code');
+  params.delete('notEditor');
+  const rest = params.toString();
+  history.replaceState(null, '', location.pathname + (rest ? `?${rest}` : ''));
+}
+
+document.getElementById('loginBtn').addEventListener('click', ()=>{
+  const returnTo = `${location.origin}${location.pathname}`;
+  location.href = `${FRONTEND_URL}/api/auth/google?heftyReturn=${encodeURIComponent(returnTo)}`;
+});
+
+document.getElementById('logoutBtn').addEventListener('click', async ()=>{
+  try{
+    await fetch(`${EDIT_API}/logout`, { method:'POST', credentials:'same-origin' });
+  }catch(e){}
+  session = { signedIn:false, email:null, isEditor:false };
+  setEditMode(false);
 });
 
 function computeEventRanking(eventId){
@@ -496,7 +630,7 @@ function renderChips(){
   el.innerHTML = state.participants.map(p=>`
     <div class="chip">
       <span>${escapeHtml(p.name)}</span>
-      <button data-id="${p.id}" class="removeP" title="Fjern deltaker">×</button>
+      ${canEdit ? `<button data-id="${p.id}" class="removeP" title="Fjern deltaker">×</button>` : ''}
     </div>`).join('');
   el.querySelectorAll('.removeP').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -529,7 +663,9 @@ function renderEventPanel(){
   const ev = EVENTS.find(e=>e.id===activeEvent);
   const panel = document.getElementById('eventPanel');
   if(state.participants.length===0){
-    panel.innerHTML = '<p class="empty">Legg til deltakere ovenfor for å registrere resultater.</p>';
+    panel.innerHTML = canEdit
+      ? '<p class="empty">Legg til deltakere ovenfor for å registrere resultater.</p>'
+      : '<p class="empty">Ingen deltakere er lagt til enda.</p>';
     return;
   }
   const doneCount = state.participants.filter(p=> (state.results[ev.id]||{})[p.id]).length;
@@ -539,17 +675,20 @@ function renderEventPanel(){
       <h3>${ev.name}</h3>
       <span class="event-meta">${ev.type==='time' ? 'Tid (sek, eller mm:ss)' : 'Lengde (meter)'}</span>
     </div>
-    <div class="progress">${doneCount} av ${state.participants.length} deltakere registrert</div>
-    <div class="input-grid">`;
+    <div class="progress">${doneCount} av ${state.participants.length} deltakere registrert</div>`;
 
-  state.participants.forEach(p=>{
-    const raw = (state.results[ev.id]||{})[p.id] || '';
-    html += `
-      <div class="name">${escapeHtml(p.name)}</div>
-      <input type="text" class="mono resultInput" data-pid="${p.id}" value="${escapeHtml(raw)}" placeholder="${ev.type==='time'?'f.eks. 12.4':'f.eks. 6.20'}">
-    `;
-  });
-  html += `</div>`;
+  // I lesemodus er selve inntastingsrutenettet unødvendig: resultatene står i tabellen under.
+  if(canEdit){
+    html += `<div class="input-grid">`;
+    state.participants.forEach(p=>{
+      const raw = (state.results[ev.id]||{})[p.id] || '';
+      html += `
+        <div class="name">${escapeHtml(p.name)}</div>
+        <input type="text" class="mono resultInput" data-pid="${p.id}" value="${escapeHtml(raw)}" placeholder="${ev.type==='time'?'f.eks. 12.4':'f.eks. 6.20'}">
+      `;
+    });
+    html += `</div>`;
+  }
 
   const ranking = computeEventRanking(ev.id);
   if(ranking.length){
@@ -642,11 +781,19 @@ function showCompetition(show){
     await loadCompetition();
     showCompetition(true);
     setStatus('');
-    render();
   }catch(e){
     // Serveren oppretter konkurransen ved oppstart, så dette betyr normalt at API-et er nede.
     showCompetition(false);
+    return;
   }
+
+  // Lesemodus vises med en gang; innlogging avgjør bare om redigering slås på etterpå.
+  setEditMode(false);
+
+  await loadConfig();
+  await consumeHandoff();
+  if(!session.signedIn) await loadSession();
+  setEditMode(session.isEditor === true);
 })();
 </script>
 </body>

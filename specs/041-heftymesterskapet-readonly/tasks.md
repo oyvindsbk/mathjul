@@ -32,17 +32,17 @@
       targets outside the allowlisted origin so the login cannot become an open redirect. Verify:
       `npm run lint`, `npx tsc --noEmit`, `npm run build`.
 
-- [ ] Task 6: Read-only page rendering. Thread a `canEdit` flag through `heftymesterskapet.html`:
+- [x] Task 6: Read-only page rendering. Thread a `canEdit` flag through `heftymesterskapet.html`:
       hide the add-participant row, remove buttons, reset button, and status line when read-only,
       and render results as text instead of inputs. Standings and per-event rankings stay fully
       visible in both modes. Verify: page loads signed-out with no editing controls.
 
-- [ ] Task 7: Login affordance on the page. Add "Logg inn for å redigere" in read-only mode, show
+- [x] Task 7: Login affordance on the page. Add "Logg inn for å redigere" in read-only mode, show
       the signed-in editor with a sign-out action in edit mode, and tell a signed-in non-editor
       they lack access while keeping them read-only. Consume the handoff code on load, exchange it,
       then strip it from the URL. Verify: full signed-out → login → edit round trip.
 
-- [ ] Task 8: Save-path auth handling. Treat 401/403 from the write endpoints as an auth problem
+- [x] Task 8: Save-path auth handling. Treat 401/403 from the write endpoints as an auth problem
       with a clear message rather than a generic save failure, preserving unsaved local state and
       dropping back to read-only. Verify: expired session mid-edit loses nothing.
 
