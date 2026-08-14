@@ -497,6 +497,8 @@ function renderChips(){
   el.querySelectorAll('.removeP').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const id = btn.getAttribute('data-id');
+      const p = state.participants.find(p=>p.id===id);
+      if(!confirm(`Fjern ${p ? p.name : 'deltaker'}? Dette sletter også alle registrerte resultater for denne personen.`)) return;
       state.participants = state.participants.filter(p=>p.id!==id);
       EVENTS.forEach(ev=>{ if(state.results[ev.id]) delete state.results[ev.id][id]; });
       saveState(); render();
