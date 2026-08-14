@@ -202,16 +202,22 @@ export default function HomeClient() {
           {filteredRecipes.map((recipe) => (
             <div key={recipe.id} data-testid={`recipe-card-${recipe.id}`} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col">
               <div className="h-28 md:h-48 bg-gray-200 flex items-center justify-center overflow-hidden relative">
-                {recipe.imageUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={recipe.imageUrl}
-                    alt={recipe.title}
-                    className="w-full h-full object-contain bg-gray-100"
-                  />
-                ) : (
-                  <span className="text-gray-500">Oppskrift bilde</span>
-                )}
+                <Link
+                  href={`/recipes/${recipe.id}`}
+                  aria-label={recipe.title}
+                  className="w-full h-full flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
+                >
+                  {recipe.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={recipe.imageUrl}
+                      alt={recipe.title}
+                      className="w-full h-full object-contain bg-gray-100 transition-transform duration-300 hover:scale-105"
+                    />
+                  ) : (
+                    <span className="text-gray-500">Oppskrift bilde</span>
+                  )}
+                </Link>
                 <div className="absolute top-2 right-2 bg-white/80 rounded-full p-1 shadow">
                   <HeartButton
                     recipeId={recipe.id}
@@ -222,7 +228,12 @@ export default function HomeClient() {
               </div>
               <div className="p-3 md:p-6 flex flex-col flex-1">
                 <h3 className="text-sm md:text-xl font-semibold text-gray-900 mb-1 md:mb-2 line-clamp-2">
-                  {recipe.title}
+                  <Link
+                    href={`/recipes/${recipe.id}`}
+                    className="hover:text-blue-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
+                  >
+                    {recipe.title}
+                  </Link>
                 </h3>
                 <p className="text-gray-600 text-xs md:text-sm mb-2 md:mb-3 line-clamp-2 hidden md:block">
                   {recipe.description || "Ingen beskrivelse"}
