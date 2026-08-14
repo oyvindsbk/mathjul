@@ -320,7 +320,10 @@ const EVENTS = [
   {id:'800m',   name:'800 m',        unit:'sek/min', type:'time'},
 ];
 const POINTS = {1:12,2:10,3:8,4:6,5:5,6:4,7:3,8:2,9:1};
-const API = '/api/public/heftymesterskapet';
+/* Lesing er åpent for alle; skriving krever en redaktør (egen e-postliste, se
+   HeftyMesterskapetEditorService). De to prefiksene speiler nettopp det skillet. */
+const API = '/api/public/heftymesterskapet';        // lesing — offentlig
+const EDIT_API = '/api/heftymesterskapet';           // skriving — krever innlogget redaktør
 
 let state = { participants: [], results: {} }; // results[eventId][participantId] = "raw string"
 let activeEvent = EVENTS[0].id;
@@ -384,9 +387,10 @@ async function flushSave(){
   dirty = false;
   setStatus('Lagrer…');
   try{
-    const res = await fetch(`${API}/competitions/${encodeURIComponent(SLUG)}/state`, {
+    const res = await fetch(`${EDIT_API}/competitions/${encodeURIComponent(SLUG)}/state`, {
       method:'PUT',
       headers:{'Content-Type':'application/json'},
+      credentials:'same-origin',
       body: JSON.stringify({ state, version })
     });
     if(res.status === 409){

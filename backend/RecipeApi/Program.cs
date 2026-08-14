@@ -133,6 +133,8 @@ builder.Services.AddSingleton<RecipeApi.Features.HeftyMesterskapet.IHeftyMesters
         sp.GetRequiredService<ILogger<RecipeApi.Features.HeftyMesterskapet.HeftyMesterskapetEditorService>>(),
         sp.GetRequiredService<IConfiguration>(),
         sp.GetService<SecretClient>()));
+builder.Services.AddSingleton<RecipeApi.Features.HeftyMesterskapet.IHeftyMesterskapetCallerResolver,
+    RecipeApi.Features.HeftyMesterskapet.HeftyMesterskapetCallerResolver>();
 
 // Register Blob Storage service
 var blobOptions = new BlobStorageOptions

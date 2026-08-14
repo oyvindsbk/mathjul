@@ -47,10 +47,16 @@ public class EmailWhitelistMiddleware
         var isLocalDev = _hostEnvironment.IsDevelopment() || _hostEnvironment.IsEnvironment("LocalDevelopment");
         var isDevelopment = isLocalDev && _configuration.GetValue("AllowUnauthenticated", defaultValue: true);
 
-        // Skip authentication for health checks and auth endpoints only
+        // Skip authentication for health checks and auth endpoints only.
+        //
+        // /api/heftymesterskapet/ is exempted here but is NOT unauthenticated: it is gated by
+        // IHeftyMesterskapetEditorService against its own editor list. It has to bypass this
+        // middleware because the two lists are deliberately independent -- an editor is typically
+        // not a recipe-app user, and this middleware would reject them before the editor check ran.
         var path = context.Request.Path.Value?.ToLower() ?? "";
         if (path.StartsWith("/health") ||
-            path.StartsWith("/api/public/") ||   // Deliberately public APIs (Heftymesterskapet). Trailing slash keeps the prefix tight.
+            path.StartsWith("/api/public/") ||   // Deliberately public APIs (Heftymesterskapet reads). Trailing slash keeps the prefix tight.
+            path.StartsWith("/api/heftymesterskapet/") ||  // Authorized by its own editor list, not approved-users -- see below.
             path == "/api/auth/google-token" ||  // Google OAuth callback
             path == "/api/auth/dev-token")        // Dev fake login
         {

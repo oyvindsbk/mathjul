@@ -9,7 +9,7 @@
       `appsettings.Development.json`. Unit tests: known editor allowed, unknown denied, empty list
       denies, case-insensitivity, cache refresh. Verify: `dotnet build`, `dotnet test`.
 
-- [ ] Task 2: Split the controller. Keep the two `GET` endpoints on
+- [x] Task 2: Split the controller. Keep the two `GET` endpoints on
       `/api/public/heftymesterskapet`. Move `POST`, `PUT /state`, and `DELETE` to
       `/api/heftymesterskapet`, rejecting non-editors with 401 (unauthenticated) or 403 (signed in,
       not an editor). Exempt the new prefix from `EmailWhitelistMiddleware` so the recipe-app

@@ -6,22 +6,16 @@ using RecipeApi.Infrastructure;
 namespace RecipeApi.Features.HeftyMesterskapet;
 
 /// <summary>
-/// Public, unauthenticated API for the multi-event scoring app served at /heftymesterskapet.html.
-/// The /api/public/ prefix is exempted in EmailWhitelistMiddleware -- anyone with the
-/// link can read and write. Limits below bound the blast radius on the shared Basic SQL.
+/// Public, unauthenticated READ API for the multi-event scoring app served at /heftymesterskapet.html.
+/// The /api/public/ prefix is exempted in EmailWhitelistMiddleware -- anyone with the link can read
+/// the scoreboard, which is the point of the page.
+///
+/// Writes live in <see cref="HeftyMesterskapetEditorController"/> behind the editor list.
 /// </summary>
 [ApiController]
 [Route("api/public/heftymesterskapet")]
 public class HeftyMesterskapetController : ControllerBase
 {
-    // Caps: storage is shared with the recipe data on a 2 GB Basic tier, so bound the
-    // damage an anonymous caller can do. 100 competitions x ~50 KB is ~5 MB worst case.
-    private const int MaxCompetitions = 100;
-    private const int MaxParticipants = 50;
-    private const int MaxEvents = 20;
-    private const int MaxNameLength = 60;
-    private const int MaxResultLength = 20;
-
     private readonly RecipeDbContext _db;
 
     public HeftyMesterskapetController(RecipeDbContext db)
@@ -62,13 +56,70 @@ public class HeftyMesterskapetController : ControllerBase
             return NotFound(new { error = "Fant ikke konkurransen" });
         }
 
-        return Ok(ToDto(competition));
+        return Ok(HeftyMesterskapetMapping.ToDto(competition));
+    }
+}
+
+/// <summary>
+/// Editor-only WRITE API. Every action here requires an email on the Heftymesterskapet editor list
+/// (see <see cref="IHeftyMesterskapetEditorService"/>), which is separate from the recipe app's
+/// approved-users whitelist.
+///
+/// This prefix is exempted from EmailWhitelistMiddleware precisely so that the editor list -- not
+/// the recipe whitelist -- decides. Every action must therefore call <see cref="RequireEditorAsync"/>;
+/// nothing upstream authorizes these requests.
+/// </summary>
+[ApiController]
+[Route("api/heftymesterskapet")]
+public class HeftyMesterskapetEditorController : ControllerBase
+{
+    // Caps: storage is shared with the recipe data on a 2 GB Basic tier, so bound the
+    // damage a caller can do. 100 competitions x ~50 KB is ~5 MB worst case.
+    private const int MaxCompetitions = 100;
+    private const int MaxParticipants = 50;
+    private const int MaxEvents = 20;
+    private const int MaxNameLength = 60;
+    private const int MaxResultLength = 20;
+
+    private readonly RecipeDbContext _db;
+    private readonly IHeftyMesterskapetCallerResolver _callerResolver;
+
+    public HeftyMesterskapetEditorController(
+        RecipeDbContext db,
+        IHeftyMesterskapetCallerResolver callerResolver)
+    {
+        _db = db;
+        _callerResolver = callerResolver;
     }
 
-    // POST /api/public/heftymesterskapet/competitions
+    /// <summary>
+    /// Returns null when the caller may edit, otherwise the result to return. 401 distinguishes
+    /// "not signed in" from 403 "signed in but not an editor" so the page can react differently.
+    /// </summary>
+    private async Task<ActionResult?> RequireEditorAsync()
+    {
+        var caller = await _callerResolver.ResolveAsync(HttpContext);
+
+        if (!caller.IsSignedIn)
+        {
+            return Unauthorized(new { error = "Du må logge inn for å endre konkurransen" });
+        }
+
+        if (!caller.IsEditor)
+        {
+            return StatusCode(403, new { error = "Du har ikke tilgang til å endre denne konkurransen" });
+        }
+
+        return null;
+    }
+
+    // POST /api/heftymesterskapet/competitions
     [HttpPost("competitions")]
     public async Task<ActionResult<CompetitionDto>> CreateCompetition([FromBody] CreateCompetitionRequest request)
     {
+        var denied = await RequireEditorAsync();
+        if (denied != null) return denied;
+
         var name = request.Name?.Trim();
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -95,13 +146,16 @@ public class HeftyMesterskapetController : ControllerBase
         _db.HeftyMesterskapetCompetitions.Add(competition);
         await _db.SaveChangesAsync();
 
-        return Ok(ToDto(competition));
+        return Ok(HeftyMesterskapetMapping.ToDto(competition));
     }
 
-    // DELETE /api/public/heftymesterskapet/competitions/{slug}
+    // DELETE /api/heftymesterskapet/competitions/{slug}
     [HttpDelete("competitions/{slug}")]
     public async Task<IActionResult> DeleteCompetition(string slug)
     {
+        var denied = await RequireEditorAsync();
+        if (denied != null) return denied;
+
         var competition = await _db.HeftyMesterskapetCompetitions.FirstOrDefaultAsync(c => c.Slug == slug);
         if (competition == null)
         {
@@ -109,7 +163,7 @@ public class HeftyMesterskapetController : ControllerBase
         }
 
         // Soft delete -- the global query filter hides it from every other endpoint, but the
-        // row survives so a misclick by an anonymous caller can be undone in the database.
+        // row survives so a misclick is recoverable straight from the database.
         competition.DeletedAt = DateTime.UtcNow;
         competition.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
@@ -117,11 +171,14 @@ public class HeftyMesterskapetController : ControllerBase
         return NoContent();
     }
 
-    // PUT /api/public/heftymesterskapet/competitions/{slug}/state
+    // PUT /api/heftymesterskapet/competitions/{slug}/state
     [HttpPut("competitions/{slug}/state")]
     [RequestSizeLimit(256_000)]
     public async Task<IActionResult> SaveState(string slug, [FromBody] SaveStateRequest request)
     {
+        var denied = await RequireEditorAsync();
+        if (denied != null) return denied;
+
         if (request.State == null)
         {
             return BadRequest(new { error = "Mangler data" });
@@ -173,10 +230,10 @@ public class HeftyMesterskapetController : ControllerBase
                 return NotFound(new { error = "Fant ikke konkurransen" });
             }
 
-            return Conflict(ToDto(fresh));
+            return Conflict(HeftyMesterskapetMapping.ToDto(fresh));
         }
 
-        return Ok(new { version = ToVersion(competition.RowVersion) });
+        return Ok(new { version = HeftyMesterskapetMapping.ToVersion(competition.RowVersion) });
     }
 
     private static string? Validate(HeftyMesterskapetState state)
@@ -227,11 +284,14 @@ public class HeftyMesterskapetController : ControllerBase
         var bytes = RandomNumberGenerator.GetBytes(12);
         return string.Concat(bytes.Select(b => alphabet[b % alphabet.Length]));
     }
+}
 
-    private static string ToVersion(byte[]? rowVersion) =>
+internal static class HeftyMesterskapetMapping
+{
+    public static string ToVersion(byte[]? rowVersion) =>
         rowVersion == null ? string.Empty : Convert.ToBase64String(rowVersion);
 
-    private static CompetitionDto ToDto(HeftyMesterskapetCompetition competition) => new()
+    public static CompetitionDto ToDto(HeftyMesterskapetCompetition competition) => new()
     {
         Slug = competition.Slug,
         Name = competition.Name,
