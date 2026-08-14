@@ -195,6 +195,41 @@ class RecipeService {
   }
 
   /**
+   * Fetch recipes the signed-in user added, newest first. Includes their private
+   * recipes — they are the owner.
+   */
+  async getMyRecipes(token?: string): Promise<Recipe[]> {
+    if (appConfig.mocking.enabled) {
+      return mockRecipes.slice(0, 3);
+    }
+
+    const response = await this.fetchWithTimeout(
+      `${appConfig.api.baseUrl}/api/recipes/mine`,
+      appConfig.mocking.fetchTimeout,
+      token
+    );
+    if (!response.ok) throw new Error(`Failed to fetch my recipes: ${response.statusText}`);
+    return await response.json();
+  }
+
+  /**
+   * Fetch recipes added by another user, limited to what the caller may see.
+   */
+  async getRecipesByUser(userId: number, token?: string): Promise<Recipe[]> {
+    if (appConfig.mocking.enabled) {
+      return mockRecipes.slice(0, 2);
+    }
+
+    const response = await this.fetchWithTimeout(
+      `${appConfig.api.baseUrl}/api/recipes/by-user/${userId}`,
+      appConfig.mocking.fetchTimeout,
+      token
+    );
+    if (!response.ok) throw new Error(`Failed to fetch user recipes: ${response.statusText}`);
+    return await response.json();
+  }
+
+  /**
    * Fetch the current user's favourite recipes
    */
   async getFavoriteRecipes(token?: string): Promise<Recipe[]> {

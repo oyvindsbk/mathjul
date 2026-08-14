@@ -8,7 +8,7 @@ import { useAuth } from "@/lib/context/AuthContext";
 
 const LIST_PAGES: Record<string, string> = {
   "/alle-oppskrifter": "Alle oppskrifter",
-  "/favoritter": "Favoritter",
+  "/profil": "Min side",
   "/ukesplanlegger": "Ukesplanlegger",
   "/grupper": "Grupper",
   "/spin-the-wheel": "Spin the Wheel",
@@ -61,6 +61,23 @@ function buildCrumbs(
       { label: "Hjem", href: "/" },
       { label: "Grupper", href: "/grupper" },
       { label: "Gruppe" },
+    ];
+  }
+
+  // Edit profile: /profil/rediger — a child of Min side, not another user.
+  if (pathname === "/profil/rediger") {
+    return [
+      { label: "Hjem", href: "/" },
+      { label: "Min side", href: "/profil" },
+      { label: "Rediger profil" },
+    ];
+  }
+
+  // Another user's profile: /profil/[userId]
+  if (/^\/profil\/[^/]+$/.test(pathname)) {
+    return [
+      { label: "Hjem", href: "/" },
+      { label: "Profil" },
     ];
   }
 

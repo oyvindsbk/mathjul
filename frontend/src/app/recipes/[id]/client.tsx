@@ -101,16 +101,32 @@ export default function RecipeDetailClient({ id }: { id: string }) {
     );
   }
 
+  // Falls back to the raw email only for recipes whose owner has no user record.
+  const ownerLabel = recipe.ownerDisplayName || recipe.ownerEmail;
+
   const hasMeta = Boolean(
-    recipe.ownerEmail || recipe.sourceUrl || (recipe.categories && recipe.categories.length > 0)
+    ownerLabel || recipe.sourceUrl || (recipe.categories && recipe.categories.length > 0)
   );
 
   const metaContent = (
     <>
-      {(recipe.ownerEmail || recipe.sourceUrl) && (
+      {(ownerLabel || recipe.sourceUrl) && (
         <div className="text-sm text-gray-500 mb-4 flex flex-col gap-1">
-          {recipe.ownerEmail && (
-            <span>Lagt til av {recipe.ownerEmail}</span>
+          {ownerLabel && (
+            <span>
+              Lagt til av{" "}
+              {recipe.ownerUserId ? (
+                <Link
+                  href={`/profil/${recipe.ownerUserId}`}
+                  data-testid="oppskrift-eier-lenke"
+                  className="text-blue-600 hover:underline"
+                >
+                  {ownerLabel}
+                </Link>
+              ) : (
+                ownerLabel
+              )}
+            </span>
           )}
           {recipe.sourceUrl && (
             <span>Kilde: <a href={recipe.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline break-all">{recipe.sourceUrl}</a></span>

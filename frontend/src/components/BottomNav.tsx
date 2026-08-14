@@ -45,7 +45,7 @@ const tabs = [
   },
   {
     href: "/profil",
-    label: "Profil",
+    label: "Min side",
     testId: "bottom-nav-profil",
     icon: (
       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

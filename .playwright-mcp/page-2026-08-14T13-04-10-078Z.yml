@@ -1,0 +1,3 @@
+- generic [active] [ref=f6e1]:
+  - paragraph [ref=f6e5]: Checking authentication...
+  - button "Rapporter en bug" [ref=f6e6] [cursor=pointer]

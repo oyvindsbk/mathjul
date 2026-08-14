@@ -1,60 +1,43 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useAuth } from "@/lib/context/AuthContext";
-import { apiFetch } from "@/lib/api-fetch";
+import { recipeService } from "@/lib/services/recipe.service";
+import { ProfileHeader } from "@/components/profil/ProfileHeader";
+import { RecipeSection } from "@/components/profil/RecipeSection";
+import type { Recipe } from "@/lib/mock-data";
 
 export default function ProfilPage() {
-  const { token, userId, name, nickname, setProfile, isLoading: authLoading } = useAuth();
-  const [nameInput, setNameInput] = useState("");
-  const [nicknameInput, setNicknameInput] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const { token, name, nickname, isLoading: authLoading } = useAuth();
+
+  const [myRecipes, setMyRecipes] = useState<Recipe[]>([]);
+  const [favorites, setFavorites] = useState<Recipe[]>([]);
+  const [loadingRecipes, setLoadingRecipes] = useState(true);
+  const [loadingFavorites, setLoadingFavorites] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    setNameInput(name ?? "");
-    setNicknameInput(nickname ?? "");
-  }, [name, nickname]);
+    if (authLoading) return;
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!token || !userId) return;
-
-    setSaving(true);
-    setSuccess(false);
-    setError(null);
-
-    try {
-      const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:5238";
-      const res = await apiFetch(`${apiBase}/api/user/${userId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          name: nameInput.trim() || null,
-          nickname: nicknameInput.trim() || null,
-        }),
-      });
-
-      if (!res.ok) {
-        const data = (await res.json()) as { error?: string };
-        setError(data.error ?? "Kunne ikke lagre profilen");
-        return;
-      }
-
-      const data = (await res.json()) as { name: string | null; nickname: string | null };
-      setProfile({ name: data.name, nickname: data.nickname });
-      setSuccess(true);
-    } catch {
-      setError("Noe gikk galt. Prøv igjen.");
-    } finally {
-      setSaving(false);
+    if (!token) {
+      setLoadingRecipes(false);
+      setLoadingFavorites(false);
+      return;
     }
-  };
+
+    recipeService
+      .getMyRecipes(token)
+      .then(setMyRecipes)
+      .catch(() => setLoadError("Kunne ikke laste oppskriftene dine"))
+      .finally(() => setLoadingRecipes(false));
+
+    recipeService
+      .getFavoriteRecipes(token)
+      .then(setFavorites)
+      .catch(() => setLoadError("Kunne ikke laste favorittene dine"))
+      .finally(() => setLoadingFavorites(false));
+  }, [authLoading, token]);
 
   if (authLoading) {
     return (
@@ -66,66 +49,67 @@ export default function ProfilPage() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-600">Du må være logget inn for å se profilen din.</p>
+      <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto text-center">
+          <p className="text-lg text-gray-600 mb-4">Du må være logget inn for å se Min side.</p>
+          <Link
+            href="/login"
+            className="inline-block px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Logg inn
+          </Link>
+        </div>
       </div>
     );
   }
 
+  // Falls back to "Min side" until the profile has loaded, so the heading is never blank.
+  const displayName = nickname?.trim() || name?.trim() || "Min side";
+
   return (
-    <div className="min-h-screen bg-gray-50 py-6 md:py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-8">Profilinnstillinger</h1>
-
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <form onSubmit={handleSave} className="space-y-5">
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                Navn
-              </label>
-              <input
-                id="name"
-                type="text"
-                value={nameInput}
-                onChange={(e) => setNameInput(e.target.value)}
-                maxLength={100}
-                placeholder="Ditt fulle navn"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="nickname" className="block text-sm font-medium text-gray-700 mb-1">
-                Kallenavn
-              </label>
-              <input
-                id="nickname"
-                type="text"
-                value={nicknameInput}
-                onChange={(e) => setNicknameInput(e.target.value)}
-                maxLength={50}
-                placeholder="Ditt kallenavn"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {error && (
-              <p className="text-sm text-red-600">{error}</p>
-            )}
-
-            {success && (
-              <p className="text-sm text-green-600">Profilen er oppdatert!</p>
-            )}
-
-            <button
-              type="submit"
-              disabled={saving}
-              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50"
+    <div className="min-h-screen bg-gray-50 py-4 md:py-12 px-3 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
+        <ProfileHeader
+          displayName={displayName}
+          recipeCount={myRecipes.length}
+          favoriteCount={favorites.length}
+          action={
+            <Link
+              href="/profil/rediger"
+              data-testid="rediger-profil"
+              className="inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors min-h-[44px]"
             >
-              {saving ? "Lagrer…" : "Lagre"}
-            </button>
-          </form>
-        </div>
+              Rediger profil
+            </Link>
+          }
+        />
+
+        {loadError && (
+          <div className="mb-6 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md">
+            <p className="text-sm">{loadError}</p>
+          </div>
+        )}
+
+        <RecipeSection
+          title="❤️ Favoritter"
+          testId="profil-favoritter"
+          recipes={favorites}
+          loading={loadingFavorites}
+          token={token}
+          emptyText="Ingen favoritter ennå. Trykk hjertet på en oppskrift for å legge den til her."
+          emptyAction={{ href: "/alle-oppskrifter", label: "Se alle oppskrifter" }}
+        />
+
+        <RecipeSection
+          title="Mine oppskrifter"
+          testId="profil-mine-oppskrifter"
+          recipes={myRecipes}
+          loading={loadingRecipes}
+          token={token}
+          emptyText="Du har ikke lagt til noen oppskrifter ennå."
+          emptyAction={{ href: "/last-opp-oppskrift", label: "Last opp oppskrift" }}
+        />
+
       </div>
     </div>
   );

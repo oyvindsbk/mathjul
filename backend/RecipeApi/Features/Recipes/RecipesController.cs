@@ -40,17 +40,132 @@ public class RecipesController : ControllerBase
         User.FindFirst(System.Security.Claims.ClaimTypes.Email)?.Value
         ?? User.FindFirst("email")?.Value;
 
-    private IQueryable<Recipe> ApplyVisibilityFilter(IQueryable<Recipe> query, string? callerEmail)
+    /// <summary>
+    /// Fills OwnerDisplayName/OwnerUserId on already-projected recipes.
+    ///
+    /// Recipes store the owner as an email with no foreign key to Users, so the join
+    /// happens here instead of in the projection: one lookup for the whole page rather
+    /// than one per recipe. Owners with no Users row (seed data, removed accounts) keep
+    /// a null id and fall back to the email as their name.
+    /// </summary>
+    private async Task PopulateOwnerDisplayAsync(IReadOnlyCollection<RecipeDto> recipes)
     {
-        if (callerEmail != null && _adminService.IsAdmin(callerEmail))
-            return query;
+        var emails = recipes
+            .Select(r => r.OwnerEmail)
+            .Where(e => !string.IsNullOrEmpty(e))
+            .Select(e => e!)
+            .Distinct()
+            .ToList();
 
-        return query.Where(r =>
-            r.Visibility == "Public" ||
-            (r.Visibility == "Private" && r.OwnerEmail == callerEmail) ||
-            (r.Visibility == "Group" && r.Groups.Any(rg =>
-                rg.Group.Members.Any(m => m.User.Email == callerEmail))));
+        if (emails.Count == 0)
+            return;
+
+        var owners = await _context.Users
+            .AsNoTracking()
+            .Where(u => emails.Contains(u.Email))
+            .Select(u => new { u.Id, u.Email, u.Nickname, u.Name, u.DisplayName })
+            .ToListAsync();
+
+        var byEmail = owners.ToDictionary(u => u.Email, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var recipe in recipes)
+        {
+            if (string.IsNullOrEmpty(recipe.OwnerEmail))
+                continue;
+
+            if (byEmail.TryGetValue(recipe.OwnerEmail, out var owner))
+            {
+                recipe.OwnerUserId = owner.Id;
+                recipe.OwnerDisplayName = UserDisplayName.Resolve(
+                    owner.Nickname, owner.Name, owner.DisplayName, owner.Email);
+            }
+            else
+            {
+                // No Users row (seed data, removed account) — still route through the
+                // resolver so no listing hands out a full address.
+                recipe.OwnerDisplayName = UserDisplayName.Resolve(null, null, null, recipe.OwnerEmail);
+            }
+        }
     }
+
+    /// <summary>
+    /// Recipes owned by <paramref name="ownerEmail"/>, newest first, projected to DTOs.
+    ///
+    /// When <paramref name="viewerEmail"/> is given the result is additionally narrowed to
+    /// what that viewer may see; pass null only when the owner is the viewer.
+    /// </summary>
+    private IQueryable<RecipeDto> OwnedByQuery(string ownerEmail, string? viewerEmail = null)
+    {
+        IQueryable<Recipe> query = _context.Recipes
+            .AsNoTracking()
+            .Include(r => r.Categories)
+            .Include(r => r.Groups).ThenInclude(rg => rg.Group).ThenInclude(g => g.Members).ThenInclude(m => m.User)
+            .Where(r => r.OwnerEmail == ownerEmail);
+
+        if (viewerEmail != null)
+            query = ApplyVisibilityFilter(query, viewerEmail);
+
+        return query
+            .OrderByDescending(r => r.CreatedAt)
+            .ThenByDescending(r => r.Id)
+            .Select(r => new RecipeDto
+            {
+                Id = r.Id,
+                Title = r.Title,
+                Description = r.Description,
+                CookTime = r.CookTime,
+                ImageUrl = r.ImageUrl,
+                Visibility = r.Visibility,
+                OwnerEmail = r.OwnerEmail,
+                Categories = r.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
+                Groups = r.Groups.Select(rg => new GroupRefDto { Id = rg.GroupId, Name = rg.Group.Name }).ToList()
+            });
+    }
+
+    /// <summary>
+    /// Marks which recipes the caller has liked. Always keyed on the caller so a profile
+    /// page shows the viewer's own hearts, not the profile owner's.
+    /// </summary>
+    private async Task ApplyLikesAsync(IReadOnlyCollection<RecipeDto> recipes, string callerEmail)
+    {
+        if (recipes.Count == 0)
+            return;
+
+        var ids = recipes.Select(r => r.Id).ToList();
+        var likedIds = await _context.RecipeLikes
+            .Where(l => l.UserEmail == callerEmail && ids.Contains(l.RecipeId))
+            .Select(l => l.RecipeId)
+            .ToHashSetAsync();
+
+        foreach (var recipe in recipes)
+            recipe.IsLikedByMe = likedIds.Contains(recipe.Id);
+    }
+
+    /// <summary>Single-recipe counterpart to <see cref="PopulateOwnerDisplayAsync"/>.</summary>
+    private async Task PopulateOwnerDisplayAsync(RecipeDetailDto recipe)
+    {
+        if (string.IsNullOrEmpty(recipe.OwnerEmail))
+            return;
+
+        var owner = await _context.Users
+            .AsNoTracking()
+            .Where(u => u.Email == recipe.OwnerEmail)
+            .Select(u => new { u.Id, u.Email, u.Nickname, u.Name, u.DisplayName })
+            .FirstOrDefaultAsync();
+
+        if (owner == null)
+        {
+            recipe.OwnerDisplayName = UserDisplayName.Resolve(null, null, null, recipe.OwnerEmail);
+            return;
+        }
+
+        recipe.OwnerUserId = owner.Id;
+        recipe.OwnerDisplayName = UserDisplayName.Resolve(
+            owner.Nickname, owner.Name, owner.DisplayName, owner.Email);
+    }
+
+    private IQueryable<Recipe> ApplyVisibilityFilter(IQueryable<Recipe> query, string? callerEmail) =>
+        query.VisibleTo(callerEmail, callerEmail != null && _adminService.IsAdmin(callerEmail));
 
     [HttpGet]
     public async Task<ActionResult<List<RecipeDto>>> GetAllRecipes(
@@ -126,6 +241,8 @@ public class RecipesController : ControllerBase
 
         foreach (var r in recipes)
             r.IsLikedByMe = likedIds.Contains(r.Id);
+
+        await PopulateOwnerDisplayAsync(recipes);
 
         return Ok(recipes);
     }
@@ -221,6 +338,8 @@ public class RecipesController : ControllerBase
             UpdatedAt = recipe.UpdatedAt,
             IsLikedByMe = isLikedByMe
         };
+
+        await PopulateOwnerDisplayAsync(recipeDetail);
 
         return Ok(recipeDetail);
     }
@@ -848,6 +967,8 @@ public class RecipesController : ControllerBase
             UpdatedAt = recipe.UpdatedAt
         };
 
+        await PopulateOwnerDisplayAsync(recipeDetail);
+
         return Ok(recipeDetail);
     }
 
@@ -1026,6 +1147,8 @@ public class RecipesController : ControllerBase
         foreach (var r in recipes)
             r.IsLikedByMe = likedIds.Contains(r.Id);
 
+        await PopulateOwnerDisplayAsync(recipes);
+
         return Ok(recipes);
     }
 
@@ -1064,6 +1187,55 @@ public class RecipesController : ControllerBase
                 IsLikedByMe = true
             })
             .ToListAsync();
+
+        await PopulateOwnerDisplayAsync(recipes);
+
+        return Ok(recipes);
+    }
+
+    /// <summary>Recipes owned by the caller, newest first.</summary>
+    [HttpGet("mine")]
+    public async Task<ActionResult<List<RecipeDto>>> GetMyRecipes()
+    {
+        var callerEmail = GetCallerEmail();
+        if (callerEmail == null)
+            return Unauthorized(new { message = "Authentication required" });
+
+        // No visibility filter: your own recipes are all yours to see, whether they
+        // are Public, Private or shared with a group.
+        var recipes = await OwnedByQuery(callerEmail).ToListAsync();
+
+        await ApplyLikesAsync(recipes, callerEmail);
+        await PopulateOwnerDisplayAsync(recipes);
+
+        return Ok(recipes);
+    }
+
+    /// <summary>
+    /// Recipes owned by <paramref name="userId"/> that the caller is allowed to see.
+    /// The visibility filter runs against the caller, not the owner, so this cannot be
+    /// used to read someone else's private recipes.
+    /// </summary>
+    [HttpGet("by-user/{userId:int}")]
+    public async Task<ActionResult<List<RecipeDto>>> GetRecipesByUser(int userId)
+    {
+        var callerEmail = GetCallerEmail();
+        if (callerEmail == null)
+            return Unauthorized(new { message = "Authentication required" });
+
+        var ownerEmail = await _context.Users
+            .AsNoTracking()
+            .Where(u => u.Id == userId)
+            .Select(u => u.Email)
+            .FirstOrDefaultAsync();
+
+        if (ownerEmail == null)
+            return NotFound(new { message = "User not found" });
+
+        var recipes = await OwnedByQuery(ownerEmail, callerEmail).ToListAsync();
+
+        await ApplyLikesAsync(recipes, callerEmail);
+        await PopulateOwnerDisplayAsync(recipes);
 
         return Ok(recipes);
     }
@@ -1203,6 +1375,10 @@ public class RecipeDto
     public string? ImageUrl { get; set; }
     public string Visibility { get; set; } = "Public";
     public string? OwnerEmail { get; set; }
+    /// <summary>Owner shown by name rather than email. Null when the recipe has no owner.</summary>
+    public string? OwnerDisplayName { get; set; }
+    /// <summary>Owner's user id for profile links. Null when the owner has no Users row.</summary>
+    public int? OwnerUserId { get; set; }
     public List<CategoryDto> Categories { get; set; } = new();
     public List<GroupRefDto> Groups { get; set; } = new();
     public bool IsLikedByMe { get; set; }
@@ -1240,6 +1416,10 @@ public class RecipeDetailDto
     public string? CustomUnit { get; set; }
     public string Visibility { get; set; } = "Public";
     public string? OwnerEmail { get; set; }
+    /// <summary>Owner shown by name rather than email. Null when the recipe has no owner.</summary>
+    public string? OwnerDisplayName { get; set; }
+    /// <summary>Owner's user id for profile links. Null when the owner has no Users row.</summary>
+    public int? OwnerUserId { get; set; }
     public List<StructuredIngredientDto> Ingredients { get; set; } = new();
     public List<InstructionStepDto> InstructionSteps { get; set; } = new();
     public List<IngredientSectionDto> IngredientSections { get; set; } = new();

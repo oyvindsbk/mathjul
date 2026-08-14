@@ -64,6 +64,10 @@ export interface Recipe {
   tips?: string[];
   isLikedByMe?: boolean;
   ownerEmail?: string | null;
+  /** Owner shown by name rather than email. Null when the recipe has no owner. */
+  ownerDisplayName?: string | null;
+  /** Owner's user id for profile links. Null when the owner has no user record. */
+  ownerUserId?: number | null;
   sourceUrl?: string | null;
   createdAt?: string;
   /** Last edit timestamp. Scopes persisted cooking progress — see lib/cooking-progress.ts. */
