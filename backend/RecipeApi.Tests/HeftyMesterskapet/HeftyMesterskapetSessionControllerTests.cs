@@ -21,6 +21,8 @@ public sealed class HeftyMesterskapetSessionControllerTests
     private const string EditorEmail = "scorekeeper@example.com";
     private const string NonEditorEmail = "recipe-user@example.com";
 
+    private const string FrontendOrigin = "https://frontend.example.com";
+
     private readonly TokenService _tokenService;
     private readonly HeftyMesterskapetSessionController _controller;
 
@@ -33,6 +35,7 @@ public sealed class HeftyMesterskapetSessionControllerTests
                 ["Jwt:Issuer"] = "RecipeApi",
                 ["Jwt:Audience"] = "RecipeFrontend",
                 [$"{HeftyMesterskapetEditorService.ConfigurationSection}:0"] = EditorEmail,
+                ["Cors:AllowedOrigins:0"] = $"{FrontendOrigin}/",
             })
             .Build();
 
@@ -45,7 +48,8 @@ public sealed class HeftyMesterskapetSessionControllerTests
             new HeftyMesterskapetHandoffStore(),
             editorService,
             _tokenService,
-            new FakeWebHostEnvironment())
+            new FakeWebHostEnvironment(),
+            configuration)
         {
             ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() }
         };
@@ -112,6 +116,28 @@ public sealed class HeftyMesterskapetSessionControllerTests
 
         Assert.False(session.SignedIn);
         Assert.False(session.IsEditor);
+    }
+
+    // ---- config ----
+
+    [Fact]
+    public void Config_reports_the_frontend_origin_where_login_lives()
+    {
+        // The page is served from the backend but must send editors to the frontend to log in,
+        // and it has no way to know that address on its own.
+        var config = ValueOf(_controller.GetConfig());
+
+        Assert.Equal(FrontendOrigin, config.FrontendUrl);
+    }
+
+    [Fact]
+    public void Config_trims_a_trailing_slash_so_the_page_can_append_a_path()
+    {
+        // Configured as "https://frontend.example.com/" above; a naive concat would produce a
+        // double slash in the login URL.
+        var config = ValueOf(_controller.GetConfig());
+
+        Assert.False(config.FrontendUrl.EndsWith('/'));
     }
 
     // ---- handoff ----

@@ -159,6 +159,34 @@ az keyvault secret set \
   --value '["user1@gmail.com","user2@gmail.com"]'
 ```
 
+### Managing Heftymesterskapet Editors
+
+The Heftymesterskapet scoreboard at `/heftymesterskapet.html` is readable by anyone with the
+link, but only editable by emails on a **separate** list. This list is independent of
+`approved-users` on purpose: a recipe-app user is not automatically a scorekeeper, and a
+scorekeeper does not need recipe-app access.
+
+**Via Azure CLI:**
+```bash
+az keyvault secret set \
+  --vault-name kv-recipe-prod-xxxxx \
+  --name heftymesterskapet-editors \
+  --value '["scorekeeper1@gmail.com","scorekeeper2@gmail.com"]'
+```
+
+Like `approved-users`, this secret is managed outside Bicep so infrastructure deployments do not
+overwrite it. **Until it is populated nobody can edit the scoreboard** — the list fails closed, so
+an empty or unreadable list denies everyone rather than allowing everyone. Changes take effect
+within 5 minutes (the cache expiry).
+
+Locally the same list comes from the `HeftyMesterskapetEditors` array in
+`appsettings.LocalDevelopment.json` / `appsettings.Development.json`. Those files are gitignored,
+so add the section yourself after a fresh clone:
+
+```json
+"HeftyMesterskapetEditors": [ "dev@example.com" ]
+```
+
 See [docs/AUTHENTICATION.md](docs/AUTHENTICATION.md) for comprehensive guide.
 
 ## Available Scripts

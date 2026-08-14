@@ -3,8 +3,9 @@ using System.ComponentModel.DataAnnotations;
 namespace RecipeApi.Features.HeftyMesterskapet;
 
 /// <summary>
-/// A single Heftymesterskapet competition. Publicly readable and writable by anyone holding the slug --
-/// see EmailWhitelistMiddleware's /api/public/ exemption.
+/// A single Heftymesterskapet competition. Readable by anyone with the link (see
+/// EmailWhitelistMiddleware's /api/public/ exemption), but only editable by an email on the
+/// Heftymesterskapet editor list -- see IHeftyMesterskapetEditorService.
 /// </summary>
 public class HeftyMesterskapetCompetition
 {
@@ -37,7 +38,7 @@ public class HeftyMesterskapetCompetition
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// Soft delete marker. Anyone with the link can delete, so keep the row around --
+    /// Soft delete marker. Deleting is restricted to editors, but the row is still kept around so
     /// an accidental delete is recoverable straight from the database.
     /// </summary>
     public DateTime? DeletedAt { get; set; }

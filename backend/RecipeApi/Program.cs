@@ -217,7 +217,9 @@ app.UseExceptionHandler(errorApp =>
 // to handle preflight OPTIONS requests correctly
 app.UseCors("AllowFrontend");
 
-// Serve wwwroot before the whitelist middleware -- the app at /heftymesterskapet.html is public
+// Serve wwwroot before the whitelist middleware -- the page at /heftymesterskapet.html loads for
+// anyone. It renders read-only until the visitor proves they are on the Heftymesterskapet editor
+// list; the write endpoints enforce that, so serving the page freely gives nothing away.
 app.UseStaticFiles();
 
 // Add email whitelist middleware after CORS

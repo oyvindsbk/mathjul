@@ -34,6 +34,10 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
 
 // NOTE: The 'approved-users' secret is managed outside of Bicep (via Azure CLI / portal)
 // to prevent it from being overwritten on every infrastructure deployment.
+//
+// The same applies to 'heftymesterskapet-editors', the separate list of emails allowed to edit the
+// Heftymesterskapet scoreboard. It is deliberately independent of 'approved-users'. The list fails
+// closed: until it exists, nobody can edit the scoreboard (reading stays public either way).
 
 output keyVaultName string = keyVault.name
 output keyVaultUri string = keyVault.properties.vaultUri

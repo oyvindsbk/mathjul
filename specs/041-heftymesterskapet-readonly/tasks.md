@@ -46,7 +46,7 @@
       with a clear message rather than a generic save failure, preserving unsaved local state and
       dropping back to read-only. Verify: expired session mid-edit loses nothing.
 
-- [ ] Task 9: Documentation and deploy notes. Update the code comments that describe the endpoints
+- [x] Task 9: Documentation and deploy notes. Update the code comments that describe the endpoints
       as publicly writable (`HeftyMesterskapetCompetition`, `HeftyMesterskapetController`,
       `EmailWhitelistMiddleware:53`, `Program.cs:207`), and record the `heftymesterskapet-editors`
       secret as a deploy step alongside `approved-users`. Verify: `dotnet build`.
