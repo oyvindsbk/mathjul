@@ -125,6 +125,15 @@ else
 builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddSingleton<IAdminService, AdminService>();
 
+// Heftymesterskapet editors -- a separate list from the recipe app's approved-users whitelist.
+// SecretClient is only registered when Key Vault is configured, so resolve it optionally: the
+// default container does not honour optional constructor parameters and would throw locally.
+builder.Services.AddSingleton<RecipeApi.Features.HeftyMesterskapet.IHeftyMesterskapetEditorService>(sp =>
+    new RecipeApi.Features.HeftyMesterskapet.HeftyMesterskapetEditorService(
+        sp.GetRequiredService<ILogger<RecipeApi.Features.HeftyMesterskapet.HeftyMesterskapetEditorService>>(),
+        sp.GetRequiredService<IConfiguration>(),
+        sp.GetService<SecretClient>()));
+
 // Register Blob Storage service
 var blobOptions = new BlobStorageOptions
 {
