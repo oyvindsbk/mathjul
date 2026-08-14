@@ -17,12 +17,12 @@
       401; recipe-app user who is not an editor gets 403; editor who is not a recipe-app user
       succeeds. Verify: `dotnet build`, `dotnet test`.
 
-- [ ] Task 3: Session endpoint. Add `GET /api/heftymesterskapet/me` returning `{ email, isEditor }`
+- [x] Task 3: Session endpoint. Add `GET /api/heftymesterskapet/me` returning `{ email, isEditor }`
       for the caller and a signed-out result when there is no valid token — reachable without
       editor rights so a non-editor can be told they lack them. Tests for all three states.
       Verify: `dotnet build`, `dotnet test`.
 
-- [ ] Task 4: Login handoff. Add the one-time, short-lived handoff code: an endpoint that issues a
+- [x] Task 4: Login handoff. Add the one-time, short-lived handoff code: an endpoint that issues a
       code for an authenticated editor and one that exchanges it for the JWT, single-use and
       expiring within minutes. Tests: exchange succeeds once, replay fails, expired code fails,
       unknown code fails. Verify: `dotnet build`, `dotnet test`.
