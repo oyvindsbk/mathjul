@@ -27,7 +27,7 @@
       expiring within minutes. Tests: exchange succeeds once, replay fails, expired code fails,
       unknown code fails. Verify: `dotnet build`, `dotnet test`.
 
-- [ ] Task 5: Frontend return target. Honour a validated return URL through the login and Google
+- [x] Task 5: Frontend return target. Honour a validated return URL through the login and Google
       OAuth callback, redirecting back to the page with a handoff code on success. Reject return
       targets outside the allowlisted origin so the login cannot become an open redirect. Verify:
       `npm run lint`, `npx tsc --noEmit`, `npm run build`.

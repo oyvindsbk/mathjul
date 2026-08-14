@@ -1,6 +1,53 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  RETURN_COOKIE,
+  resolveReturnTarget,
+} from "@/lib/heftymesterskapet-return";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Trades the freshly minted JWT for a single-use handoff code and appends it to the return URL.
+ *
+ * The scoring page lives on the backend origin and cannot read the cookie set below, so the token
+ * has to cross origins. It crosses as a short-lived, single-use code rather than as the JWT
+ * itself, because redirect URLs end up in browser history, server logs, and Referer headers.
+ *
+ * If the exchange fails the editor is still returned to the page — it will simply render read-only
+ * and offer the login again, which beats stranding them on an error screen.
+ */
+async function buildHeftyReturnUrl(
+  apiUrl: string,
+  returnTarget: string,
+  token: string
+): Promise<URL> {
+  const url = new URL(returnTarget);
+
+  try {
+    const handoffResponse = await fetch(
+      `${apiUrl}/api/heftymesterskapet/handoff`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token }),
+      }
+    );
+
+    if (handoffResponse.ok) {
+      const { code } = (await handoffResponse.json()) as { code?: string };
+      if (code) {
+        url.searchParams.set("code", code);
+      }
+    } else if (handoffResponse.status === 403) {
+      // Signed in, but not on the editor list. Tell the page so it can say so.
+      url.searchParams.set("notEditor", "1");
+    }
+  } catch (err) {
+    console.error("Heftymesterskapet handoff failed:", err);
+  }
+
+  return url;
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
@@ -84,8 +131,19 @@ export async function GET(request: NextRequest) {
       throw new Error("No token in backend response");
     }
 
-    // Set auth_token cookie and redirect to home page
-    const response = NextResponse.redirect(new URL("/", baseUrl));
+    // If this login started from the Heftymesterskapet page, send the editor back there with a
+    // single-use handoff code instead of landing them on the recipe home page.
+    const returnTarget = resolveReturnTarget(
+      request.cookies.get(RETURN_COOKIE)?.value ?? null
+    );
+    const destination = returnTarget
+      ? await buildHeftyReturnUrl(apiUrl, returnTarget, token)
+      : new URL("/", baseUrl);
+
+    const response = NextResponse.redirect(destination);
+    if (returnTarget) {
+      response.cookies.delete(RETURN_COOKIE);
+    }
     response.cookies.set("auth_token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

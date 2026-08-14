@@ -1,4 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import {
+  RETURN_COOKIE,
+  RETURN_PARAM,
+  resolveReturnTarget,
+} from "@/lib/heftymesterskapet-return";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +50,22 @@ export async function GET(request: NextRequest) {
     maxAge: 60 * 10, // 10 minutes
     path: "/",
   });
+
+  // Carry the Heftymesterskapet return intent across the round trip in a cookie rather than in the
+  // OAuth state parameter, so the destination never travels via Google. Validated on the way in so
+  // an unusable target is dropped here instead of at the callback.
+  const returnTarget = resolveReturnTarget(
+    request.nextUrl.searchParams.get(RETURN_PARAM)
+  );
+  if (returnTarget) {
+    response.cookies.set(RETURN_COOKIE, returnTarget, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 10, // 10 minutes, same as the state cookie
+      path: "/",
+    });
+  }
 
   return response;
 }
