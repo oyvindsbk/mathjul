@@ -51,6 +51,6 @@
       `EmailWhitelistMiddleware:53`, `Program.cs:207`), and record the `heftymesterskapet-editors`
       secret as a deploy step alongside `approved-users`. Verify: `dotnet build`.
 
-- [ ] Task 10: Final verification. Full inner loop on both stacks (`dotnet build`, `dotnet test`,
+- [x] Task 10: Final verification. Full inner loop on both stacks (`dotnet build`, `dotnet test`,
       `npm run lint`, `npx tsc --noEmit`, `npm run build`), security review of the new auth surface,
       and an end-to-end check of both modes.

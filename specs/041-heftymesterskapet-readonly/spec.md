@@ -127,3 +127,18 @@ read-only. No frontend React changes beyond honouring the return target on the l
 
 - None blocking. Editor list seeding in production (which emails) is an operational step to
   confirm with the user before deploy.
+
+## Security review notes
+
+Reviewed against the project security checklist; no critical or warning findings. Noted for the
+record, none of them introduced by this feature and none blocking:
+
+- **Cookie expiry vs JWT lifetime.** The session cookie lasts 1 day, but `TokenService` signs JWTs
+  valid for 7, so a captured token outlives the apparent session. This matches the existing
+  `auth_token` convention rather than deviating from it; shortening JWT lifetimes is an app-wide
+  change outside this feature.
+- **No server-side revocation.** Removing an editor stops new authorization within the 5-minute
+  cache window, but does not invalidate a JWT already issued.
+- **In-memory handoff store.** Codes are per-instance. If the backend is ever scaled past one
+  replica, an exchange could land on a different instance and fail with 401 — the failure mode is
+  "log in again", not unauthorized access.
