@@ -188,21 +188,6 @@ export default function RecipeDetailClient({ id }: { id: string }) {
 
             <p className="text-sm md:text-lg text-gray-600 mb-4">{recipe.description}</p>
 
-            {/* Mobile reaches matlagingsmodus through the floating button; on
-                desktop a floating pill would be out of place, so it lives here. */}
-            <button
-              type="button"
-              onClick={() => setCookingMode(true)}
-              data-testid="matlagingsmodus-open"
-              className="hidden md:inline-flex items-center gap-2 mb-4 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-blue-700 transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3c0 1.2-1 1.6-1 2.5S9 7 9 7M13 3c0 1.2-1 1.6-1 2.5S13 7 13 7M17 3c0 1.2-1 1.6-1 2.5S17 7 17 7" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 11h16M5 11v5a4 4 0 004 4h6a4 4 0 004-4v-5M19 12h2v3h-2M5 12H3v3h2" />
-              </svg>
-              Start matlagingsmodus
-            </button>
-
             {hasMeta && (
               <>
                 {/* Mobile: hidden behind the info icon in the title row */}
@@ -272,7 +257,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-8">
-          <div className="lg:col-span-1" id="ingredients-section">
+          <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-4 md:p-8">
               <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4" data-testid="ingredients-heading">Ingredienser</h2>
               {recipe.servings ? (
@@ -486,10 +471,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
         )}
       </div>
 
-      <MatlagingsmodusButton
-        onClick={() => setCookingMode(true)}
-        ingredientsSectionId="ingredients-section"
-      />
+      <MatlagingsmodusButton onClick={() => setCookingMode(true)} />
 
       <MatlagingsmodusOverlay
         open={cookingMode}

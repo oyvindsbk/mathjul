@@ -48,11 +48,10 @@ async function expectOverlayClosed(page: import('@playwright/test').Page) {
   await expect(overlay).toHaveCSS('pointer-events', 'none');
 }
 
-/** The FAB only reveals once the ingredients section scrolls out of view. */
+/** The FAB is always visible on mobile — no scrolling needed to reach it. */
 async function openViaFab(page: import('@playwright/test').Page) {
   await page.goto('/recipes/1');
   await expect(page.getByRole('heading', { name: 'Classic Spaghetti Carbonara' })).toBeVisible();
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 
   const fab = page.getByTestId('matlagingsmodus-fab');
   await expect(fab).toBeVisible();
@@ -71,6 +70,26 @@ test.describe('Matlagingsmodus', () => {
         if (k?.startsWith('matlagingsmodus:')) localStorage.removeItem(k);
       }
     });
+  });
+
+  /**
+   * Regression: the FAB used to reveal only once the ingredients section
+   * scrolled clear of the viewport. On a phone that section is the full-width
+   * ingredients card, so on a long recipe it never cleared and matlagingsmodus
+   * had no reachable entry point at all. Assert it is tappable at first paint,
+   * before any scrolling.
+   */
+  test('floating button is visible without scrolling', async ({ page }) => {
+    await page.goto('/recipes/1');
+    await expect(page.getByRole('heading', { name: 'Classic Spaghetti Carbonara' })).toBeVisible();
+
+    await expect(page.evaluate(() => window.scrollY)).resolves.toBe(0);
+
+    const fab = page.getByTestId('matlagingsmodus-fab');
+    await expect(fab).toBeVisible();
+    await expect(fab).toHaveCSS('opacity', '1');
+    await fab.click();
+    await expect(page.getByTestId('matlagingsmodus-overlay')).toBeVisible();
   });
 
   test('opens from the floating button and shows both tabs', async ({ page }) => {
@@ -174,22 +193,17 @@ test.describe('Matlagingsmodus', () => {
 test.describe('Matlagingsmodus on desktop', () => {
   test.use({ viewport: { width: 1280, height: 900 } });
 
-  test('opens from the inline button and closes without blocking the page', async ({ page }) => {
+  /**
+   * Matlagingsmodus is a cooking-at-the-counter surface and is intentionally
+   * mobile-only. The FAB is hidden by a `md:hidden` class, so assert it is not
+   * rendered to the user rather than merely absent from the DOM.
+   */
+  test('offers no entry point', async ({ page }) => {
     await seedAuth(page);
     await page.goto('/recipes/1');
+    await expect(page.getByRole('heading', { name: 'Classic Spaghetti Carbonara' })).toBeVisible();
 
-    await page.getByTestId('matlagingsmodus-open').click();
-    await expect(page.getByTestId('matlagingsmodus-overlay')).toBeVisible();
-
-    await page.getByTestId('matlagingsmodus-close').click();
-    await expectOverlayClosed(page);
-
-    // The page must be interactive again — this is what the bug broke.
-    const overlayOwnsCenter = await page.evaluate(() => {
-      const overlay = document.querySelector('[data-testid=matlagingsmodus-overlay]');
-      const el = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 2);
-      return overlay?.contains(el) ?? false;
-    });
-    expect(overlayOwnsCenter).toBe(false);
+    await expect(page.getByTestId('matlagingsmodus-fab')).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Start matlagingsmodus' })).toHaveCount(0);
   });
 });

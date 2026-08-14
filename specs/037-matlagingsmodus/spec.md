@@ -17,6 +17,7 @@ Matlagingsmodus consolidates these into one purpose-built surface for the act of
 ## Requirements
 
 - A **Matlagingsmodus** entry point on the recipe detail page opens a full-screen overlay; the existing "Ingredienser" floating button is replaced by it.
+- Matlagingsmodus is **mobile-only**: it is a cooking-at-the-counter surface, so no entry point is offered at desktop widths and the recipe page remains the desktop reading view.
 - The overlay has two tabs: **Ingredienser** and **Slik gjør du**.
 - Every ingredient row has a checkbox; ticking it strikes the row through. Ingredient text wraps rather than truncating.
 - Every instruction step has a checkbox, at cooking-friendly type size, with step images shown.
@@ -28,7 +29,7 @@ Matlagingsmodus consolidates these into one purpose-built surface for the act of
 - Persisted progress is scoped so that editing the recipe invalidates it rather than mismatching against changed content.
 - Instruction checkboxes on the recipe detail page share the same persisted state as the overlay — ticking in one is reflected in the other.
 - The overlay closes via the X button, backdrop click, swipe down, and `Escape`; focus is trapped while open and restored to the trigger on close.
-- Mobile-first layout, but usable at every viewport — desktop gets a centered max-width panel rather than edge-to-edge full-bleed.
+- Mobile layout throughout; the overlay is only reachable below the `md` breakpoint.
 - Touch targets are at least 44px, and the safe-area inset is respected (per `028` R9).
 
 ## Design
@@ -63,7 +64,7 @@ None. Progress is deliberately client-only — cross-device sync would require a
 - `InstructionsTab` — step checklist with checkboxes, images, continuous numbering.
 - `ServingsStepper` — the −/+/input control, extracted so it is defined once and used in three places.
 
-`MatlagingsmodusButton` replaces `FloatingIngredientsButton`, keeping its `IntersectionObserver` reveal behaviour and safe-area-aware positioning but relabelled and available at all viewports. On desktop an additional inline entry button sits in the recipe title row, since a floating pill is a mobile idiom.
+`MatlagingsmodusButton` replaces `FloatingIngredientsButton`, keeping its safe-area-aware positioning but relabelled. It is the sole entry point and is `md:hidden`. Unlike the button it replaces it does *not* reveal on scroll: the `IntersectionObserver` watched the ingredients column, which on a phone spans the whole ingredients card, so on a long recipe it never cleared the viewport and left the feature unreachable.
 
 `IngredientsSheet.tsx` and `FloatingIngredientsButton.tsx` are deleted once the overlay covers their behaviour.
 

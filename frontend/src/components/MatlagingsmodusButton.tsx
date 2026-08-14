@@ -1,49 +1,31 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-
 interface MatlagingsmodusButtonProps {
   onClick: () => void;
-  /** Element whose visibility drives the floating button. */
-  ingredientsSectionId: string;
 }
 
 /**
- * Floating entry point to matlagingsmodus.
+ * Floating entry point to matlagingsmodus — the only one, and mobile only.
  *
- * Replaces the old ingredients FAB and keeps its behaviour: hidden until the
- * ingredients section scrolls out of view, positioned clear of the bottom nav
- * and the home indicator.
+ * Matlagingsmodus is a cooking-at-the-counter surface, so it is deliberately
+ * not offered on desktop (`md:hidden`); the recipe page itself is the desktop
+ * reading view.
+ *
+ * Always visible rather than revealed on scroll: it is the sole way in, so
+ * gating it behind scroll position left the feature unreachable on long
+ * recipes. Sits clear of the bottom nav and the home indicator.
  */
-export function MatlagingsmodusButton({ onClick, ingredientsSectionId }: MatlagingsmodusButtonProps) {
-  const [visible, setVisible] = useState(false);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-
-  useEffect(() => {
-    const target = document.getElementById(ingredientsSectionId);
-    if (!target) return;
-
-    observerRef.current = new IntersectionObserver(
-      ([entry]) => setVisible(!entry.isIntersecting),
-      { threshold: 0, rootMargin: "0px 0px 200px 0px" }
-    );
-    observerRef.current.observe(target);
-
-    return () => observerRef.current?.disconnect();
-  }, [ingredientsSectionId]);
-
+export function MatlagingsmodusButton({ onClick }: MatlagingsmodusButtonProps) {
   return (
     <button
       onClick={onClick}
       aria-label="Start matlagingsmodus"
       data-testid="matlagingsmodus-fab"
-      className={`fixed z-30 transition-all duration-300 ${
-        visible ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-      }`}
+      className="md:hidden fixed z-30"
       style={{
         bottom: "calc(4rem + env(safe-area-inset-bottom) + 0.75rem)",
         left: "50%",
-        transform: `translateX(-50%) translateY(${visible ? "0" : "1rem"})`,
+        transform: "translateX(-50%)",
       }}
     >
       <span className="flex items-center gap-2 bg-blue-600 text-white px-5 py-3 rounded-full shadow-lg font-medium text-sm min-h-[44px]">
