@@ -1,13 +1,23 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace RecipeApi.Features.NineKamp;
+namespace RecipeApi.Features.HeftyMesterskapet;
 
 /// <summary>
-/// A single 9-kamp competition. Publicly readable and writable by anyone holding the slug --
+/// A single Heftymesterskapet competition. Publicly readable and writable by anyone holding the slug --
 /// see EmailWhitelistMiddleware's /api/public/ exemption.
 /// </summary>
-public class NineKampCompetition
+public class HeftyMesterskapetCompetition
 {
+    /// <summary>
+    /// Well-known slug for the standing competition the UI opens directly. The page has no
+    /// competition picker, so it resolves this instead of a random slug. Seeded on startup.
+    /// Must stay in sync with the SLUG constant in wwwroot/heftymesterskapet.html.
+    /// </summary>
+    public const string DefaultSlug = "heftymesterskapet-2026";
+
+    /// <summary>Display name used when the default competition is seeded.</summary>
+    public const string DefaultName = "Heftymesterskapet 2026";
+
     public int Id { get; set; }
 
     /// <summary>Hard-to-guess public identifier used in URLs instead of the int id.</summary>
@@ -21,7 +31,7 @@ public class NineKampCompetition
     /// The whole client state as one blob. The client owns parsing and ranking, and rewrites
     /// this wholesale on every change, so there is nothing to gain from a relational split.
     /// </summary>
-    public NineKampState State { get; set; } = new();
+    public HeftyMesterskapetState State { get; set; } = new();
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
@@ -36,17 +46,17 @@ public class NineKampCompetition
     public byte[]? RowVersion { get; set; }
 }
 
-public class NineKampState
+public class HeftyMesterskapetState
 {
-    public List<NineKampParticipant> Participants { get; set; } = new();
+    public List<HeftyMesterskapetParticipant> Participants { get; set; } = new();
 
     /// <summary>results[eventId][participantId] = raw result string, e.g. "12.4" or "1:58,3".</summary>
     public Dictionary<string, Dictionary<string, string>> Results { get; set; } = new();
 }
 
-public class NineKampParticipant
+public class HeftyMesterskapetParticipant
 {
-    /// <summary>Client-generated id (see uid() in 9-kamp.html).</summary>
+    /// <summary>Client-generated id (see uid() in heftymesterskapet.html).</summary>
     public string Id { get; set; } = string.Empty;
 
     public string Name { get; set; } = string.Empty;

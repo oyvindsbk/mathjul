@@ -3,16 +3,16 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Infrastructure;
 
-namespace RecipeApi.Features.NineKamp;
+namespace RecipeApi.Features.HeftyMesterskapet;
 
 /// <summary>
-/// Public, unauthenticated API for the 9-kamp scoring app served at /9-kamp.html.
+/// Public, unauthenticated API for the multi-event scoring app served at /heftymesterskapet.html.
 /// The /api/public/ prefix is exempted in EmailWhitelistMiddleware -- anyone with the
 /// link can read and write. Limits below bound the blast radius on the shared Basic SQL.
 /// </summary>
 [ApiController]
-[Route("api/public/ninekamp")]
-public class NineKampController : ControllerBase
+[Route("api/public/heftymesterskapet")]
+public class HeftyMesterskapetController : ControllerBase
 {
     // Caps: storage is shared with the recipe data on a 2 GB Basic tier, so bound the
     // damage an anonymous caller can do. 100 competitions x ~50 KB is ~5 MB worst case.
@@ -24,16 +24,16 @@ public class NineKampController : ControllerBase
 
     private readonly RecipeDbContext _db;
 
-    public NineKampController(RecipeDbContext db)
+    public HeftyMesterskapetController(RecipeDbContext db)
     {
         _db = db;
     }
 
-    // GET /api/public/ninekamp/competitions
+    // GET /api/public/heftymesterskapet/competitions
     [HttpGet("competitions")]
     public async Task<ActionResult<List<CompetitionSummaryDto>>> GetCompetitions()
     {
-        var competitions = await _db.NineKampCompetitions
+        var competitions = await _db.HeftyMesterskapetCompetitions
             .AsNoTracking()
             .OrderByDescending(c => c.CreatedAt)
             .Select(c => new CompetitionSummaryDto
@@ -49,11 +49,11 @@ public class NineKampController : ControllerBase
         return Ok(competitions);
     }
 
-    // GET /api/public/ninekamp/competitions/{slug}
+    // GET /api/public/heftymesterskapet/competitions/{slug}
     [HttpGet("competitions/{slug}")]
     public async Task<ActionResult<CompetitionDto>> GetCompetition(string slug)
     {
-        var competition = await _db.NineKampCompetitions
+        var competition = await _db.HeftyMesterskapetCompetitions
             .AsNoTracking()
             .FirstOrDefaultAsync(c => c.Slug == slug);
 
@@ -65,7 +65,7 @@ public class NineKampController : ControllerBase
         return Ok(ToDto(competition));
     }
 
-    // POST /api/public/ninekamp/competitions
+    // POST /api/public/heftymesterskapet/competitions
     [HttpPost("competitions")]
     public async Task<ActionResult<CompetitionDto>> CreateCompetition([FromBody] CreateCompetitionRequest request)
     {
@@ -80,29 +80,29 @@ public class NineKampController : ControllerBase
             return BadRequest(new { error = "Navnet er for langt" });
         }
 
-        if (await _db.NineKampCompetitions.CountAsync() >= MaxCompetitions)
+        if (await _db.HeftyMesterskapetCompetitions.CountAsync() >= MaxCompetitions)
         {
             return BadRequest(new { error = "Maks antall konkurranser er nådd" });
         }
 
-        var competition = new NineKampCompetition
+        var competition = new HeftyMesterskapetCompetition
         {
             Slug = GenerateSlug(),
             Name = name,
-            State = new NineKampState()
+            State = new HeftyMesterskapetState()
         };
 
-        _db.NineKampCompetitions.Add(competition);
+        _db.HeftyMesterskapetCompetitions.Add(competition);
         await _db.SaveChangesAsync();
 
         return Ok(ToDto(competition));
     }
 
-    // DELETE /api/public/ninekamp/competitions/{slug}
+    // DELETE /api/public/heftymesterskapet/competitions/{slug}
     [HttpDelete("competitions/{slug}")]
     public async Task<IActionResult> DeleteCompetition(string slug)
     {
-        var competition = await _db.NineKampCompetitions.FirstOrDefaultAsync(c => c.Slug == slug);
+        var competition = await _db.HeftyMesterskapetCompetitions.FirstOrDefaultAsync(c => c.Slug == slug);
         if (competition == null)
         {
             return NotFound(new { error = "Fant ikke konkurransen" });
@@ -117,7 +117,7 @@ public class NineKampController : ControllerBase
         return NoContent();
     }
 
-    // PUT /api/public/ninekamp/competitions/{slug}/state
+    // PUT /api/public/heftymesterskapet/competitions/{slug}/state
     [HttpPut("competitions/{slug}/state")]
     [RequestSizeLimit(256_000)]
     public async Task<IActionResult> SaveState(string slug, [FromBody] SaveStateRequest request)
@@ -133,7 +133,7 @@ public class NineKampController : ControllerBase
             return BadRequest(new { error = validationError });
         }
 
-        var competition = await _db.NineKampCompetitions.FirstOrDefaultAsync(c => c.Slug == slug);
+        var competition = await _db.HeftyMesterskapetCompetitions.FirstOrDefaultAsync(c => c.Slug == slug);
         if (competition == null)
         {
             return NotFound(new { error = "Fant ikke konkurransen" });
@@ -164,7 +164,7 @@ public class NineKampController : ControllerBase
         catch (DbUpdateConcurrencyException)
         {
             // Hand back the winning state so the client can show it rather than lose the edit.
-            var fresh = await _db.NineKampCompetitions
+            var fresh = await _db.HeftyMesterskapetCompetitions
                 .AsNoTracking()
                 .FirstOrDefaultAsync(c => c.Slug == slug);
 
@@ -179,7 +179,7 @@ public class NineKampController : ControllerBase
         return Ok(new { version = ToVersion(competition.RowVersion) });
     }
 
-    private static string? Validate(NineKampState state)
+    private static string? Validate(HeftyMesterskapetState state)
     {
         if (state.Participants.Count > MaxParticipants)
         {
@@ -231,7 +231,7 @@ public class NineKampController : ControllerBase
     private static string ToVersion(byte[]? rowVersion) =>
         rowVersion == null ? string.Empty : Convert.ToBase64String(rowVersion);
 
-    private static CompetitionDto ToDto(NineKampCompetition competition) => new()
+    private static CompetitionDto ToDto(HeftyMesterskapetCompetition competition) => new()
     {
         Slug = competition.Slug,
         Name = competition.Name,
@@ -255,7 +255,7 @@ public class CompetitionDto
 {
     public string Slug { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public NineKampState State { get; set; } = new();
+    public HeftyMesterskapetState State { get; set; } = new();
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public string Version { get; set; } = string.Empty;
@@ -268,6 +268,6 @@ public class CreateCompetitionRequest
 
 public class SaveStateRequest
 {
-    public NineKampState? State { get; set; }
+    public HeftyMesterskapetState? State { get; set; }
     public string? Version { get; set; }
 }

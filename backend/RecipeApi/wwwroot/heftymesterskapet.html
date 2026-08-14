@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>9-kamp — Resultatregistrering</title>
+<title>Heftymesterskapet 2026 — Resultatregistrering</title>
 <link rel="icon" href="/favicon.ico" sizes="16x16">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -35,8 +35,41 @@
     padding:0 20px 80px;
   }
   header{
-    padding:36px 20px 22px;
+    padding:36px 20px 8px;
     text-align:center;
+  }
+  .brand-row{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:20px;
+    flex-wrap:wrap;
+  }
+  .logo-badge{
+    width:92px;
+    height:92px;
+    border-radius:50%;
+    box-shadow:0 2px 10px rgba(30,34,51,0.18);
+    flex:0 0 auto;
+  }
+  .title-stack{ text-align:left; }
+  .team-figure{ margin:0; }
+  .team-banner{
+    width:100%;
+    max-height:220px;
+    object-fit:cover;
+    object-position:center 15%;
+    border-radius:12px;
+    display:block;
+    border:1px solid var(--line);
+  }
+  .team-caption{
+    text-align:center;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12px;
+    letter-spacing:1px;
+    color:var(--ink-soft);
+    margin:8px 0 24px;
   }
   .lanes{
     height:6px;
@@ -76,7 +109,13 @@
     margin:0 0 14px;
   }
   /* Deltakere */
-  .add-row{display:flex;gap:8px;margin-bottom:14px;}
+  .add-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+  /* A flex item's default min-width:auto refuses to shrink below its content, which pushed
+     the buttons past the card edge on phones. Allow the field to shrink, and let the row
+     wrap so the buttons drop to a second line instead of overflowing. */
+  .add-row > input[type=text],
+  .add-row > select{min-width:0; flex:1 1 12em;}
+  .add-row > button{flex:0 0 auto;}
   input[type=text]{
     flex:1;
     padding:10px 12px;
@@ -137,7 +176,7 @@
     border:none; background:none;
   }
   .bib .num{
-    width:40px; height:40px; border-radius:50%;
+    width:36px; height:36px; border-radius:50%;
     display:flex; align-items:center; justify-content:center;
     font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:14px;
     background:#fff; border:2px solid var(--line); color:var(--ink-soft);
@@ -185,9 +224,15 @@
   .totrow.leader td:first-child{border-left:4px solid var(--gold); padding-left:6px;}
   .totrow .tot{font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:16px;}
   .small{font-size:12px; color:var(--ink-soft);}
+  /* Reserve a line so "Lagrer…" appearing and clearing does not shift the layout. */
+  .status-line{margin-top:12px; min-height:1.2em;}
 
   .total-table th, .total-table td{padding:8px 6px; font-size:13px;}
   .total-table td.name-cell, .total-table th.name-th{position:sticky; left:0; background:var(--card);}
+  /* 10 events overflow a phone, so the table scrolls inside its own box rather than
+     pushing the card wider. The sticky name column stays readable while scrolling. */
+  .total-scroll{overflow-x:auto;}
+  .total-scroll .total-table{min-width:640px;}
 
   footer{text-align:center; margin-top:30px;}
   footer button{margin-top:6px;}
@@ -195,35 +240,33 @@
   @media (max-width:600px){
     h1{font-size:30px; letter-spacing:2px;}
     .input-grid{grid-template-columns:1fr 100px;}
+    /* Logo wraps above the title here, so centre the text rather than leaving it flush left. */
+    .title-stack{text-align:center;}
+    .logo-badge{width:72px; height:72px;}
   }
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>9-<span>KAMP</span></h1>
-    <div class="sub">Resultatregistrering</div>
+    <div class="brand-row">
+      <img class="logo-badge" src="/heftymesterskapet-logo.png" alt="Heftymesterskapet-emblem" onerror="this.remove()">
+      <div class="title-stack">
+        <h1>HEFTY<span>MESTERSKAPET</span></h1>
+        <div class="sub">2026 · 10-kamp · Resultatregistrering</div>
+      </div>
+    </div>
   </header>
   <div class="lanes"></div>
+
+  <figure class="team-figure">
+    <img class="team-banner" src="/heftymesterskapet-lag.jpg" alt="Deltakerne i Heftymesterskapet" onerror="this.closest('.team-figure').remove()">
+    <figcaption class="team-caption">GJENGEN KLAR FOR DYST</figcaption>
+  </figure>
 
   <div id="loading" class="card"><span class="empty">Laster inn…</span></div>
 
   <div id="app" style="display:none;">
-
-    <div class="card">
-      <h2>Konkurranse</h2>
-      <div class="add-row">
-        <select id="compSelect"></select>
-        <button class="btn-primary" id="newCompBtn">Ny konkurranse</button>
-        <button class="btn-ghost" id="deleteCompBtn" style="display:none;">Slett</button>
-      </div>
-      <div class="add-row" id="newCompForm" style="display:none;">
-        <input type="text" id="newCompName" placeholder="Navn på konkurransen (f.eks. &quot;9-kamp 2026&quot;)" maxlength="100">
-        <button class="btn-primary" id="createCompBtn">Opprett</button>
-        <button class="btn-ghost" id="cancelCompBtn">Avbryt</button>
-      </div>
-      <div class="small" id="status"></div>
-    </div>
 
     <div id="competition" style="display:none;">
 
@@ -234,6 +277,7 @@
         <button class="btn-primary" id="addBtn">Legg til</button>
       </div>
       <div class="chips" id="chips"></div>
+      <div class="small status-line" id="status"></div>
     </div>
 
     <div class="card">
@@ -257,7 +301,7 @@
     </div><!-- /#competition -->
 
     <div class="card" id="noComp">
-      <p class="empty">Velg en konkurranse ovenfor, eller opprett en ny for å komme i gang.</p>
+      <p class="empty">Kunne ikke hente konkurransen. Sjekk nettforbindelsen og last siden på nytt.</p>
     </div>
   </div>
 </div>
@@ -270,12 +314,13 @@ const EVENTS = [
   {id:'diskos', name:'Diskos',       unit:'m',   type:'dist'},
   {id:'400m',   name:'400 m',        unit:'sek', type:'time'},
   {id:'hekk',   name:'100 m hekk',   unit:'sek', type:'time'},
-  {id:'tresteg',name:'Tresteg',      unit:'m',   type:'dist'},
+  {id:'hoyde',  name:'Høyde',        unit:'m',   type:'dist'},
   {id:'kule',   name:'Kule',         unit:'m',   type:'dist'},
+  {id:'tresteg',name:'Tresteg',      unit:'m',   type:'dist'},
   {id:'800m',   name:'800 m',        unit:'sek/min', type:'time'},
 ];
 const POINTS = {1:12,2:10,3:8,4:6,5:5,6:4,7:3,8:2,9:1};
-const API = '/api/public/ninekamp';
+const API = '/api/public/heftymesterskapet';
 
 let state = { participants: [], results: {} }; // results[eventId][participantId] = "raw string"
 let activeEvent = EVENTS[0].id;
@@ -307,15 +352,10 @@ function numericValue(ev, raw){
   return ev.type === 'time' ? parseTimeToSeconds(raw) : parseDist(raw);
 }
 
-/* ---------- Konkurranse-URL (?c=<slug>) ---------- */
-function currentSlug(){
-  return new URLSearchParams(location.search).get('c');
-}
-function setSlug(slug){
-  const u = new URL(location.href);
-  if(slug) u.searchParams.set('c', slug); else u.searchParams.delete('c');
-  history.replaceState(null, '', u);
-}
+/* ---------- Konkurransen ----------
+   Én fast konkurranse. Slugen må være den samme som HeftyMesterskapetCompetition.DefaultSlug
+   på serveren, som sørger for at raden finnes ved oppstart. */
+const SLUG = 'heftymesterskapet-2026';
 
 /* ---------- Statuslinje ---------- */
 function setStatus(msg, warn){
@@ -332,35 +372,19 @@ function applyCompetition(c){
   version = c.version;
 }
 
-async function loadCompetitionList(){
-  const sel = document.getElementById('compSelect');
-  try{
-    const res = await fetch(`${API}/competitions`);
-    if(!res.ok) throw new Error('feil');
-    const list = await res.json();
-    const slug = currentSlug();
-    sel.innerHTML = '<option value="">— Velg konkurranse —</option>' +
-      list.map(c=>`<option value="${escapeHtml(c.slug)}" ${c.slug===slug?'selected':''}>${escapeHtml(c.name)}</option>`).join('');
-  }catch(e){
-    sel.innerHTML = '<option value="">Kunne ikke hente konkurranser</option>';
-  }
-}
-
-async function loadCompetition(slug){
-  const res = await fetch(`${API}/competitions/${encodeURIComponent(slug)}`);
+async function loadCompetition(){
+  const res = await fetch(`${API}/competitions/${encodeURIComponent(SLUG)}`);
   if(!res.ok) throw new Error('not found');
   applyCompetition(await res.json());
 }
 
 async function flushSave(){
   if(!dirty) return;
-  const slug = currentSlug();
-  if(!slug) return;
   clearTimeout(retryTimer);
   dirty = false;
   setStatus('Lagrer…');
   try{
-    const res = await fetch(`${API}/competitions/${encodeURIComponent(slug)}/state`, {
+    const res = await fetch(`${API}/competitions/${encodeURIComponent(SLUG)}/state`, {
       method:'PUT',
       headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ state, version })
@@ -398,7 +422,6 @@ async function flushSave(){
 
 // Samme navn som før, så alle eksisterende kallsteder er uendret — nå bare debounced.
 function saveState(){
-  if(!currentSlug()) return;
   dirty = true;
   setStatus('Ulagrede endringer');
   clearTimeout(saveTimer);
@@ -560,7 +583,7 @@ function renderTotals(){
     return;
   }
   const totals = computeTotals();
-  let html = `<table class="total-table"><thead><tr>
+  let html = `<div class="total-scroll"><table class="total-table"><thead><tr>
     <th class="name-th">Deltaker</th>
     ${EVENTS.map(e=>`<th>${e.name}</th>`).join('')}
     <th>Sum</th>
@@ -572,7 +595,7 @@ function renderTotals(){
       <td class="tot">${t.total}</td>
     </tr>`;
   });
-  html += `</tbody></table>`;
+  html += `</tbody></table></div>`;
   panel.innerHTML = html;
 }
 
@@ -600,132 +623,22 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{
   }
 });
 
-/* ---------- Konkurransevelger ---------- */
+/* ---------- Oppstart ---------- */
 function showCompetition(show){
   document.getElementById('competition').style.display = show ? 'block' : 'none';
   document.getElementById('noComp').style.display = show ? 'none' : 'block';
-  document.getElementById('deleteCompBtn').style.display = show ? 'inline-block' : 'none';
 }
-
-async function switchTo(slug){
-  setSlug(slug);
-  if(!slug){
-    state = { participants: [], results: {} };
-    version = null;
-    document.getElementById('compSelect').value = '';
-    showCompetition(false);
-    setStatus('');
-    return;
-  }
-  try{
-    await loadCompetition(slug);
-    activeEvent = EVENTS[0].id;
-    showCompetition(true);
-    setStatus('');
-    render();
-  }catch(e){
-    showCompetition(false);
-    setStatus('Fant ikke konkurransen', true);
-  }
-}
-
-document.getElementById('compSelect').addEventListener('change', async (e)=>{
-  await flushSave();
-  await switchTo(e.target.value);
-});
-
-/* ---------- Ny konkurranse (inline skjema, ikke prompt) ---------- */
-function showNewCompForm(show){
-  document.getElementById('newCompForm').style.display = show ? 'flex' : 'none';
-  document.getElementById('newCompBtn').style.display = show ? 'none' : 'inline-block';
-  if(show){
-    const inp = document.getElementById('newCompName');
-    inp.value = '';
-    inp.focus();
-  }
-}
-
-document.getElementById('newCompBtn').addEventListener('click', ()=> showNewCompForm(true));
-document.getElementById('cancelCompBtn').addEventListener('click', ()=>{
-  showNewCompForm(false);
-  setStatus('');
-});
-document.getElementById('newCompName').addEventListener('keydown', (e)=>{
-  if(e.key === 'Enter') document.getElementById('createCompBtn').click();
-  if(e.key === 'Escape') document.getElementById('cancelCompBtn').click();
-});
-
-document.getElementById('createCompBtn').addEventListener('click', async ()=>{
-  const name = document.getElementById('newCompName').value.trim();
-  if(!name){
-    setStatus('Konkurransen må ha et navn', true);
-    document.getElementById('newCompName').focus();
-    return;
-  }
-  await flushSave();
-  setStatus('Oppretter…');
-  try{
-    const res = await fetch(`${API}/competitions`, {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ name })
-    });
-    if(!res.ok){
-      let msg = 'Kunne ikke opprette konkurransen';
-      try{ const body = await res.json(); if(body && body.error) msg = body.error; }catch(e){}
-      setStatus(msg, true);
-      return;
-    }
-    const created = await res.json();
-    showNewCompForm(false);
-    applyCompetition(created);
-    setSlug(created.slug);
-    activeEvent = EVENTS[0].id;
-    await loadCompetitionList();
-    showCompetition(true);
-    setStatus('');
-    render();
-  }catch(e){
-    setStatus('Ingen forbindelse — kunne ikke opprette konkurransen', true);
-  }
-});
-
-/* ---------- Slett konkurranse ---------- */
-document.getElementById('deleteCompBtn').addEventListener('click', async ()=>{
-  const slug = currentSlug();
-  if(!slug) return;
-  const sel = document.getElementById('compSelect');
-  const name = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : 'konkurransen';
-  if(!confirm(`Er du sikker på at du vil slette "${name}"? Alle deltakere og resultater forsvinner.`)) return;
-
-  dirty = false;               // ikke lagre ventende endringer til noe vi sletter
-  clearTimeout(saveTimer);
-  clearTimeout(retryTimer);
-  setStatus('Sletter…');
-  try{
-    const res = await fetch(`${API}/competitions/${encodeURIComponent(slug)}`, { method:'DELETE' });
-    if(!res.ok && res.status !== 404){
-      let msg = 'Kunne ikke slette konkurransen';
-      try{ const body = await res.json(); if(body && body.error) msg = body.error; }catch(e){}
-      setStatus(msg, true);
-      return;
-    }
-    await switchTo(null);
-    await loadCompetitionList();
-    setStatus(`"${name}" er slettet`);
-  }catch(e){
-    setStatus('Ingen forbindelse — kunne ikke slette konkurransen', true);
-  }
-});
 
 (async function init(){
-  await loadCompetitionList();
-  const slug = currentSlug();
   document.getElementById('loading').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  if(slug){
-    await switchTo(slug);
-  }else{
+  try{
+    await loadCompetition();
+    showCompetition(true);
+    setStatus('');
+    render();
+  }catch(e){
+    // Serveren oppretter konkurransen ved oppstart, så dette betyr normalt at API-et er nede.
     showCompetition(false);
   }
 })();

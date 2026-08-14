@@ -6,7 +6,7 @@ using RecipeApi.Features.FeaturePlanner;
 using RecipeApi.Features.Groups;
 using RecipeApi.Features.Matkasse;
 using RecipeApi.Features.MealPlans;
-using RecipeApi.Features.NineKamp;
+using RecipeApi.Features.HeftyMesterskapet;
 using RecipeApi.Features.Recipes;
 
 namespace RecipeApi.Infrastructure;
@@ -29,7 +29,7 @@ public class RecipeDbContext : DbContext
     public DbSet<MatkasseRecipe> MatkasseRecipes { get; set; }
     public DbSet<FeatureColumn> FeatureColumns { get; set; }
     public DbSet<FeatureCard> FeatureCards { get; set; }
-    public DbSet<NineKampCompetition> NineKampCompetitions { get; set; }
+    public DbSet<HeftyMesterskapetCompetition> HeftyMesterskapetCompetitions { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -197,9 +197,14 @@ public class RecipeDbContext : DbContext
                     c => JsonSerializer.Deserialize<List<string>>(JsonSerializer.Serialize(c, (JsonSerializerOptions?)null), (JsonSerializerOptions?)null)!));
         });
 
-        // Configure NineKampCompetition entity
-        modelBuilder.Entity<NineKampCompetition>(entity =>
+        // Configure HeftyMesterskapetCompetition entity
+        modelBuilder.Entity<HeftyMesterskapetCompetition>(entity =>
         {
+            // Pinned explicitly: the type and DbSet were renamed from HeftyMesterskapet, but the table
+            // is already deployed. Without this, EF would infer a new name from the DbSet and
+            // generate a destructive rename of a live table.
+            entity.ToTable("NineKampCompetitions");
+
             entity.HasKey(e => e.Id);
             entity.Property(e => e.Id).ValueGeneratedOnAdd();
             entity.Property(e => e.Slug).IsRequired().HasMaxLength(32);
@@ -215,12 +220,12 @@ public class RecipeDbContext : DbContext
             entity.Property(e => e.State)
                 .HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
-                    v => string.IsNullOrWhiteSpace(v) ? new() : JsonSerializer.Deserialize<NineKampState>(v, (JsonSerializerOptions?)null) ?? new())
+                    v => string.IsNullOrWhiteSpace(v) ? new() : JsonSerializer.Deserialize<HeftyMesterskapetState>(v, (JsonSerializerOptions?)null) ?? new())
                 .HasColumnType("nvarchar(max)")
-                .Metadata.SetValueComparer(new ValueComparer<NineKampState>(
+                .Metadata.SetValueComparer(new ValueComparer<HeftyMesterskapetState>(
                     (c1, c2) => JsonSerializer.Serialize(c1, (JsonSerializerOptions?)null) == JsonSerializer.Serialize(c2, (JsonSerializerOptions?)null),
                     c => c == null ? 0 : JsonSerializer.Serialize(c, (JsonSerializerOptions?)null).GetHashCode(),
-                    c => JsonSerializer.Deserialize<NineKampState>(JsonSerializer.Serialize(c, (JsonSerializerOptions?)null), (JsonSerializerOptions?)null)!));
+                    c => JsonSerializer.Deserialize<HeftyMesterskapetState>(JsonSerializer.Serialize(c, (JsonSerializerOptions?)null), (JsonSerializerOptions?)null)!));
         });
 
         // Configure MealPlan entity

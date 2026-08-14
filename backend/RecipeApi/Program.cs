@@ -204,7 +204,7 @@ app.UseExceptionHandler(errorApp =>
 // to handle preflight OPTIONS requests correctly
 app.UseCors("AllowFrontend");
 
-// Serve wwwroot before the whitelist middleware -- the 9-kamp app at /9-kamp.html is public
+// Serve wwwroot before the whitelist middleware -- the app at /heftymesterskapet.html is public
 app.UseStaticFiles();
 
 // Add email whitelist middleware after CORS
@@ -248,7 +248,10 @@ using (var scope = app.Services.CreateScope())
             }
 
             await context.Database.MigrateAsync();
-            
+
+            // The scoring page has no competition picker, so guarantee its one competition exists.
+            await RecipeApi.Features.HeftyMesterskapet.HeftyMesterskapetSeeder.SeedDefaultCompetitionAsync(context, logger);
+
             logger.LogInformation("Database connection successful!");
             break;
         }
