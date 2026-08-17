@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Features.Matkasse;
@@ -196,7 +197,11 @@ public class MealPlansController : ControllerBase
         DateOnly? parsedDate = null;
         if (request.Date != null)
         {
-            if (!DateOnly.TryParse(request.Date, out var date))
+            // Exact + invariant: the contract is yyyy-MM-dd, and a plain TryParse would
+            // otherwise accept whatever the server's locale allows (e.g. dd.MM.yyyy on a
+            // Norwegian host), making the API's accepted input depend on where it runs.
+            if (!DateOnly.TryParseExact(request.Date, "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out var date))
                 return BadRequest(new { error = "Invalid date format. Use yyyy-MM-dd." });
             parsedDate = date;
         }

@@ -5,7 +5,7 @@
 - [x] Task 1: Widen the PATCH endpoint to a partial update. In `backend/RecipeApi/Features/MealPlans/MealPlansController.cs`, make `MoveMealPlanRequest.Date` nullable and add optional `CustomTitle`/`CustomNote`. Rework `MoveMealPlan` to apply only the supplied fields, returning 400 for a malformed `date`, for `customTitle`/`customNote` on a non-custom entry, and for a blank `customTitle` on a custom entry; store a blank `customNote` as null. Leave the route, method name, DTO shape, and the email/membership authorization untouched.
       Verify: `cd backend/RecipeApi && dotnet build`.
 
-- [ ] Task 2: Cover the widened PATCH with xUnit tests in `backend/RecipeApi.Tests/`. Cases: date-only move still works; note-only update leaves the date alone; note update on a recipe entry returns 400; blank `customTitle` on a custom entry returns 400; a non-member returns 403.
+- [x] Task 2: Cover the widened PATCH with xUnit tests in `backend/RecipeApi.Tests/`. Cases: date-only move still works; note-only update leaves the date alone; note update on a recipe entry returns 400; blank `customTitle` on a custom entry returns 400; a non-member returns 403.
       Verify: `cd backend/RecipeApi && dotnet build`, `dotnet test`.
 
 - [ ] Task 3: Replace `moveMealPlan` with `updateMealPlan` in `frontend/src/lib/services/mealplan.service.ts`, taking a `changes: { date?, customTitle?, customNote? }` object against the same PATCH URL. Repoint the existing move call site in `UkesplanleggerClient.tsx` to pass `{ date }`.
