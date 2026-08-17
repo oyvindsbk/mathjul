@@ -2,7 +2,7 @@
 
 ## Tasks
 
-- [ ] Task 1: Widen the PATCH endpoint to a partial update. In `backend/RecipeApi/Features/MealPlans/MealPlansController.cs`, make `MoveMealPlanRequest.Date` nullable and add optional `CustomTitle`/`CustomNote`. Rework `MoveMealPlan` to apply only the supplied fields, returning 400 for a malformed `date`, for `customTitle`/`customNote` on a non-custom entry, and for a blank `customTitle` on a custom entry; store a blank `customNote` as null. Leave the route, method name, DTO shape, and the email/membership authorization untouched.
+- [x] Task 1: Widen the PATCH endpoint to a partial update. In `backend/RecipeApi/Features/MealPlans/MealPlansController.cs`, make `MoveMealPlanRequest.Date` nullable and add optional `CustomTitle`/`CustomNote`. Rework `MoveMealPlan` to apply only the supplied fields, returning 400 for a malformed `date`, for `customTitle`/`customNote` on a non-custom entry, and for a blank `customTitle` on a custom entry; store a blank `customNote` as null. Leave the route, method name, DTO shape, and the email/membership authorization untouched.
       Verify: `cd backend/RecipeApi && dotnet build`.
 
 - [ ] Task 2: Cover the widened PATCH with xUnit tests in `backend/RecipeApi.Tests/`. Cases: date-only move still works; note-only update leaves the date alone; note update on a recipe entry returns 400; blank `customTitle` on a custom entry returns 400; a non-member returns 403.

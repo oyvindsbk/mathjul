@@ -183,6 +183,7 @@ public class MealPlansController : ControllerBase
     }
 
     // PATCH /api/groups/{groupId}/mealplans/{entryId}
+    // Partial update: only the fields present on the request are applied.
     [HttpPatch("{entryId:int}")]
     public async Task<ActionResult<MealPlanDto>> MoveMealPlan(int groupId, int entryId, [FromBody] MoveMealPlanRequest request)
     {
@@ -192,8 +193,13 @@ public class MealPlansController : ControllerBase
         if (!await IsGroupMemberAsync(groupId, email))
             return StatusCode(403, new { error = "You are not a member of this group" });
 
-        if (!DateOnly.TryParse(request.Date, out var parsedDate))
-            return BadRequest(new { error = "Invalid date format. Use yyyy-MM-dd." });
+        DateOnly? parsedDate = null;
+        if (request.Date != null)
+        {
+            if (!DateOnly.TryParse(request.Date, out var date))
+                return BadRequest(new { error = "Invalid date format. Use yyyy-MM-dd." });
+            parsedDate = date;
+        }
 
         var entry = await _db.MealPlans
             .Include(p => p.Recipe).ThenInclude(r => r!.Categories)
@@ -204,7 +210,21 @@ public class MealPlansController : ControllerBase
 
         if (entry == null) return NotFound();
 
-        entry.Date = parsedDate;
+        // CustomTitle is the discriminator for a custom card. Letting a recipe or matkasse
+        // entry acquire one would break the exactly-one-of-three source invariant that
+        // CreateMealPlan enforces, and blanking it on a custom card would orphan the row.
+        var touchesCustomFields = request.CustomTitle != null || request.CustomNote != null;
+        if (touchesCustomFields && entry.CustomTitle == null)
+            return BadRequest(new { error = "Only custom entries can have a title or note." });
+
+        if (request.CustomTitle != null && string.IsNullOrWhiteSpace(request.CustomTitle))
+            return BadRequest(new { error = "customTitle cannot be empty." });
+
+        if (parsedDate != null) entry.Date = parsedDate.Value;
+        if (request.CustomTitle != null) entry.CustomTitle = request.CustomTitle.Trim();
+        if (request.CustomNote != null)
+            entry.CustomNote = string.IsNullOrWhiteSpace(request.CustomNote) ? null : request.CustomNote.Trim();
+
         entry.UpdatedAt = DateTime.UtcNow;
         await _db.SaveChangesAsync();
 
@@ -366,7 +386,13 @@ public class AiPlanRequest
     public string WeekStart { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// Partial update of an existing entry. Every field is optional; a null field is left
+/// untouched. CustomTitle/CustomNote are rejected on non-custom entries.
+/// </summary>
 public class MoveMealPlanRequest
 {
-    public string Date { get; set; } = string.Empty;
+    public string? Date { get; set; }
+    public string? CustomTitle { get; set; }
+    public string? CustomNote { get; set; }
 }
