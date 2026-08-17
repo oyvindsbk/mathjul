@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -382,7 +383,11 @@ public class CreateMealPlanRequest
     public string Date { get; set; } = string.Empty;
     public int? RecipeId { get; set; }
     public int? MatkasseRecipeId { get; set; }
+
+    [StringLength(100)]
     public string? CustomTitle { get; set; }
+
+    [StringLength(300)]
     public string? CustomNote { get; set; }
 }
 
@@ -394,10 +399,18 @@ public class AiPlanRequest
 /// <summary>
 /// Partial update of an existing entry. Every field is optional; a null field is left
 /// untouched. CustomTitle/CustomNote are rejected on non-custom entries.
+///
+/// The lengths mirror the MealPlan columns. Without them an oversized payload reaches
+/// the database and surfaces as a 500 rather than a 400 — the modal's maxLength is a
+/// client-side courtesy, not a constraint.
 /// </summary>
 public class MoveMealPlanRequest
 {
     public string? Date { get; set; }
+
+    [StringLength(100)]
     public string? CustomTitle { get; set; }
+
+    [StringLength(300)]
     public string? CustomNote { get; set; }
 }
