@@ -1,15 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { formatDateLabel } from "./entryDisplay";
 
 interface Props {
   date: Date;
   onConfirm: (title: string, note: string | null) => void;
   onClose: () => void;
-}
-
-function formatDateLabel(date: Date): string {
-  return date.toLocaleDateString("nb-NO", { weekday: "long", day: "numeric", month: "long" });
 }
 
 export function CustomCardModal({ date, onConfirm, onClose }: Props) {

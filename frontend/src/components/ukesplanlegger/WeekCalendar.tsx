@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import type { MealPlan } from "@/lib/services/mealplan.service";
-import { DayCell, formatDate } from "./DayCell";
+import { DayCell } from "./DayCell";
+import { formatDate } from "./entryDisplay";
 import { WeekContextMenu } from "./WeekContextMenu";
 
 const DAY_NAMES = ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"];
@@ -31,14 +32,12 @@ interface WeekCalendarProps {
   viewMonth: number;
   onMonthChange: (year: number, month: number) => void;
   onDayClick: (date: Date) => void;
-  onDeleteEntry: (entryId: number) => void;
   onEntryClick?: (plan: MealPlan) => void;
   onAiPlan: (weekStart: Date) => void;
   onDrop: (date: Date, recipeId: number) => void;
   onDropMatkasse: (date: Date, matkasseRecipeId: number) => void;
   onMoveEntry: (planId: number, date: Date) => void;
   highlightedDays: Set<string>;
-  onAddCustomCard?: (date: Date) => void;
 }
 
 function getMonday(date: Date): Date {
@@ -78,14 +77,12 @@ export function WeekCalendar({
   viewMonth,
   onMonthChange,
   onDayClick,
-  onDeleteEntry,
   onEntryClick,
   onAiPlan,
   onDrop,
   onDropMatkasse,
   onMoveEntry,
   highlightedDays,
-  onAddCustomCard,
 }: WeekCalendarProps) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -221,12 +218,10 @@ export function WeekCalendar({
                   isDragOver={dragOverDate === key}
                   isOtherMonth={isOtherMonth}
                   onClick={onDayClick}
-                  onDeleteEntry={onDeleteEntry}
                   onEntryClick={onEntryClick}
                   onDragOver={handleDragOver}
                   onDragLeave={() => setDragOverDate(null)}
                   onDrop={handleDrop}
-                  onAddCustomCard={onAddCustomCard}
                 />
               );
             })}

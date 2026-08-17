@@ -33,6 +33,13 @@ export interface MealPlan {
   createdByEmail: string | null;
 }
 
+/** Fields updatable on an existing entry. Omit a field to leave it unchanged. */
+export interface MealPlanChanges {
+  date?: string; // yyyy-MM-dd
+  customTitle?: string;
+  customNote?: string | null;
+}
+
 class MealPlanService {
   async getMealPlans(groupId: number, from: string, to: string, token: string): Promise<MealPlan[]> {
     const url = new URL(`${appConfig.api.baseUrl}/api/groups/${groupId}/mealplans`);
@@ -95,7 +102,17 @@ class MealPlanService {
     return response.json();
   }
 
-  async moveMealPlan(groupId: number, entryId: number, date: string, token: string): Promise<MealPlan> {
+  /**
+   * Partial update of an existing entry. Only the supplied fields change; omitted
+   * fields are left untouched. customTitle/customNote apply to custom cards only —
+   * the API rejects them on recipe and matkasse entries.
+   */
+  async updateMealPlan(
+    groupId: number,
+    entryId: number,
+    changes: MealPlanChanges,
+    token: string,
+  ): Promise<MealPlan> {
     const response = await apiFetch(`${appConfig.api.baseUrl}/api/groups/${groupId}/mealplans/${entryId}`, {
       method: 'PATCH',
       headers: {
@@ -103,10 +120,10 @@ class MealPlanService {
         Accept: 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ date }),
+      body: JSON.stringify(changes),
     });
 
-    if (!response.ok) throw new Error(`Failed to move meal plan: ${response.statusText}`);
+    if (!response.ok) throw new Error(`Failed to update meal plan: ${response.statusText}`);
     return response.json();
   }
 

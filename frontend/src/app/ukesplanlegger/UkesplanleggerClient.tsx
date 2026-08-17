@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { groupsService, type GroupOption } from "@/lib/services/groups.service";
 import { mealPlanService, type MealPlan } from "@/lib/services/mealplan.service";
 import { CustomCardModal } from "@/components/ukesplanlegger/CustomCardModal";
+import { DayDetailModal, plansForDate } from "@/components/ukesplanlegger/DayDetailModal";
 import { WeekCalendar } from "@/components/ukesplanlegger/WeekCalendar";
 import { MealPlanPreviewModal } from "@/components/ukesplanlegger/MealPlanPreviewModal";
 import { MealTypeFilter, type MealType } from "@/components/ukesplanlegger/MealTypeFilter";
@@ -14,7 +15,7 @@ import { RecipePickerPanel, RecipePickerSidebar } from "@/components/ukesplanleg
 import { MatkassePanelSidebar } from "@/components/matkasse/MatkassePanelSidebar";
 import type { MatkasseRecipe } from "@/lib/services/matkasse.service";
 import type { Recipe } from "@/lib/mock-data";
-import { formatDate } from "@/components/ukesplanlegger/DayCell";
+import { formatDate, parseDateKey } from "@/components/ukesplanlegger/entryDisplay";
 
 function computeHighlightedDays(monday: Date | null): Set<string> {
   if (!monday) return new Set();
@@ -59,6 +60,9 @@ export function UkesplanleggerClient() {
   const [matkasseWeekMonday, setMatkasseWeekMonday] = useState<Date | null>(null);
   const [previewPlan, setPreviewPlan] = useState<MealPlan | null>(null);
   const [customCardDate, setCustomCardDate] = useState<Date | null>(null);
+  // The day a tap opened. Distinct from activeDayDate, which is the target the
+  // picker and sidebar write to and outlives the modal.
+  const [dayModalDate, setDayModalDate] = useState<Date | null>(null);
 
   // URL param: mealType
   const mealTypeParam = (searchParams.get("mealType") as MealType) ?? "Middag";
@@ -237,7 +241,7 @@ export function UkesplanleggerClient() {
     if (!existing || formatDate(date) === existing.date) return;
     const dateStr = formatDate(date);
     try {
-      const moved = await mealPlanService.moveMealPlan(selectedGroupId, planId, dateStr, token);
+      const moved = await mealPlanService.updateMealPlan(selectedGroupId, planId, { date: dateStr }, token);
       setPlans((prev) => [...prev.filter((p) => p.id !== planId), moved]);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Kunne ikke flytte middag");
@@ -267,10 +271,38 @@ export function UkesplanleggerClient() {
     }
   }
 
+  async function handleUpdateNote(entryId: number, title: string, note: string | null) {
+    if (!token || !selectedGroupId) return;
+    try {
+      const updated = await mealPlanService.updateMealPlan(
+        selectedGroupId,
+        entryId,
+        { customTitle: title, customNote: note },
+        token,
+      );
+      setPlans((prev) => prev.map((p) => (p.id === entryId ? updated : p)));
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Kunne ikke lagre notat");
+    }
+  }
+
+  // A tap on a day now opens the day modal rather than the picker directly, so
+  // what is already planned is visible before anything is added to it.
   function handleDayClick(date: Date) {
     setActiveDayDate(date);
     setSidebarOpen(true);
+    setDayModalDate(date);
+  }
+
+  function handleAddRecipeFromDayModal() {
+    setDayModalDate(null);
+    // Desktop already has the sidebar picker open; this is the mobile overlay.
     setMobilePickerOpen(true);
+  }
+
+  function handleAddCustomCardFromDayModal(date: Date) {
+    setDayModalDate(null);
+    setCustomCardDate(date);
   }
 
   if (authLoading || loadingGroups) {
@@ -382,14 +414,12 @@ export function UkesplanleggerClient() {
                       viewMonth={viewMonth}
                       onMonthChange={handleMonthChange}
                       onDayClick={handleDayClick}
-                      onDeleteEntry={handleDeleteEntry}
-                      onEntryClick={setPreviewPlan}
+                      onEntryClick={(plan) => handleDayClick(parseDateKey(plan.date))}
                       onAiPlan={handleAiPlan}
                       onDrop={handleDrop}
                       onDropMatkasse={handleDropMatkasse}
                       onMoveEntry={handleMoveEntry}
                       highlightedDays={computeHighlightedDays(sidebarTab === "matkasse" ? matkasseWeekMonday : null)}
-                      onAddCustomCard={setCustomCardDate}
                     />
                   </div>
                 </div>
@@ -447,6 +477,23 @@ export function UkesplanleggerClient() {
           </div>
         )}
       </div>
+
+      {dayModalDate && (
+        <DayDetailModal
+          date={dayModalDate}
+          plans={plansForDate(plans, dayModalDate)}
+          onClose={() => setDayModalDate(null)}
+          onAddRecipe={handleAddRecipeFromDayModal}
+          onAddCustomCard={() => handleAddCustomCardFromDayModal(dayModalDate)}
+          onDeleteEntry={handleDeleteEntry}
+          onMoveEntry={handleMoveEntry}
+          onUpdateNote={handleUpdateNote}
+          onOpenPreview={(plan) => {
+            setDayModalDate(null);
+            setPreviewPlan(plan);
+          }}
+        />
+      )}
 
       {previewPlan && (
         <MealPlanPreviewModal plan={previewPlan} onClose={() => setPreviewPlan(null)} />

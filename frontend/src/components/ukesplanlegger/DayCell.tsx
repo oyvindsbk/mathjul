@@ -2,8 +2,7 @@
 
 import { useRef } from "react";
 import type { MealPlan } from "@/lib/services/mealplan.service";
-import type { Leverandor } from "@/lib/services/matkasse.service";
-import { MEAL_TYPE_ICONS } from "./MealTypeFilter";
+import { resolveEntryDisplay } from "./entryDisplay";
 
 // On mobile a day column is ~43px wide, so the cell is kept near-square.
 const CELL_HEIGHT = "min-h-[64px] lg:min-h-[110px] xl:min-h-[130px]";
@@ -13,11 +12,13 @@ const SHORT_MONTH_NAMES = [
   "jul", "aug", "sep", "okt", "nov", "des",
 ];
 
-const LEVERANDOR_LOGOS: Record<Leverandor, string> = {
-  Hellofresh: "/icons/logo-hellofresh.png",
-  Kokkeloren: "/icons/logo-kokkeloren.png",
-  GodtLevert: "/icons/logo-godtlevert.png",
-};
+// A ~43px mobile column fits two chips before the cell stops being readable;
+// lg+ has the height for three. The cap is applied in CSS rather than JS —
+// a viewport check would need matchMedia, which does not exist during SSR and
+// would hydrate as a mismatch. Anything past the cap collapses into "+N", and
+// the day modal lists them all regardless.
+const VISIBLE_CHIPS_MOBILE = 2;
+const VISIBLE_CHIPS_DESKTOP = 3;
 
 interface DayCellProps {
   date: Date;
@@ -29,16 +30,10 @@ interface DayCellProps {
   /** Day belongs to a neighbouring month but is shown to complete the week. */
   isOtherMonth?: boolean;
   onClick: (date: Date) => void;
-  onDeleteEntry: (entryId: number) => void;
   onEntryClick?: (plan: MealPlan) => void;
   onDragOver: (e: React.DragEvent, date: Date) => void;
   onDragLeave: () => void;
   onDrop: (e: React.DragEvent, date: Date) => void;
-  onAddCustomCard?: (date: Date) => void;
-}
-
-function formatDate(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 export function DayCell({
@@ -50,17 +45,25 @@ export function DayCell({
   isDragOver,
   isOtherMonth = false,
   onClick,
-  onDeleteEntry,
   onEntryClick,
   onDragOver,
   onDragLeave,
   onDrop,
-  onAddCustomCard,
 }: DayCellProps) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const isPast = date < today;
   const draggingRef = useRef(false);
+
+  // Both caps are computed; CSS decides which set of chips and which "+N" is shown.
+  // When a breakpoint overflows, one chip is given up so "+N" has a row of its own.
+  const visibleMobile = plans.length > VISIBLE_CHIPS_MOBILE ? VISIBLE_CHIPS_MOBILE - 1 : plans.length;
+  const visibleDesktop = plans.length > VISIBLE_CHIPS_DESKTOP ? VISIBLE_CHIPS_DESKTOP - 1 : plans.length;
+  const hiddenMobile = plans.length - visibleMobile;
+  const hiddenDesktop = plans.length - visibleDesktop;
+  // The large centred card only makes sense when it is the day's only content
+  // at both breakpoints.
+  const single = plans.length === 1;
 
   return (
     <div
@@ -97,46 +100,14 @@ export function DayCell({
             </span>
           )}
         </div>
-        {!isPast && onAddCustomCard && (
-          <button
-            className="hidden group-hover:flex items-center justify-center w-4 h-4 rounded text-gray-400 hover:text-blue-500 transition-colors text-[10px] leading-none"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddCustomCard(date);
-            }}
-            title="Legg til egendefinert kort"
-            aria-label="Legg til egendefinert kort"
-          >
-            ✏️
-          </button>
-        )}
       </div>
 
       {plans.length > 0 ? (
-        <div className="flex flex-col gap-1 flex-1">
-          {plans.map((plan) => {
-            const isCustom = plan.isCustom;
-            const isMatkasse = plan.matkasseRecipe != null;
-            const title = isCustom
-              ? (plan.customTitle ?? "")
-              : isMatkasse
-                ? plan.matkasseRecipe!.tittel
-                : (plan.recipe?.title ?? "");
-            const iconCategory = isMatkasse
-              ? null
-              : (plan.recipe?.mealTypeCategories?.find((c) => MEAL_TYPE_ICONS[c]) ?? plan.recipe?.mealTypeCategory ?? null);
-            const icon = isCustom
-              ? "✏️"
-              : isMatkasse
-                ? null
-                : (iconCategory ? (MEAL_TYPE_ICONS[iconCategory] ?? "🍴") : "🍴");
-            const matkasseLogo = isMatkasse
-              ? LEVERANDOR_LOGOS[plan.matkasseRecipe!.leverandor as Leverandor]
-              : null;
-            const sideDishTitles = isCustom || isMatkasse
-              ? []
-              : (plan.recipe?.sideDishTitles ?? []);
-            const single = plans.length === 1;
+        <div className="flex flex-col gap-0.5 lg:gap-1 flex-1 min-h-0">
+          {plans.slice(0, visibleDesktop).map((plan, i) => {
+            const { title, icon, matkasseLogo, sideDishTitles, isCustom } = resolveEntryDisplay(plan);
+            // Chips past the mobile cap exist in the DOM but only show from lg up.
+            const desktopOnly = i >= visibleMobile;
             return (
               <div
                 key={plan.id}
@@ -152,14 +123,14 @@ export function DayCell({
                   e.stopPropagation();
                   if (!draggingRef.current) onEntryClick?.(plan);
                 }}
-                className={`relative group/entry cursor-grab active:cursor-grabbing active:opacity-50 ${
-                  isCustom
-                    ? single
-                      ? "flex flex-col items-center justify-center flex-1 gap-1 rounded-md bg-amber-50 border border-amber-200 px-0.5 py-1 lg:px-1 lg:py-2 text-center"
-                      : "flex items-start gap-1"
-                    : single
-                      ? "flex flex-col items-center justify-center flex-1 gap-1 rounded-md bg-blue-50 border border-blue-100 px-0.5 py-1 lg:px-1 lg:py-2 text-center"
-                      : "flex items-start gap-1"
+                className={`cursor-grab active:cursor-grabbing active:opacity-50 rounded border ${
+                  desktopOnly ? "hidden lg:flex" : "flex"
+                } ${
+                  isCustom ? "bg-amber-50 border-amber-200" : "bg-blue-50 border-blue-100"
+                } ${
+                  single
+                    ? "flex-col items-center justify-center flex-1 gap-1 px-0.5 py-1 lg:px-1 lg:py-2 text-center"
+                    : "items-start gap-1 px-1 py-0.5"
                 }`}
               >
                 {matkasseLogo ? (
@@ -168,17 +139,16 @@ export function DayCell({
                     src={matkasseLogo}
                     alt={plan.matkasseRecipe!.leverandor}
                     draggable={false}
-                    className={single ? "w-6 h-6 lg:w-8 lg:h-8 object-contain rounded" : "w-4 h-4 object-contain rounded flex-shrink-0 mt-0.5"}
+                    className={single ? "w-6 h-6 lg:w-8 lg:h-8 object-contain rounded" : "w-3 h-3 lg:w-4 lg:h-4 object-contain rounded flex-shrink-0 mt-0.5"}
                   />
                 ) : (
-                  <span className={single ? "text-base lg:text-xl leading-none" : "text-[10px] flex-shrink-0 mt-0.5"}>{icon}</span>
+                  <span className={single ? "text-base lg:text-xl leading-none" : "text-[9px] lg:text-[10px] flex-shrink-0 mt-0.5"}>{icon}</span>
                 )}
-                {/* Title and side dishes share a wrapper so the delete button stays on the row */}
                 {/* min-w-0 + break-words: long single words (e.g. "gyroskjøttdeig")
                     are wider than a ~43px mobile column, and line-clamp only limits
                     line count — without these they render past the cell edge. */}
                 <div className={single ? "w-full min-w-0" : "flex-1 min-w-0"}>
-                  <p className={`font-medium leading-tight break-words hyphens-auto ${isPast ? "text-gray-400" : isCustom ? "text-amber-800" : "text-gray-800"} ${single ? "text-[11px] line-clamp-2 lg:text-xs lg:line-clamp-3" : "text-[10px] line-clamp-2"}`}>
+                  <p className={`font-medium leading-tight break-words hyphens-auto ${isPast ? "text-gray-400" : isCustom ? "text-amber-800" : "text-gray-800"} ${single ? "text-[11px] line-clamp-2 lg:text-xs lg:line-clamp-3" : "text-[9px] lg:text-[10px] line-clamp-1 lg:line-clamp-2"}`}>
                     {title}
                   </p>
                   {sideDishTitles.length > 0 && (
@@ -187,20 +157,27 @@ export function DayCell({
                     </p>
                   )}
                 </div>
-                <button
-                  className={`hidden group-hover/entry:flex items-center justify-center w-4 h-4 bg-red-100 hover:bg-red-200 text-red-600 rounded-full text-[10px] flex-shrink-0 transition-colors ${single ? "absolute top-1 right-1" : ""}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDeleteEntry(plan.id);
-                  }}
-                  title="Fjern"
-                  aria-label="Fjern"
-                >
-                  ×
-                </button>
               </div>
             );
           })}
+          {/* Two variants rather than one computed count: the number itself differs
+              per breakpoint, and CSS cannot recompute it. */}
+          {hiddenMobile > 0 && (
+            <span
+              data-testid="day-cell-overflow"
+              className={`lg:hidden text-[9px] font-medium leading-tight px-1 ${isPast ? "text-gray-300" : "text-gray-500"}`}
+            >
+              +{hiddenMobile} til
+            </span>
+          )}
+          {hiddenDesktop > 0 && (
+            <span
+              data-testid="day-cell-overflow"
+              className={`hidden lg:block text-[10px] font-medium leading-tight px-1 ${isPast ? "text-gray-300" : "text-gray-500"}`}
+            >
+              +{hiddenDesktop} til
+            </span>
+          )}
         </div>
       ) : (
         <div className={`flex items-center justify-center h-6 lg:h-16 xl:h-20 transition-colors ${isPast ? "text-gray-200" : "text-gray-300 group-hover:text-blue-400"}`}>
@@ -216,5 +193,3 @@ export function DayCell({
     </div>
   );
 }
-
-export { formatDate };
