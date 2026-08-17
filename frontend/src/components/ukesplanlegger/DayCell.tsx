@@ -4,8 +4,10 @@ import { useRef } from "react";
 import type { MealPlan } from "@/lib/services/mealplan.service";
 import { resolveEntryDisplay } from "./entryDisplay";
 
-// On mobile a day column is ~43px wide, so the cell is kept near-square.
-const CELL_HEIGHT = "min-h-[64px] lg:min-h-[110px] xl:min-h-[130px]";
+// A mobile day column is ~43px wide. 64px was enough when a cell held one
+// truncated line, but two chips at two lines each need the extra height —
+// below this a title clamps to a single letter.
+const CELL_HEIGHT = "min-h-[88px] lg:min-h-[110px] xl:min-h-[130px]";
 
 const SHORT_MONTH_NAMES = [
   "jan", "feb", "mar", "apr", "mai", "jun",
@@ -73,7 +75,9 @@ export function DayCell({
         ${isToday
           ? "bg-blue-50 border-blue-400 shadow-sm"
           : isPast
-            ? "bg-gray-50 border-gray-100 opacity-50"
+            // Muted via colour, not opacity: the per-element text colours are
+            // already dimmed, and opacity on top of them left past days unreadable.
+            ? "bg-gray-50 border-gray-200"
             : isDragOver
               ? "bg-green-50 border-green-400"
               : isSelected
@@ -133,6 +137,9 @@ export function DayCell({
                     : "items-start gap-1 px-1 py-0.5"
                 }`}
               >
+                {/* Stacked chips drop the emoji below lg: a ~43px column has no room
+                    for both a glyph and a readable title. The matkasse logo stays —
+                    it is the only thing identifying the provider. */}
                 {matkasseLogo ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -142,13 +149,13 @@ export function DayCell({
                     className={single ? "w-6 h-6 lg:w-8 lg:h-8 object-contain rounded" : "w-3 h-3 lg:w-4 lg:h-4 object-contain rounded flex-shrink-0 mt-0.5"}
                   />
                 ) : (
-                  <span className={single ? "text-base lg:text-xl leading-none" : "text-[9px] lg:text-[10px] flex-shrink-0 mt-0.5"}>{icon}</span>
+                  <span className={single ? "text-base lg:text-xl leading-none" : "hidden lg:block text-[10px] flex-shrink-0 mt-0.5"}>{icon}</span>
                 )}
                 {/* min-w-0 + break-words: long single words (e.g. "gyroskjøttdeig")
                     are wider than a ~43px mobile column, and line-clamp only limits
                     line count — without these they render past the cell edge. */}
                 <div className={single ? "w-full min-w-0" : "flex-1 min-w-0"}>
-                  <p className={`font-medium leading-tight break-words hyphens-auto ${isPast ? "text-gray-400" : isCustom ? "text-amber-800" : "text-gray-800"} ${single ? "text-[11px] line-clamp-2 lg:text-xs lg:line-clamp-3" : "text-[9px] lg:text-[10px] line-clamp-1 lg:line-clamp-2"}`}>
+                  <p className={`font-medium leading-tight break-words hyphens-auto ${isPast ? "text-gray-500" : isCustom ? "text-amber-800" : "text-gray-800"} ${single ? "text-[11px] line-clamp-2 lg:text-xs lg:line-clamp-3" : "text-[10px] line-clamp-2"}`}>
                     {title}
                   </p>
                   {sideDishTitles.length > 0 && (
