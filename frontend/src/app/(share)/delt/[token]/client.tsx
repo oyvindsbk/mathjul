@@ -5,8 +5,19 @@ import { recipeService, type SharedRecipe } from "@/lib/services/recipe.service"
 import { RecipeBody } from "@/components/RecipeBody";
 
 /**
- * The public share page. Reads one recipe through its share token and renders it
- * without any navigation into the rest of the app — no links, no login step.
+ * The public share page. Reads one recipe through its share token and renders the
+ * recipe itself without navigation into the rest of the app — side dishes stay
+ * plain text, and the owner is not a profile link.
+ *
+ * The single exception is the "full recipe" link at the bottom. It is labelled as
+ * requiring login because it does: /recipes/[id] is guarded both by the server
+ * middleware and by ProtectedRoute, so a recipient without an account ends up at
+ * /login. The label sets that expectation up front rather than letting the click
+ * be a surprise.
+ *
+ * It is a plain <a>, not next/link, so the recipient leaves the token-scoped share
+ * context through a full page load instead of a client-side transition into an app
+ * shell this layout never renders.
  */
 export default function SharedRecipeClient({ shareToken }: { shareToken: string }) {
   const [shared, setShared] = useState<SharedRecipe | null>(null);
@@ -111,7 +122,17 @@ export default function SharedRecipeClient({ shareToken }: { shareToken: string 
           </div>
         </div>
 
-        <p className="text-center text-xs text-gray-400 pb-6">Delt fra Mathjul</p>
+        <div className="text-center pb-6">
+          <a
+            href={`/recipes/${recipe.id}`}
+            className="inline-block text-sm font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
+            data-testid="delt-full-oppskrift-lenke"
+          >
+            Gå til full oppskrift{" "}
+            <span className="text-gray-500 font-normal">(krever innlogging)</span>
+          </a>
+          <p className="text-xs text-gray-400 mt-4">Delt fra Mathjul</p>
+        </div>
       </div>
     </div>
   );

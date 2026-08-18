@@ -35,6 +35,7 @@ export interface RecipeFormData {
  * `Recipe`: no email, likes, groups, or visibility.
  */
 interface SharedRecipeDto {
+  recipeId: number;
   title: string;
   description: string;
   cookTime: string;
@@ -354,7 +355,7 @@ class RecipeService {
     // told not to render them as links.
     return {
       recipe: {
-        id: 0,
+        id: dto.recipeId,
         title: dto.title,
         description: dto.description,
         ingredients: dto.ingredients,

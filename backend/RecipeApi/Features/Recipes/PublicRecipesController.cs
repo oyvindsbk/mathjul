@@ -49,6 +49,7 @@ public class PublicRecipesController : ControllerBase
 
         var dto = new SharedRecipeDto
         {
+            RecipeId = recipe.Id,
             Title = recipe.Title,
             Description = recipe.Description,
             CookTime = recipe.CookTime,
@@ -131,6 +132,12 @@ public class PublicRecipesController : ControllerBase
 /// </summary>
 public class SharedRecipeDto
 {
+    /// <summary>
+    /// The underlying recipe id, so the share page can offer a way into the full
+    /// recipe. Reaching it still requires logging in — the id alone grants nothing.
+    /// </summary>
+    public int RecipeId { get; set; }
+
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string CookTime { get; set; } = string.Empty;

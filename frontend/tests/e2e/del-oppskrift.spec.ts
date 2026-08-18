@@ -103,6 +103,7 @@ async function mockPublicApi(page: Page, state: ShareState) {
     const recipe = recipeJson();
     return route.fulfill({
       json: {
+        recipeId: RECIPE_ID,
         title: recipe.title,
         description: recipe.description,
         cookTime: recipe.cookTime,
@@ -198,6 +199,37 @@ test.describe('Del oppskrift med lenke', () => {
 
     // Side dishes are text, not a way into a second recipe.
     await expect(guest.getByTestId('side-dishes').getByRole('link')).toHaveCount(0);
+
+    await context.close();
+  });
+
+  test('the share page offers a link into the full recipe', async ({
+    page,
+    browser,
+  }) => {
+    const state: ShareState = { token: null };
+    await seedAuth(page);
+    await mockOwnerApi(page, state);
+
+    await page.goto(`/recipes/${RECIPE_ID}`);
+    await page.getByTestId('del-oppskrift-knapp').click();
+    const shareUrl = await page.getByTestId('del-oppskrift-lenke').inputValue();
+
+    const { context, page: guest } = await openAsRecipient(browser, state, shareUrl);
+
+    const fullRecipeLink = guest.getByTestId('delt-full-oppskrift-lenke');
+    await expect(fullRecipeLink).toBeVisible();
+    // The label promises a login step, so it has to be there in the text.
+    await expect(fullRecipeLink).toContainText('krever innlogging');
+    await expect(fullRecipeLink).toHaveAttribute('href', `/recipes/${RECIPE_ID}`);
+
+    // A plain <a>, so leaving the token-scoped share context is a full page load
+    // rather than a client-side transition into an app shell this layout never
+    // renders. Where the recipient lands afterwards is the auth layer's business
+    // (middleware + ProtectedRoute) and is deliberately not asserted here: local
+    // dev sets NEXT_PUBLIC_ALLOW_UNAUTHENTICATED, so a /login assertion would pass
+    // or fail on env config rather than on this feature.
+    expect(await fullRecipeLink.evaluate((el) => el.tagName)).toBe('A');
 
     await context.close();
   });

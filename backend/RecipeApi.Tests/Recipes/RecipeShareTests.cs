@@ -160,6 +160,24 @@ public class RecipeShareTests
         Assert.NotEqual(default, dto.UpdatedAt);
     }
 
+    /// <summary>
+    /// The share page links to /recipes/{id} for the full recipe. An unmapped id would
+    /// point that link at /recipes/0, which 404s for every share.
+    /// </summary>
+    [Fact]
+    public async Task SharedRecipe_CarriesRecipeId()
+    {
+        using var ctx = new RecipeTestContext();
+        var recipe = SeedRecipe(ctx);
+        var share = UnwrapShare(await ctx.CreateController().CreateShare(recipe.Id));
+
+        var result = await new PublicRecipesController(ctx.Db).GetSharedRecipe(share.Token!);
+
+        var dto = Assert.IsType<SharedRecipeDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
+        Assert.Equal(recipe.Id, dto.RecipeId);
+        Assert.NotEqual(0, dto.RecipeId);
+    }
+
     [Fact]
     public void SharedRecipeDto_HasNoEmailProperty()
     {
