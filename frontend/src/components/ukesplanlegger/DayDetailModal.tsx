@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { LEVERANDOR_COLORS, LEVERANDOR_LABELS, type Leverandor } from "@/lib/services/matkasse.service";
 import type { MealPlan } from "@/lib/services/mealplan.service";
 import { formatDate, formatDateLabel, parseDateKey, resolveEntryDisplay } from "./entryDisplay";
 
@@ -14,7 +16,6 @@ interface Props {
   onDeleteEntry: (entryId: number) => void;
   onMoveEntry: (entryId: number, newDate: Date) => void;
   onUpdateNote: (entryId: number, title: string, note: string | null) => void;
-  onOpenPreview: (plan: MealPlan) => void;
 }
 
 /** Touch targets are 44px per the mobile baseline established in spec 028. */
@@ -29,7 +30,6 @@ export function DayDetailModal({
   onDeleteEntry,
   onMoveEntry,
   onUpdateNote,
-  onOpenPreview,
 }: Props) {
   const [movingEntryId, setMovingEntryId] = useState<number | null>(null);
   const [moveDate, setMoveDate] = useState("");
@@ -115,13 +115,26 @@ export function DayDetailModal({
           ) : (
             <ul className="flex flex-col gap-2">
               {plans.map((plan) => {
-                const { title, icon, matkasseLogo, sideDishTitles, isCustom } = resolveEntryDisplay(plan);
+                const { title, icon, matkasseLogo, sideDishTitles, isCustom, isMatkasse } = resolveEntryDisplay(plan);
+                const imageUrl = isCustom ? null : isMatkasse ? plan.matkasseRecipe!.imageUrl : plan.recipe?.imageUrl;
+                const description = isCustom ? null : isMatkasse ? plan.matkasseRecipe!.beskrivelse : null;
+                const leverandor = isMatkasse ? (plan.matkasseRecipe!.leverandor as Leverandor) : null;
+                const leverandorColors = leverandor
+                  ? (LEVERANDOR_COLORS[leverandor] ?? { bg: "bg-gray-100", text: "text-gray-800", border: "border-gray-200" })
+                  : null;
+                const leverandorLabel = leverandor ? (LEVERANDOR_LABELS[leverandor] ?? leverandor) : null;
                 return (
                   <li
                     key={plan.id}
                     data-testid="day-detail-entry"
                     className={`rounded-lg border p-3 ${isCustom ? "bg-amber-50 border-amber-200" : "bg-gray-50 border-gray-200"}`}
                   >
+                    {imageUrl && (
+                      <div className="aspect-video w-full overflow-hidden rounded-md mb-2">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={imageUrl} alt={title} className="w-full h-full object-cover" />
+                      </div>
+                    )}
                     <div className="flex items-start gap-2">
                       {matkasseLogo ? (
                         // eslint-disable-next-line @next/next/no-img-element
@@ -134,11 +147,26 @@ export function DayDetailModal({
                         <span className="text-base leading-none shrink-0 mt-0.5">{icon}</span>
                       )}
                       <div className="flex-1 min-w-0">
+                        {leverandorLabel && leverandorColors && (
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium mb-1 ${leverandorColors.bg} ${leverandorColors.text} ${leverandorColors.border} border`}>
+                            {leverandorLabel}
+                          </span>
+                        )}
                         <p className={`text-sm font-medium break-words hyphens-auto ${isCustom ? "text-amber-900" : "text-gray-900"}`}>
                           {title}
                         </p>
                         {sideDishTitles.length > 0 && (
-                          <p className="text-xs text-gray-500 break-words">+ {sideDishTitles.join(", ")}</p>
+                          <div className="mt-1">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Tilbehør</p>
+                            <ul className="text-xs text-gray-600 break-words">
+                              {sideDishTitles.map((sideDish) => (
+                                <li key={sideDish}>{sideDish}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        {description && (
+                          <p className="text-xs text-gray-600 mt-1 leading-relaxed break-words">{description}</p>
                         )}
                         {plan.customNote && (
                           <p className="text-xs text-gray-600 mt-1 break-words">{plan.customNote}</p>
@@ -217,13 +245,13 @@ export function DayDetailModal({
                       </div>
                     ) : (
                       <div className="mt-2 flex flex-wrap gap-1">
-                        {!isCustom && (
-                          <button
-                            onClick={() => onOpenPreview(plan)}
-                            className={`${ACTION_BUTTON} text-blue-600 hover:bg-blue-50`}
+                        {plan.recipeId != null && (
+                          <Link
+                            href={`/recipes/${plan.recipeId}`}
+                            className={`${ACTION_BUTTON} inline-flex items-center text-blue-600 hover:bg-blue-50`}
                           >
                             Åpne
-                          </button>
+                          </Link>
                         )}
                         <button
                           onClick={() => startMove(plan)}
@@ -243,7 +271,7 @@ export function DayDetailModal({
                           onClick={() => onDeleteEntry(plan.id)}
                           className={`${ACTION_BUTTON} text-red-600 hover:bg-red-50`}
                         >
-                          Slett
+                          Fjern
                         </button>
                       </div>
                     )}
@@ -266,7 +294,7 @@ export function DayDetailModal({
               onClick={onAddCustomCard}
               className={`${ACTION_BUTTON} border border-gray-300 text-gray-700 hover:bg-gray-50`}
             >
-              + Legg til eget kort
+              + Legg til notat
             </button>
           </div>
         )}

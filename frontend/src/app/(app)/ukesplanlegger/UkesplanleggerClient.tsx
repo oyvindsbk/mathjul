@@ -9,7 +9,6 @@ import { mealPlanService, type MealPlan } from "@/lib/services/mealplan.service"
 import { CustomCardModal } from "@/components/ukesplanlegger/CustomCardModal";
 import { DayDetailModal, plansForDate } from "@/components/ukesplanlegger/DayDetailModal";
 import { WeekCalendar } from "@/components/ukesplanlegger/WeekCalendar";
-import { MealPlanPreviewModal } from "@/components/ukesplanlegger/MealPlanPreviewModal";
 import { MealTypeFilter, type MealType } from "@/components/ukesplanlegger/MealTypeFilter";
 import { RecipePickerPanel, RecipePickerSidebar } from "@/components/ukesplanlegger/RecipePickerPanel";
 import { MatkassePanelSidebar } from "@/components/matkasse/MatkassePanelSidebar";
@@ -58,7 +57,6 @@ export function UkesplanleggerClient() {
   const [sidebarTab, setSidebarTab] = useState<"oppskrifter" | "matkasse">("oppskrifter");
   const [aiLoading, setAiLoading] = useState(false);
   const [matkasseWeekMonday, setMatkasseWeekMonday] = useState<Date | null>(null);
-  const [previewPlan, setPreviewPlan] = useState<MealPlan | null>(null);
   const [customCardDate, setCustomCardDate] = useState<Date | null>(null);
   // The day a tap opened. Distinct from activeDayDate, which is the target the
   // picker and sidebar write to and outlives the modal.
@@ -488,15 +486,7 @@ export function UkesplanleggerClient() {
           onDeleteEntry={handleDeleteEntry}
           onMoveEntry={handleMoveEntry}
           onUpdateNote={handleUpdateNote}
-          onOpenPreview={(plan) => {
-            setDayModalDate(null);
-            setPreviewPlan(plan);
-          }}
         />
-      )}
-
-      {previewPlan && (
-        <MealPlanPreviewModal plan={previewPlan} onClose={() => setPreviewPlan(null)} />
       )}
 
       {customCardDate && (

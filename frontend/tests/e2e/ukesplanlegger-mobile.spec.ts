@@ -249,7 +249,7 @@ test.describe('Ukesplanlegger mobile', () => {
     await page
       .getByTestId('day-detail-entry')
       .filter({ hasText: 'Tomatsuppe' })
-      .getByRole('button', { name: 'Slett' })
+      .getByRole('button', { name: 'Fjern' })
       .click();
 
     await expect(page.getByTestId('day-detail-entry')).toHaveCount(1);
