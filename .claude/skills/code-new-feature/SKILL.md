@@ -114,13 +114,22 @@ Create `specs/<branch-name>/` with three files:
 
 Present the spec, plan, and tasks to the user for review before starting implementation. Adjust based on feedback.
 
-### 5. Implement tasks one at a time
+### 5. Implement exactly ONE task, then stop
 
-For each task in `tasks.md`:
+**Hard rule: one task per session.** Implement a single task, then stop and hand back to the user.
+Do NOT continue to the next task, even when the finished task was small, the next one looks trivial,
+or all checks are green. The user clears context between tasks, so each task starts from a fresh
+session that has read only this file, `CLAUDE.md`, and the feature's spec.
 
-1. Read the spec (`specs/<branch>/spec.md`) to stay aligned
-2. Implement the changes for that single task
-3. Run the inner loop for every affected stack:
+If the user explicitly asks for several tasks in one go, do that instead — but the default is one.
+
+For the one task:
+
+1. Read the spec (`specs/<branch>/spec.md`) and `tasks.md`
+2. Pick the **first unchecked** (`- [ ]`) task in `tasks.md` — that is the task, unless the user
+   named a different one
+3. Implement the changes for that single task, and nothing beyond its stated scope
+4. Run the inner loop for every affected stack:
 
 **Frontend changes:**
 ```bash

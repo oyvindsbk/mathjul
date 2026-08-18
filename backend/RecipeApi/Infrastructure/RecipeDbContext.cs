@@ -25,6 +25,7 @@ public class RecipeDbContext : DbContext
     public DbSet<RecipeGroup> RecipeGroups { get; set; }
     public DbSet<RecipeLike> RecipeLikes { get; set; }
     public DbSet<RecipeSideDish> RecipeSideDishes { get; set; }
+    public DbSet<RecipeShare> RecipeShares { get; set; }
     public DbSet<MealPlan> MealPlans { get; set; }
     public DbSet<MatkasseRecipe> MatkasseRecipes { get; set; }
     public DbSet<FeatureColumn> FeatureColumns { get; set; }
@@ -115,6 +116,26 @@ public class RecipeDbContext : DbContext
                   .WithMany(r => r.UsedAsSideDishIn)
                   .HasForeignKey(e => e.SideDishRecipeId)
                   .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        // Configure RecipeShare entity.
+        // Filtered unique index on RecipeId enforces "at most one active share" in the
+        // database, so concurrent create requests cannot both insert an active row.
+        modelBuilder.Entity<RecipeShare>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.Token).IsRequired().HasMaxLength(64);
+            entity.Property(e => e.CreatedByEmail).IsRequired().HasMaxLength(200);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.HasIndex(e => e.Token).IsUnique();
+            entity.HasIndex(e => e.RecipeId)
+                  .IsUnique()
+                  .HasFilter("[RevokedAt] IS NULL");
+            entity.HasOne(e => e.Recipe)
+                  .WithMany()
+                  .HasForeignKey(e => e.RecipeId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         // Configure Category entity

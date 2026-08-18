@@ -125,6 +125,12 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
               name: 'Cors__AllowedOrigins__0'
               value: frontendUrl != '' ? frontendUrl : 'https://placeholder-update-after-deployment.com'
             }
+            // Base URL for share links. Without it the API falls back to its own
+            // request origin, which is the API host -- never where /delt/ lives.
+            {
+              name: 'Sharing__PublicBaseUrl'
+              value: frontendUrl != '' ? frontendUrl : 'https://placeholder-update-after-deployment.com'
+            }
             {
               name: 'Jwt__Issuer'
               value: 'RecipeApi'

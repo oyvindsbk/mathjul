@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "4425077283247501324"
+      "templateHash": "992955827429755244"
     }
   },
   "parameters": {
@@ -374,7 +374,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "13604871217447635873"
+              "templateHash": "10505185192852569433"
             }
           },
           "parameters": {
@@ -527,6 +527,10 @@
                         },
                         {
                           "name": "Cors__AllowedOrigins__0",
+                          "value": "[if(not(equals(parameters('frontendUrl'), '')), parameters('frontendUrl'), 'https://placeholder-update-after-deployment.com')]"
+                        },
+                        {
+                          "name": "Sharing__PublicBaseUrl",
                           "value": "[if(not(equals(parameters('frontendUrl'), '')), parameters('frontendUrl'), 'https://placeholder-update-after-deployment.com')]"
                         },
                         {

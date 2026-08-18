@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RecipeApi.Features.Auth;
@@ -18,6 +19,7 @@ public class RecipesController : ControllerBase
     private readonly IRecipeUrlProcessor _urlProcessor;
     private readonly IBlobStorageService _blobStorage;
     private readonly IAdminService _adminService;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<RecipesController> _logger;
 
     public RecipesController(
@@ -26,6 +28,7 @@ public class RecipesController : ControllerBase
         IRecipeUrlProcessor urlProcessor,
         IBlobStorageService blobStorage,
         IAdminService adminService,
+        IConfiguration configuration,
         ILogger<RecipesController> logger)
     {
         _context = context;
@@ -33,6 +36,7 @@ public class RecipesController : ControllerBase
         _urlProcessor = urlProcessor;
         _blobStorage = blobStorage;
         _adminService = adminService;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -1106,6 +1110,137 @@ public class RecipesController : ControllerBase
         return NoContent();
     }
 
+    // ── Share endpoints ─────────────────────────────────────────────────────
+
+    private bool CanManageShare(Recipe recipe, string? callerEmail) =>
+        callerEmail != null && (recipe.OwnerEmail == callerEmail || _adminService.IsAdmin(callerEmail));
+
+    private static string GenerateShareToken() =>
+        Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+            .Replace("+", "-").Replace("/", "_").TrimEnd('=');
+
+    private string BuildShareUrl(string token)
+    {
+        var configuredBase = _configuration["Sharing:PublicBaseUrl"];
+        var baseUrl = !string.IsNullOrWhiteSpace(configuredBase)
+            ? configuredBase.TrimEnd('/')
+            : $"{Request.Scheme}://{Request.Host}";
+
+        return $"{baseUrl}/delt/{token}";
+    }
+
+    private ShareStatusDto BuildShareStatusDto(RecipeShare? share) =>
+        share == null
+            ? new ShareStatusDto { IsShared = false }
+            : new ShareStatusDto
+            {
+                IsShared = true,
+                Token = share.Token,
+                ShareUrl = BuildShareUrl(share.Token),
+                CreatedAt = share.CreatedAt
+            };
+
+    [HttpGet("{id:int}/share")]
+    public async Task<ActionResult<ShareStatusDto>> GetShare(int id)
+    {
+        var callerEmail = GetCallerEmail();
+        var recipe = await _context.Recipes.FindAsync(id);
+        if (recipe == null)
+            return NotFound(new { message = "Recipe not found" });
+
+        if (!CanManageShare(recipe, callerEmail))
+            return StatusCode(403, new { message = "Only the recipe owner can manage sharing" });
+
+        var share = await _context.RecipeShares
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.RecipeId == id && s.RevokedAt == null);
+
+        return Ok(BuildShareStatusDto(share));
+    }
+
+    /// <summary>Idempotent: an existing active share is returned as-is rather than minting a second token.</summary>
+    [HttpPost("{id:int}/share")]
+    public async Task<ActionResult<ShareStatusDto>> CreateShare(int id)
+    {
+        var callerEmail = GetCallerEmail();
+        var recipe = await _context.Recipes.FindAsync(id);
+        if (recipe == null)
+            return NotFound(new { message = "Recipe not found" });
+
+        if (!CanManageShare(recipe, callerEmail))
+            return StatusCode(403, new { message = "Only the recipe owner can manage sharing" });
+
+        var existing = await _context.RecipeShares
+            .FirstOrDefaultAsync(s => s.RecipeId == id && s.RevokedAt == null);
+
+        if (existing != null)
+            return Ok(BuildShareStatusDto(existing));
+
+        var share = new RecipeShare
+        {
+            RecipeId = id,
+            Token = GenerateShareToken(),
+            CreatedByEmail = callerEmail!,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.RecipeShares.Add(share);
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Lost a race: the filtered unique index on (RecipeId) WHERE RevokedAt IS NULL
+            // rejected this insert because a concurrent request already created the active
+            // share. That is the index doing its job -- the caller still wants the link, and
+            // this endpoint is documented as idempotent, so return the winner's share rather
+            // than a 500. (Two requests arriving together is the ordinary case: React
+            // StrictMode double-invokes effects in development, and a double-click does the
+            // same in production.)
+            _context.Entry(share).State = EntityState.Detached;
+
+            var winner = await _context.RecipeShares
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.RecipeId == id && s.RevokedAt == null);
+
+            if (winner == null)
+                throw;
+
+            return Ok(BuildShareStatusDto(winner));
+        }
+
+        return Ok(BuildShareStatusDto(share));
+    }
+
+    /// <summary>Revokes the active share, if any. 204 either way — there is nothing to report back.</summary>
+    [HttpDelete("{id:int}/share")]
+    public async Task<IActionResult> RevokeShare(int id)
+    {
+        var callerEmail = GetCallerEmail();
+        var recipe = await _context.Recipes.FindAsync(id);
+        if (recipe == null)
+            return NotFound(new { message = "Recipe not found" });
+
+        if (!CanManageShare(recipe, callerEmail))
+            return StatusCode(403, new { message = "Only the recipe owner can manage sharing" });
+
+        var active = await _context.RecipeShares
+            .Where(s => s.RecipeId == id && s.RevokedAt == null)
+            .ToListAsync();
+
+        if (active.Count > 0)
+        {
+            var revokedAt = DateTime.UtcNow;
+            foreach (var share in active)
+                share.RevokedAt = revokedAt;
+            await _context.SaveChangesAsync();
+        }
+
+        return NoContent();
+    }
+
     // ── Like / Favourite endpoints ─────────────────────────────────────────
 
     [HttpGet("newest")]
@@ -1435,6 +1570,15 @@ public class RecipeDetailDto
     public DateTime UpdatedAt { get; set; }
     public string? SourceUrl { get; set; }
     public bool IsLikedByMe { get; set; }
+}
+
+/// <summary>Active-share status for the owner-facing endpoints. <see cref="Token"/> and <see cref="ShareUrl"/> are null when nothing is shared.</summary>
+public class ShareStatusDto
+{
+    public bool IsShared { get; set; }
+    public string? Token { get; set; }
+    public string? ShareUrl { get; set; }
+    public DateTime? CreatedAt { get; set; }
 }
 
 public class StructuredIngredientDto

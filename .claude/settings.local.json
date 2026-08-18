@@ -3,7 +3,8 @@
     "allow": [
       "Bash(echo \"lint exit=$?\")",
       "Bash(echo \"tsc exit=$?\")",
-      "Bash(echo \"build exit=$?\")"
+      "Bash(echo \"build exit=$?\")",
+      "Bash(docker version *)"
     ]
   }
 }

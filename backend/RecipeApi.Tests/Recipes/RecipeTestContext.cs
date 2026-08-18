@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using RecipeApi.Features.Auth;
@@ -53,6 +54,7 @@ public sealed class RecipeTestContext : IDisposable
             UrlProcessor.Object,
             blobStorage.Object,
             adminService.Object,
+            new ConfigurationBuilder().Build(),
             NullLogger<RecipesController>.Instance);
 
         var identity = email == null

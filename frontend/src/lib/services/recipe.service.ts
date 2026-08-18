@@ -30,6 +30,44 @@ export interface RecipeFormData {
   sourceImageUrl?: string | null;
 }
 
+/**
+ * The public share payload, as the API sends it. Deliberately narrower than
+ * `Recipe`: no email, likes, groups, or visibility.
+ */
+interface SharedRecipeDto {
+  title: string;
+  description: string;
+  cookTime: string;
+  cookTimeMinutes?: number | null;
+  prepTime?: number | null;
+  imageUrl?: string | null;
+  servings?: number | null;
+  quantityType: string;
+  customUnit?: string | null;
+  ingredients: StructuredIngredient[];
+  instructionSteps: InstructionStep[];
+  ingredientSections: IngredientSection[];
+  instructionSections: InstructionSection[];
+  tips: string[];
+  /** Titles only — never links, since a link would be access to a second recipe. */
+  sideDishes: string[];
+  ownerDisplayName: string;
+}
+
+/** A shared recipe mapped onto the shape `RecipeBody` renders. */
+export interface SharedRecipe {
+  recipe: Recipe;
+  ownerDisplayName: string;
+}
+
+/** Active-share status for a recipe. `token`/`shareUrl` are null when nothing is shared. */
+export interface ShareStatus {
+  isShared: boolean;
+  token?: string | null;
+  shareUrl?: string | null;
+  createdAt?: string | null;
+}
+
 class RecipeService {
   /**
    * Fetch all recipes, optionally filtered by category IDs. Ids in the same
@@ -290,6 +328,90 @@ class RecipeService {
   async deleteStepImage(id: string | number, stepIndex: number, token?: string): Promise<void> {
     const response = await this.fetchWithBody(`${appConfig.api.baseUrl}/api/recipes/${id}/steps/${stepIndex}/image`, 'DELETE', undefined, token);
     if (!response.ok) throw new Error(`Failed to delete step image: ${response.statusText}`);
+  }
+
+  /**
+   * The shared recipe behind a token, from the unauthenticated public endpoint.
+   * Returns null when the token is unknown or revoked, so the caller can show
+   * the dead-link page instead of an error.
+   */
+  async getSharedRecipe(shareToken: string): Promise<SharedRecipe | null> {
+    // Plain fetch, not apiFetch: apiFetch bounces a 401 to /login, and a
+    // recipient holding a link must never be sent to a login page.
+    const response = await fetch(
+      `${appConfig.api.baseUrl}/api/public/recipes/shared/${encodeURIComponent(shareToken)}`,
+      { headers: { Accept: 'application/json' } }
+    );
+
+    if (response.status === 404 || response.status === 401 || response.status === 403) return null;
+    if (!response.ok) throw new Error(`Failed to fetch shared recipe: ${response.statusText}`);
+
+    const dto: SharedRecipeDto = await response.json();
+
+    // The public DTO carries side dishes as bare titles — there is no id to link
+    // to on purpose. Synthetic indices satisfy the RecipeRef key; RecipeBody is
+    // told not to render them as links.
+    return {
+      recipe: {
+        id: 0,
+        title: dto.title,
+        description: dto.description,
+        ingredients: dto.ingredients,
+        instructionSteps: dto.instructionSteps,
+        ingredientSections: dto.ingredientSections,
+        instructionSections: dto.instructionSections,
+        prepTime: dto.prepTime,
+        cookTime: dto.cookTime,
+        cookTimeMinutes: dto.cookTimeMinutes,
+        servings: dto.servings,
+        quantityType: dto.quantityType,
+        customUnit: dto.customUnit,
+        imageUrl: dto.imageUrl,
+        tips: dto.tips,
+        sideDishes: dto.sideDishes.map((title, index) => ({ id: index, title })),
+      },
+      ownerDisplayName: dto.ownerDisplayName,
+    };
+  }
+
+  /**
+   * The recipe's active share, if any. Owner/admin only — the API answers 403
+   * for anyone else.
+   */
+  async getShare(id: string | number, token?: string): Promise<ShareStatus> {
+    const response = await this.fetchWithTimeout(
+      `${appConfig.api.baseUrl}/api/recipes/${id}/share`,
+      appConfig.mocking.fetchTimeout,
+      token
+    );
+    if (!response.ok) throw new Error(`Failed to fetch share: ${response.statusText}`);
+    return await response.json();
+  }
+
+  /**
+   * Creates a share link, or returns the existing active one. Idempotent, so a
+   * double-click cannot mint a second token.
+   */
+  async createShare(id: string | number, token?: string): Promise<ShareStatus> {
+    const response = await this.fetchWithBody(
+      `${appConfig.api.baseUrl}/api/recipes/${id}/share`,
+      'POST',
+      undefined,
+      token
+    );
+    if (!response.ok) throw new Error(`Failed to create share: ${response.statusText}`);
+    return await response.json();
+  }
+
+  /** Revokes the active share. The link stops working immediately. */
+  async revokeShare(id: string | number, token?: string): Promise<void> {
+    const response = await this.fetchWithBody(
+      `${appConfig.api.baseUrl}/api/recipes/${id}/share`,
+      'DELETE',
+      undefined,
+      token
+    );
+    if (!response.ok) throw new Error(`Failed to revoke share: ${response.statusText}`);
   }
 
   /**

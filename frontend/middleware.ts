@@ -11,8 +11,13 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow these routes without authentication
-  const publicRoutes = ["/login", "/api/auth/callback", "/api/auth/google", "/.auth", "/api/auth/token", "/api/auth/fake-callback", "/api/auth/session"];
-  const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route));
+  const publicRoutes = ["/login", "/api/auth/callback", "/api/auth/google", "/.auth", "/api/auth/token", "/api/auth/fake-callback", "/api/auth/session", "/robots.txt"];
+  // "/delt/<token>" is the share page: the token in the URL is the credential, so
+  // it must render without an auth_token cookie. Matched as its own prefix rather
+  // than added to publicRoutes, since a bare startsWith("/delt") would silently
+  // open any future route whose name merely begins with those letters.
+  const isPublicRoute =
+    publicRoutes.some((route) => pathname.startsWith(route)) || pathname.startsWith("/delt/");
 
   if (isPublicRoute) {
     return NextResponse.next();
