@@ -37,8 +37,17 @@ public sealed class RecipeTestContext : IDisposable
         Db.Database.EnsureCreated();
     }
 
-    /// <summary>Creates a controller acting as <paramref name="email"/> (defaults to the recipe owner).</summary>
-    public RecipesController CreateController(string? email = OwnerEmail, bool isAdmin = false)
+    /// <summary>
+    /// Creates a controller acting as <paramref name="email"/> (defaults to the recipe owner).
+    /// <paramref name="configuration"/> and <paramref name="configureRequest"/> let share-URL
+    /// tests supply Sharing:PublicBaseUrl and shape the incoming request (scheme, host,
+    /// forwarded headers); both default to the previous empty-config / bare-request behaviour.
+    /// </summary>
+    public RecipesController CreateController(
+        string? email = OwnerEmail,
+        bool isAdmin = false,
+        IConfiguration? configuration = null,
+        Action<HttpRequest>? configureRequest = null)
     {
         var adminService = new Mock<IAdminService>();
         adminService.Setup(a => a.IsAdmin(It.IsAny<string>())).Returns(isAdmin);
@@ -54,16 +63,19 @@ public sealed class RecipeTestContext : IDisposable
             UrlProcessor.Object,
             blobStorage.Object,
             adminService.Object,
-            new ConfigurationBuilder().Build(),
+            configuration ?? new ConfigurationBuilder().Build(),
             NullLogger<RecipesController>.Instance);
 
         var identity = email == null
             ? new ClaimsIdentity()
             : new ClaimsIdentity([new Claim(ClaimTypes.Email, email)], "Test");
 
+        var httpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
+        configureRequest?.Invoke(httpContext.Request);
+
         controller.ControllerContext = new ControllerContext
         {
-            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) }
+            HttpContext = httpContext
         };
 
         return controller;

@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using RecipeApi.Features.Recipes;
 using Xunit;
 
@@ -236,5 +238,80 @@ public class RecipeShareTests
 
         Assert.True(status.IsShared);
         Assert.Equal(created.Token, status.Token);
+    }
+
+    // ── Share URL construction ──────────────────────────────────────────────
+    //
+    // The link is the whole feature: if it points at the API host, or at http://,
+    // the recipient gets an auth error or a blocked upgrade instead of a recipe.
+
+    private static IConfiguration ConfigWithBase(string? baseUrl) =>
+        new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Sharing:PublicBaseUrl"] = baseUrl
+            })
+            .Build();
+
+    [Fact]
+    public async Task ShareUrl_UsesConfiguredPublicBaseUrl_NotTheRequestHost()
+    {
+        using var ctx = new RecipeTestContext();
+        var recipe = SeedRecipe(ctx);
+
+        var controller = ctx.CreateController(
+            configuration: ConfigWithBase("https://mathjul.example.com"),
+            configureRequest: req =>
+            {
+                // The API's own origin -- never where /delt/ is served from.
+                req.Scheme = "http";
+                req.Host = new HostString("recipe-api.internal");
+            });
+
+        var share = UnwrapShare(await controller.CreateShare(recipe.Id));
+
+        Assert.Equal($"https://mathjul.example.com/delt/{share.Token}", share.ShareUrl);
+    }
+
+    [Fact]
+    public async Task ShareUrl_FallsBackToForwardedProto_WhenTlsTerminatesAtTheProxy()
+    {
+        using var ctx = new RecipeTestContext();
+        var recipe = SeedRecipe(ctx);
+
+        // No configured base: Container Apps ingress terminates TLS and forwards
+        // over plain http, so Request.Scheme alone would emit an http:// link.
+        var controller = ctx.CreateController(
+            configuration: ConfigWithBase(null),
+            configureRequest: req =>
+            {
+                req.Scheme = "http";
+                req.Host = new HostString("app.example.com");
+                req.Headers["X-Forwarded-Proto"] = "https";
+            });
+
+        var share = UnwrapShare(await controller.CreateShare(recipe.Id));
+
+        Assert.StartsWith("https://app.example.com/delt/", share.ShareUrl);
+    }
+
+    [Fact]
+    public async Task ShareUrl_TakesFirstForwardedProto_WhenProxiesChain()
+    {
+        using var ctx = new RecipeTestContext();
+        var recipe = SeedRecipe(ctx);
+
+        var controller = ctx.CreateController(
+            configuration: ConfigWithBase(null),
+            configureRequest: req =>
+            {
+                req.Scheme = "http";
+                req.Host = new HostString("app.example.com");
+                req.Headers["X-Forwarded-Proto"] = "https,http";
+            });
+
+        var share = UnwrapShare(await controller.CreateShare(recipe.Id));
+
+        Assert.StartsWith("https://app.example.com/delt/", share.ShareUrl);
     }
 }

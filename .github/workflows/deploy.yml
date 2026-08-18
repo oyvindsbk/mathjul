@@ -291,13 +291,18 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     
-    - name: Update Backend CORS Configuration
+    - name: Update Backend Frontend-URL Configuration
+      # Both vars must track the live frontend URL: CORS to allow its origin, and
+      # Sharing__PublicBaseUrl so /delt/ share links point at the frontend rather
+      # than falling back to the API's own request origin.
       run: |
-        echo "🔧 Updating backend CORS to allow: ${{ needs.deploy-frontend.outputs.frontend-url }}"
+        echo "🔧 Pointing backend CORS + share links at: ${{ needs.deploy-frontend.outputs.frontend-url }}"
         
         az containerapp update \
           --name "${{ needs.get-resources.outputs.container-app-name }}" \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --set-env-vars "Cors__AllowedOrigins__0=${{ needs.deploy-frontend.outputs.frontend-url }}"
+          --set-env-vars \
+            "Cors__AllowedOrigins__0=${{ needs.deploy-frontend.outputs.frontend-url }}" \
+            "Sharing__PublicBaseUrl=${{ needs.deploy-frontend.outputs.frontend-url }}"
         
-        echo "✅ CORS configuration updated successfully!"
+        echo "✅ Backend CORS + share base URL updated successfully!"

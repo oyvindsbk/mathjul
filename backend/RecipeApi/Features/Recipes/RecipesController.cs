@@ -1122,9 +1122,19 @@ public class RecipesController : ControllerBase
     private string BuildShareUrl(string token)
     {
         var configuredBase = _configuration["Sharing:PublicBaseUrl"];
+
+        // The fallback is already wrong in prod -- it yields the API host, not where /delt/
+        // lives -- so it exists only to keep local dev working. Still, honour X-Forwarded-Proto:
+        // behind Container Apps ingress TLS terminates at the proxy and the app itself listens
+        // on plain http, so Request.Scheme alone would emit an http:// link that browsers and
+        // messaging apps then refuse to upgrade.
+        var scheme = Request.Headers["X-Forwarded-Proto"].FirstOrDefault()?.Split(',')[0].Trim();
+        if (string.IsNullOrWhiteSpace(scheme))
+            scheme = Request.Scheme;
+
         var baseUrl = !string.IsNullOrWhiteSpace(configuredBase)
             ? configuredBase.TrimEnd('/')
-            : $"{Request.Scheme}://{Request.Host}";
+            : $"{scheme}://{Request.Host}";
 
         return $"{baseUrl}/delt/{token}";
     }

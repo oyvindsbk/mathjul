@@ -64,7 +64,7 @@ jobs:
           frontendUrl=${{ vars.FRONTEND_URL }}
         failOnStdErr: false
     
-    - name: Update backend CORS with frontend URL
+    - name: Update backend CORS and share base URL with frontend URL
       run: |
         FRONTEND_URL="${{ steps.bicep-deploy.outputs.frontendUrl }}"
         BACKEND_NAME=$(az containerapp list \
@@ -73,8 +73,10 @@ jobs:
         az containerapp update \
           --name "$BACKEND_NAME" \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --set-env-vars "Cors__AllowedOrigins__0=${FRONTEND_URL}"
-        echo "CORS set to: ${FRONTEND_URL}"
+          --set-env-vars \
+            "Cors__AllowedOrigins__0=${FRONTEND_URL}" \
+            "Sharing__PublicBaseUrl=${FRONTEND_URL}"
+        echo "CORS + share base URL set to: ${FRONTEND_URL}"
 
     - name: Display deployment info
       run: |
