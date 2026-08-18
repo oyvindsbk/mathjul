@@ -52,6 +52,7 @@ interface SharedRecipeDto {
   /** Titles only — never links, since a link would be access to a second recipe. */
   sideDishes: string[];
   ownerDisplayName: string;
+  updatedAt: string;
 }
 
 /** A shared recipe mapped onto the shape `RecipeBody` renders. */
@@ -369,6 +370,7 @@ class RecipeService {
         imageUrl: dto.imageUrl,
         tips: dto.tips,
         sideDishes: dto.sideDishes.map((title, index) => ({ id: index, title })),
+        updatedAt: dto.updatedAt,
       },
       ownerDisplayName: dto.ownerDisplayName,
     };

@@ -140,6 +140,26 @@ public class RecipeShareTests
         Assert.Equal(recipe.Title, dto.Title);
     }
 
+    /// <summary>
+    /// RecipeBody renders "Sist oppdatert" from updatedAt and falls back to an em dash
+    /// when it is missing, so an unmapped field shows as a blank date rather than an error.
+    /// </summary>
+    [Fact]
+    public async Task SharedRecipe_CarriesUpdatedAt()
+    {
+        using var ctx = new RecipeTestContext();
+        var recipe = SeedRecipe(ctx);
+        recipe.UpdatedAt = new DateTime(2026, 3, 14, 9, 30, 0, DateTimeKind.Utc);
+        await ctx.Db.SaveChangesAsync();
+
+        var share = UnwrapShare(await ctx.CreateController().CreateShare(recipe.Id));
+        var result = await new PublicRecipesController(ctx.Db).GetSharedRecipe(share.Token!);
+
+        var dto = Assert.IsType<SharedRecipeDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
+        Assert.Equal(recipe.UpdatedAt, dto.UpdatedAt);
+        Assert.NotEqual(default, dto.UpdatedAt);
+    }
+
     [Fact]
     public void SharedRecipeDto_HasNoEmailProperty()
     {

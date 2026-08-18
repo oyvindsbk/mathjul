@@ -58,6 +58,7 @@ public class PublicRecipesController : ControllerBase
             Servings = recipe.Servings,
             QuantityType = recipe.QuantityType,
             CustomUnit = recipe.CustomUnit,
+            UpdatedAt = recipe.UpdatedAt,
             Ingredients = recipe.Ingredients.Select(i => new StructuredIngredientDto
             {
                 Quantity = i.Quantity,
@@ -147,4 +148,10 @@ public class SharedRecipeDto
     /// <summary>Side-dish titles as plain text -- not links to the side dish recipes.</summary>
     public List<string> SideDishes { get; set; } = new();
     public string OwnerDisplayName { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Drives the "Sist oppdatert" line in RecipeBody. Not sensitive -- the authenticated
+    /// detail view already shows it, and it says nothing about who edited the recipe.
+    /// </summary>
+    public DateTime UpdatedAt { get; set; }
 }
