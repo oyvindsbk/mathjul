@@ -251,8 +251,14 @@ public class RecipesController : ControllerBase
         return Ok(recipes);
     }
 
+    /// <summary>
+    /// Reads one recipe. <paramref name="merged"/> is true for display: Inline side dishes are
+    /// folded into the section lists. The edit form passes false, because it writes those very
+    /// lists back on save -- handing it the merged view would bake the tilbehør's content into
+    /// the main dish permanently.
+    /// </summary>
     [HttpGet("{id:int}")]
-    public async Task<ActionResult<RecipeDetailDto>> GetRecipeById(int id)
+    public async Task<ActionResult<RecipeDetailDto>> GetRecipeById(int id, [FromQuery] bool merged = true)
     {
         var callerEmail = GetCallerEmail();
 
@@ -304,16 +310,14 @@ public class RecipesController : ControllerBase
                 Name = i.Name
             }).ToList(),
             InstructionSteps = recipe.InstructionSteps.Select(s => new InstructionStepDto { Text = s.Text, ImageUrl = s.ImageUrl }).ToList(),
-            IngredientSections = recipe.IngredientSections.Select(s => new IngredientSectionDto
-            {
-                Heading = s.Heading,
-                Ingredients = s.Ingredients.Select(i => new StructuredIngredientDto { Quantity = i.Quantity, Unit = i.Unit, Name = i.Name }).ToList()
-            }).ToList(),
-            InstructionSections = recipe.InstructionSections.Select(s => new InstructionSectionDto
-            {
-                Heading = s.Heading,
-                Steps = s.Steps.Select(st => new InstructionStepDto { Text = st.Text, ImageUrl = st.ImageUrl }).ToList()
-            }).ToList(),
+            // Inline side dishes are merged in here, so the detail page, matlagingsmodus and
+            // the shared link all get them without each re-implementing the merge.
+            IngredientSections = merged
+                ? InlineSideDishMerger.BuildIngredientSections(recipe)
+                : InlineSideDishMerger.OwnIngredientSections(recipe),
+            InstructionSections = merged
+                ? InlineSideDishMerger.BuildInstructionSections(recipe)
+                : InlineSideDishMerger.OwnInstructionSections(recipe),
             Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
             Groups = recipe.Groups.Select(rg => new GroupRefDto { Id = rg.GroupId, Name = rg.Group.Name }).ToList(),
             Tips = recipe.Tips,
@@ -323,7 +327,8 @@ public class RecipesController : ControllerBase
                 {
                     Id = sd.SideDishRecipe.Id,
                     Title = sd.SideDishRecipe.Title,
-                    ImageUrl = sd.SideDishRecipe.ImageUrl
+                    ImageUrl = sd.SideDishRecipe.ImageUrl,
+                    DisplayMode = sd.DisplayMode
                 }).ToList(),
             // Reverse lookup is visibility-filtered so a private main dish's title
             // cannot leak through a public tilbehør.
@@ -689,6 +694,11 @@ public class RecipesController : ControllerBase
         if (sideDishError != null)
             return BadRequest(new { message = sideDishError });
 
+        var inlineSideDishIds = (request.InlineSideDishIds ?? new List<int>()).Distinct().ToList();
+        var inlineError = ValidateInlineSideDishes(sideDishIds, inlineSideDishIds);
+        if (inlineError != null)
+            return BadRequest(new { message = inlineError });
+
         var visibility = request.Visibility ?? "Public";
 
         var recipe = new Recipe
@@ -756,7 +766,10 @@ public class RecipesController : ControllerBase
                 {
                     RecipeId = recipe.Id,
                     SideDishRecipeId = sideDishId,
-                    SortOrder = sideDishOrder++
+                    SortOrder = sideDishOrder++,
+                    DisplayMode = inlineSideDishIds.Contains(sideDishId)
+                        ? SideDishDisplayModes.Inline
+                        : SideDishDisplayModes.Link
                 });
             }
             await _context.SaveChangesAsync();
@@ -817,6 +830,19 @@ public class RecipesController : ControllerBase
         return null;
     }
 
+    /// <summary>
+    /// Validates that every id marked Inline is actually attached as a side dish. Returns an
+    /// error message, or null if valid. Kept apart from <see cref="ValidateSideDishesAsync"/>
+    /// so it still runs when the side-dish list is empty but inline ids were sent anyway.
+    /// </summary>
+    private static string? ValidateInlineSideDishes(List<int> sideDishIds, List<int> inlineSideDishIds)
+    {
+        var stray = inlineSideDishIds.Where(id => !sideDishIds.Contains(id)).ToList();
+        return stray.Count == 0
+            ? null
+            : "Et tilbehør kan bare vises innflettet hvis det også er lagt til som tilbehør.";
+    }
+
     [HttpPut("{id:int}")]
     public async Task<ActionResult<RecipeDetailDto>> UpdateRecipe(int id, [FromBody] UpdateRecipeRequest request)
     {
@@ -874,6 +900,11 @@ public class RecipesController : ControllerBase
         if (sideDishError != null)
             return BadRequest(new { message = sideDishError });
 
+        var inlineSideDishIds = (request.InlineSideDishIds ?? new List<int>()).Distinct().ToList();
+        var inlineError = ValidateInlineSideDishes(sideDishIds, inlineSideDishIds);
+        if (inlineError != null)
+            return BadRequest(new { message = inlineError });
+
         var wasTilbehor = recipe.Categories.Any(c => c.Id == RecipeCategories.TilbehorId);
         var isTilbehor = newCategories.Any(c => c.Id == RecipeCategories.TilbehorId);
 
@@ -889,7 +920,10 @@ public class RecipesController : ControllerBase
             {
                 RecipeId = recipe.Id,
                 SideDishRecipeId = sideDishId,
-                SortOrder = sideDishOrder++
+                SortOrder = sideDishOrder++,
+                DisplayMode = inlineSideDishIds.Contains(sideDishId)
+                    ? SideDishDisplayModes.Inline
+                    : SideDishDisplayModes.Link
             });
 
         // Dropping the Tilbehør mark detaches this recipe from every main dish using it,
@@ -946,16 +980,10 @@ public class RecipesController : ControllerBase
                 Name = i.Name
             }).ToList(),
             InstructionSteps = recipe.InstructionSteps.Select(s => new InstructionStepDto { Text = s.Text, ImageUrl = s.ImageUrl }).ToList(),
-            IngredientSections = recipe.IngredientSections.Select(s => new IngredientSectionDto
-            {
-                Heading = s.Heading,
-                Ingredients = s.Ingredients.Select(i => new StructuredIngredientDto { Quantity = i.Quantity, Unit = i.Unit, Name = i.Name }).ToList()
-            }).ToList(),
-            InstructionSections = recipe.InstructionSections.Select(s => new InstructionSectionDto
-            {
-                Heading = s.Heading,
-                Steps = s.Steps.Select(st => new InstructionStepDto { Text = st.Text, ImageUrl = st.ImageUrl }).ToList()
-            }).ToList(),
+            // Inline side dishes are merged in here, so the detail page, matlagingsmodus and
+            // the shared link all get them without each re-implementing the merge.
+            IngredientSections = InlineSideDishMerger.BuildIngredientSections(recipe),
+            InstructionSections = InlineSideDishMerger.BuildInstructionSections(recipe),
             Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
             Groups = recipe.Groups.Select(rg => new GroupRefDto { Id = rg.GroupId, Name = rg.Group.Name }).ToList(),
             Tips = recipe.Tips,
@@ -965,7 +993,8 @@ public class RecipesController : ControllerBase
                 {
                     Id = sd.SideDishRecipe.Id,
                     Title = sd.SideDishRecipe.Title,
-                    ImageUrl = sd.SideDishRecipe.ImageUrl
+                    ImageUrl = sd.SideDishRecipe.ImageUrl,
+                    DisplayMode = sd.DisplayMode
                 }).ToList(),
             CreatedAt = recipe.CreatedAt,
             UpdatedAt = recipe.UpdatedAt
@@ -1509,6 +1538,12 @@ public class RecipeRefDto
     public int Id { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? ImageUrl { get; set; }
+
+    /// <summary>
+    /// Only meaningful on the SideDishes list: Link (shown as a chip) or Inline (already
+    /// merged into the section lists, so the chip is suppressed). Link on the reverse lookup.
+    /// </summary>
+    public string DisplayMode { get; set; } = SideDishDisplayModes.Link;
 }
 
 public class RecipeDto
@@ -1658,6 +1693,13 @@ public class SaveExtractedRecipeRequest
     public List<int>? GroupIds { get; set; }
     /// <summary>Ids of Tilbehør-marked recipes to attach. List order becomes SortOrder.</summary>
     public List<int>? SideDishIds { get; set; }
+
+    /// <summary>
+    /// Subset of <see cref="SideDishIds"/> to merge into the main dish as sections rather
+    /// than show as a link. Omitting the field leaves every side dish as a link, which is
+    /// the behaviour every client had before this field existed.
+    /// </summary>
+    public List<int>? InlineSideDishIds { get; set; }
 }
 
 public class UpdateRecipeRequest
@@ -1679,4 +1721,11 @@ public class UpdateRecipeRequest
     public List<int>? GroupIds { get; set; }
     /// <summary>Ids of Tilbehør-marked recipes to attach. List order becomes SortOrder.</summary>
     public List<int>? SideDishIds { get; set; }
+
+    /// <summary>
+    /// Subset of <see cref="SideDishIds"/> to merge into the main dish as sections rather
+    /// than show as a link. Omitting the field leaves every side dish as a link, which is
+    /// the behaviour every client had before this field existed.
+    /// </summary>
+    public List<int>? InlineSideDishIds { get; set; }
 }

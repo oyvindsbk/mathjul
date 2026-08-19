@@ -127,6 +127,14 @@ public class RecipeSideDish
     public Recipe SideDishRecipe { get; set; } = null!;
 
     public int SortOrder { get; set; }
+
+    /// <summary>
+    /// <see cref="SideDishDisplayModes.Link"/> (default) or <see cref="SideDishDisplayModes.Inline"/>.
+    /// Purely presentational: Inline merges the side dish's own sections into the main dish
+    /// at read time, it never copies anything.
+    /// </summary>
+    [StringLength(20)]
+    public string DisplayMode { get; set; } = SideDishDisplayModes.Link;
 }
 
 public class RecipeLike

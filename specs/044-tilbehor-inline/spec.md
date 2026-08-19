@@ -87,6 +87,13 @@ som ikke sender feltet får `Link` på alt, som er dagens oppførsel.
 også de innfletta tilbehørsseksjonene. `SideDishes` inneholder fortsatt alle tilbehør, med
 `DisplayMode` slik at frontend kan skjule chip-en for de innfletta.
 
+**GET `/api/recipes/{id}?merged=false`** — samme respons, men uten fletting. Lagt til under
+implementeringen: redigeringsskjemaet leser `ingredientSections` / `instructionSections` og
+skriver dem rett tilbake ved lagring. Fikk det den flettede visningen, ville tilbehørets
+innhold blitt kopiert permanent inn i hovedretten ved første lagring — og for en flat
+hovedrett ville flat→seksjon-konverteringen i tillegg spist de flate listene. Standard er
+`true`, så alle visningsflater er uendret.
+
 **GET `/api/public/shared/{token}`** — samme fletting. `SideDishes` her er `List<string>`
 (bare titler) og filtreres til kun `Link`-tilbehør.
 
@@ -113,6 +120,12 @@ også de innfletta tilbehørsseksjonene. `SideDishes` inneholder fortsatt alle t
 - Redigering av tilbehørets innhold fra hovedrettens side
 
 ## Open Questions
+- **Delt lenke og tilbehørets synlighet:** delingsendepunktet filtrerer ikke tilbehør på
+  synlighet — det gjorde det ikke før heller, der titlene på private tilbehør allerede var
+  med. Med innfletting deles nå også *innholdet* i et innflettet tilbehør. Vurderingen er at
+  dette er tilsiktet: å merke et tilbehør Innflettet er eierens uttrykkelige valg om å gjøre
+  det til en del av denne oppskriften, og da deles det som står på siden. Notert fordi det
+  utvider hva en delt lenke eksponerer.
 - **Porsjonsskalering:** hovedretten har en `ServingsStepper` som skalerer ingredienser mot
   `recipe.servings`. Innfletta tilbehør har sin egen `servings`, som kan avvike. I denne
   omgangen skaleres tilbehørets mengder **ikke** — de vises som oppgitt i tilbehøret.

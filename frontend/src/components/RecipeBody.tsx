@@ -44,6 +44,12 @@ export function RecipeBody({
 }: RecipeBodyProps) {
   const interactive = Boolean(onToggleStep);
 
+  // Inline tilbehør are already merged into the section lists by the API, so showing them
+  // as chips too would say the same thing twice.
+  const linkedSideDishes = (recipe.sideDishes ?? []).filter(
+    (side) => side.displayMode !== 'Inline',
+  );
+
   const renderStep = (step: InstructionStep, num: number, idPrefix: string) => {
     const checked = checkedSteps?.has(num) ?? false;
 
@@ -128,11 +134,11 @@ export function RecipeBody({
 
   return (
     <>
-      {recipe.sideDishes && recipe.sideDishes.length > 0 && (
+      {linkedSideDishes.length > 0 && (
         <div className="mb-6" data-testid="side-dishes">
           <h2 className="text-sm font-semibold text-gray-700 mb-2">Tilbehør</h2>
           <div className="flex flex-wrap gap-2">
-            {recipe.sideDishes.map((side) =>
+            {linkedSideDishes.map((side) =>
               sideDishesAsLinks ? (
                 <Link
                   key={side.id}

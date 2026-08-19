@@ -66,19 +66,15 @@ public class PublicRecipesController : ControllerBase
                 Name = i.Name
             }).ToList(),
             InstructionSteps = recipe.InstructionSteps.Select(s => new InstructionStepDto { Text = s.Text, ImageUrl = s.ImageUrl }).ToList(),
-            IngredientSections = recipe.IngredientSections.Select(s => new IngredientSectionDto
-            {
-                Heading = s.Heading,
-                Ingredients = s.Ingredients.Select(i => new StructuredIngredientDto { Quantity = i.Quantity, Unit = i.Unit, Name = i.Name }).ToList()
-            }).ToList(),
-            InstructionSections = recipe.InstructionSections.Select(s => new InstructionSectionDto
-            {
-                Heading = s.Heading,
-                Steps = s.Steps.Select(st => new InstructionStepDto { Text = st.Text, ImageUrl = st.ImageUrl }).ToList()
-            }).ToList(),
+            // Same merge as the authenticated detail view, through the same helper, so a
+            // shared link can never show a different recipe than the one the owner sees.
+            IngredientSections = InlineSideDishMerger.BuildIngredientSections(recipe),
+            InstructionSections = InlineSideDishMerger.BuildInstructionSections(recipe),
             Tips = recipe.Tips,
             // Plain text, not links: a link would hand the recipient a second recipe.
+            // Inline side dishes are left out -- their content is already in the sections above.
             SideDishes = recipe.SideDishes
+                .Where(sd => sd.DisplayMode != SideDishDisplayModes.Inline)
                 .OrderBy(sd => sd.SortOrder)
                 .Select(sd => sd.SideDishRecipe.Title)
                 .ToList(),

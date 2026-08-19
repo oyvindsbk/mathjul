@@ -24,6 +24,11 @@ export interface RecipeFormData {
   categoryIds?: number[];
   /** Ids of Tilbehør-marked recipes to attach. List order becomes the display order. */
   sideDishIds?: number[];
+  /**
+   * Subset of `sideDishIds` to merge into the recipe as sections instead of showing as a
+   * link. Omitting it leaves every side dish as a link.
+   */
+  inlineSideDishIds?: number[];
   tips?: string[];
   mainImageUrl?: string | null;
   sourceUrl?: string | null;
@@ -140,17 +145,28 @@ class RecipeService {
   }
 
   /**
-   * Fetch a single recipe by ID
+   * Fetches one recipe. `merged` defaults to true, which is what every display surface
+   * wants: side dishes marked Inline arrive folded into the section lists.
+   *
+   * The edit form passes `merged: false`. It writes the section lists straight back on
+   * save, so editing the merged view would copy the tilbehør's content into the main
+   * dish permanently.
    */
-  async getRecipeById(id: string | number, token?: string): Promise<Recipe | null> {
+  async getRecipeById(
+    id: string | number,
+    token?: string,
+    options?: { merged?: boolean }
+  ): Promise<Recipe | null> {
     if (appConfig.mocking.enabled) {
       const recipe = mockRecipes.find((r) => r.id === Number(id));
       return recipe || null;
     }
 
+    const query = options?.merged === false ? '?merged=false' : '';
+
     try {
       const response = await this.fetchWithTimeout(
-        `${appConfig.api.baseUrl}/api/recipes/${id}`,
+        `${appConfig.api.baseUrl}/api/recipes/${id}${query}`,
         appConfig.mocking.fetchTimeout,
         token
       );

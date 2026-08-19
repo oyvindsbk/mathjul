@@ -32,7 +32,9 @@ export default function EditRecipeClient({ id }: { id: string }) {
     const fetchRecipe = async () => {
       try {
         const [data, categories, tilbehor] = await Promise.all([
-          recipeService.getRecipeById(id, token || undefined),
+          // Unmerged on purpose: the form writes these section lists back on save, so the
+          // inline tilbehør's content must not be in them.
+          recipeService.getRecipeById(id, token || undefined, { merged: false }),
           recipeService.getAllCategories(token || undefined),
           recipeService.getTilbehorRecipes(token || undefined),
         ]);
@@ -59,7 +61,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
           visibility?: string;
           groups?: { id: number; name: string }[];
           tips?: string[];
-          sideDishes?: { id: number; title: string }[];
+          sideDishes?: { id: number; title: string; displayMode?: string }[];
         };
         setCurrentMainImageUrl(detail.imageUrl ?? null);
         setVisibility((detail.visibility as Visibility) ?? 'Public');
@@ -78,8 +80,11 @@ export default function EditRecipeClient({ id }: { id: string }) {
           customUnit: detail.customUnit ?? null,
           categoryIds: detail.categories?.map((c) => c.id) ?? [],
           // Load-bearing: the API replaces side dishes on every save, so omitting
-          // this would silently drop them.
+          // this would silently drop them -- and the same goes for the display mode,
+          // which would otherwise fall back to Lenke on every edit.
           sideDishIds: detail.sideDishes?.map((s) => s.id) ?? [],
+          inlineSideDishIds:
+            detail.sideDishes?.filter((s) => s.displayMode === 'Inline').map((s) => s.id) ?? [],
           tips: detail.tips ?? [],
         });
       } catch (err) {

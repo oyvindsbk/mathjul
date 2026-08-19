@@ -129,6 +129,7 @@ export default function UploadRecipe() {
     servings: null,
     categoryIds: [],
     sideDishIds: [],
+    inlineSideDishIds: [],
     tips: [],
     mainImageUrl: null,
     sourceUrl: null,

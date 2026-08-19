@@ -108,6 +108,10 @@ public class RecipeDbContext : DbContext
         {
             entity.HasKey(e => new { e.RecipeId, e.SideDishRecipeId });
             entity.HasIndex(e => new { e.RecipeId, e.SortOrder });
+            entity.Property(e => e.DisplayMode)
+                  .IsRequired()
+                  .HasMaxLength(20)
+                  .HasDefaultValue(SideDishDisplayModes.Link);
             entity.HasOne(e => e.Recipe)
                   .WithMany(r => r.SideDishes)
                   .HasForeignKey(e => e.RecipeId)

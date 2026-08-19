@@ -144,6 +144,23 @@ public sealed class RecipeTestContext : IDisposable
         return recipe;
     }
 
+    /// <summary>
+    /// Attaches a side dish link straight to the database, bypassing UpdateRecipe. Merge tests
+    /// need the main dish to keep the ingredients they seeded, and UpdateRecipe replaces the
+    /// content lists from the request on every call.
+    /// </summary>
+    public void AttachSideDish(int recipeId, int sideDishRecipeId, string displayMode, int sortOrder = 0)
+    {
+        Db.RecipeSideDishes.Add(new RecipeSideDish
+        {
+            RecipeId = recipeId,
+            SideDishRecipeId = sideDishRecipeId,
+            SortOrder = sortOrder,
+            DisplayMode = displayMode
+        });
+        Db.SaveChanges();
+    }
+
     /// <summary>Reads the persisted side-dish links for a recipe, in SortOrder.</summary>
     public List<RecipeSideDish> GetSideDishLinks(int recipeId) =>
         Db.RecipeSideDishes

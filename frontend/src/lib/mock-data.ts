@@ -21,11 +21,19 @@ export interface Category {
  */
 export const TILBEHOR_CATEGORY_ID = 16;
 
+/** How an attached side dish is presented on the main dish. Mirrors SideDishDisplayModes. */
+export type SideDishDisplayMode = 'Link' | 'Inline';
+
 /** Lightweight reference to a recipe in a side-dish (tilbehør) relationship. */
 export interface RecipeRef {
   id: number;
   title: string;
   imageUrl?: string | null;
+  /**
+   * Only meaningful on `sideDishes`. `Inline` means the API already merged this side
+   * dish into the section lists, so it must not also be shown as a chip.
+   */
+  displayMode?: SideDishDisplayMode;
 }
 
 export interface InstructionStep {

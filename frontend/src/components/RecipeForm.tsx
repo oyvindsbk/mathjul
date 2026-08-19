@@ -690,7 +690,7 @@ export default function RecipeForm({
 
     // A tilbehør cannot itself have tilbehør, so marking it as such drops any selection.
     if (id === TILBEHOR_CATEGORY_ID && next.includes(TILBEHOR_CATEGORY_ID)) {
-      setFormData((prev) => ({ ...prev, categoryIds: next, sideDishIds: [] }));
+      setFormData((prev) => ({ ...prev, categoryIds: next, sideDishIds: [], inlineSideDishIds: [] }));
       return;
     }
 
@@ -700,7 +700,19 @@ export default function RecipeForm({
   const handleToggleSideDish = (id: number) => {
     const current = formData.sideDishIds ?? [];
     const next = current.includes(id) ? current.filter((s) => s !== id) : [...current, id];
-    handleField('sideDishIds', next);
+    // The backend rejects an inline id that is not also a side dish, so removing one here
+    // has to drop its display mode with it.
+    setFormData((prev) => ({
+      ...prev,
+      sideDishIds: next,
+      inlineSideDishIds: (prev.inlineSideDishIds ?? []).filter((sid) => next.includes(sid)),
+    }));
+  };
+
+  const handleToggleSideDishInline = (id: number) => {
+    const current = formData.inlineSideDishIds ?? [];
+    const next = current.includes(id) ? current.filter((s) => s !== id) : [...current, id];
+    handleField('inlineSideDishIds', next);
   };
 
   const handleMoveSideDish = (id: number, direction: -1 | 1) => {
@@ -1107,6 +1119,7 @@ export default function RecipeForm({
       {/* Tilbehør — hidden when this recipe is itself a tilbehør (one level only) */}
       {availableSideDishes.length > 0 && !(formData.categoryIds ?? []).includes(TILBEHOR_CATEGORY_ID) && (() => {
         const selectedIds = formData.sideDishIds ?? [];
+        const inlineIds = formData.inlineSideDishIds ?? [];
         const selectable = availableSideDishes.filter((r) => r.id !== currentRecipeId);
         if (selectable.length === 0) return null;
 
@@ -1120,45 +1133,84 @@ export default function RecipeForm({
           <div data-testid="side-dish-picker">
             <label className="block text-sm font-medium mb-2">Tilbehør</label>
             <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-              Velg oppskrifter som serveres som tilbehør til denne retten.
+              Velg oppskrifter som serveres som tilbehør til denne retten. Velg <em>Lenke</em> for
+              å vise tilbehøret som en snarvei, eller <em>Innflettet</em> for å få ingrediensene og
+              stegene rett inn i denne oppskriften.
             </p>
 
             {selected.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-3">
-                {selected.map((recipe, index) => (
-                  <span
-                    key={recipe.id}
-                    className="inline-flex items-center gap-1 pl-3 pr-1 py-1 rounded-full text-sm border bg-blue-500 text-white border-blue-500"
-                  >
-                    {recipe.title}
-                    <button
-                      type="button"
-                      onClick={() => handleMoveSideDish(recipe.id, -1)}
-                      disabled={index === 0}
-                      aria-label={`Flytt ${recipe.title} opp`}
-                      className="px-1 leading-none disabled:opacity-30 hover:text-blue-100"
+              <div className="flex flex-col gap-2 mb-3">
+                {selected.map((recipe, index) => {
+                  const isInline = inlineIds.includes(recipe.id);
+                  return (
+                    <div
+                      key={recipe.id}
+                      data-testid={`side-dish-selected-${recipe.id}`}
+                      className="flex flex-wrap items-center gap-2"
                     >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleMoveSideDish(recipe.id, 1)}
-                      disabled={index === selected.length - 1}
-                      aria-label={`Flytt ${recipe.title} ned`}
-                      className="px-1 leading-none disabled:opacity-30 hover:text-blue-100"
-                    >
-                      ↓
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleToggleSideDish(recipe.id)}
-                      aria-label={`Fjern ${recipe.title}`}
-                      className="px-1 leading-none hover:text-blue-100"
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
+                      <span className="inline-flex items-center gap-1 pl-3 pr-1 py-1 rounded-full text-sm border bg-blue-500 text-white border-blue-500">
+                        {recipe.title}
+                        <button
+                          type="button"
+                          onClick={() => handleMoveSideDish(recipe.id, -1)}
+                          disabled={index === 0}
+                          aria-label={`Flytt ${recipe.title} opp`}
+                          className="px-1 leading-none disabled:opacity-30 hover:text-blue-100"
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoveSideDish(recipe.id, 1)}
+                          disabled={index === selected.length - 1}
+                          aria-label={`Flytt ${recipe.title} ned`}
+                          className="px-1 leading-none disabled:opacity-30 hover:text-blue-100"
+                        >
+                          ↓
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleSideDish(recipe.id)}
+                          aria-label={`Fjern ${recipe.title}`}
+                          className="px-1 leading-none hover:text-blue-100"
+                        >
+                          ×
+                        </button>
+                      </span>
+
+                      {/* Lenke viser tilbehøret som en chip; Innflettet legger ingrediensene
+                          og stegene rett inn i denne oppskriften. */}
+                      <div className="inline-flex rounded-full border border-gray-300 dark:border-gray-600 overflow-hidden text-xs">
+                        <button
+                          type="button"
+                          data-testid={`side-dish-mode-link-${recipe.id}`}
+                          aria-pressed={!isInline}
+                          onClick={() => { if (isInline) handleToggleSideDishInline(recipe.id); }}
+                          className={`px-2.5 py-1 transition-colors ${
+                            isInline
+                              ? 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                              : 'bg-blue-500 text-white'
+                          }`}
+                        >
+                          Lenke
+                        </button>
+                        <button
+                          type="button"
+                          data-testid={`side-dish-mode-inline-${recipe.id}`}
+                          aria-pressed={isInline}
+                          onClick={() => { if (!isInline) handleToggleSideDishInline(recipe.id); }}
+                          className={`px-2.5 py-1 transition-colors ${
+                            isInline
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+                          }`}
+                        >
+                          Innflettet
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
 
