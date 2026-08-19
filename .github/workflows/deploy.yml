@@ -259,13 +259,23 @@ jobs:
 
     - name: Display frontend URL
       id: frontend-url
+      # The container app's own fqdn is not necessarily where users reach the app: a custom
+      # domain bound to the ingress serves the same app under a different host. Everything
+      # host-dependent downstream (OAuth redirect URIs, CORS, share links) has to name the
+      # host the browser actually used, so prefer the custom domain when PUBLIC_APP_URL is
+      # set and fall back to the fqdn otherwise. Both are published -- CORS must keep
+      # accepting the fqdn while that host is still reachable.
       run: |
-        URL=$(az containerapp show \
+        FQDN=$(az containerapp show \
           --name "${{ needs.get-resources.outputs.frontend-container-app-name }}" \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --query "properties.configuration.ingress.fqdn" -o tsv)
-        echo "url=https://$URL" >> $GITHUB_OUTPUT
-        echo "✅ Frontend deployed to: https://$URL"
+        FQDN_URL="https://$FQDN"
+        URL="${{ vars.PUBLIC_APP_URL }}"
+        URL="${URL:-$FQDN_URL}"
+        echo "url=$URL" >> $GITHUB_OUTPUT
+        echo "fqdn-url=$FQDN_URL" >> $GITHUB_OUTPUT
+        echo "✅ Frontend deployed to: $URL (ingress: $FQDN_URL)"
     
     - name: Set NEXTAUTH_URL on frontend
       # NEXTAUTH_URL must equal the app's own public URL so Google OAuth redirect URIs resolve correctly.
@@ -280,6 +290,7 @@ jobs:
     
     outputs:
       frontend-url: ${{ steps.frontend-url.outputs.url }}
+      frontend-fqdn-url: ${{ steps.frontend-url.outputs.fqdn-url }}
 
   update-backend-cors:
     runs-on: ubuntu-latest
@@ -295,14 +306,21 @@ jobs:
       # Both vars must track the live frontend URL: CORS to allow its origin, and
       # Sharing__PublicBaseUrl so /delt/ share links point at the frontend rather
       # than falling back to the API's own request origin.
+      #
+      # CORS gets both hosts. The policy uses AllowCredentials(), so wildcards are not an
+      # option and every origin the browser may send has to be listed exactly -- the custom
+      # domain for normal traffic, the ingress fqdn for anyone still arriving on the old
+      # host. Drop the fqdn entry once that host is retired. Share links get only the
+      # canonical URL: a link should never hand out the host we are migrating away from.
       run: |
         echo "🔧 Pointing backend CORS + share links at: ${{ needs.deploy-frontend.outputs.frontend-url }}"
-        
+
         az containerapp update \
           --name "${{ needs.get-resources.outputs.container-app-name }}" \
           --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
           --set-env-vars \
             "Cors__AllowedOrigins__0=${{ needs.deploy-frontend.outputs.frontend-url }}" \
+            "Cors__AllowedOrigins__1=${{ needs.deploy-frontend.outputs.frontend-fqdn-url }}" \
             "Sharing__PublicBaseUrl=${{ needs.deploy-frontend.outputs.frontend-url }}"
-        
+
         echo "✅ Backend CORS + share base URL updated successfully!"
