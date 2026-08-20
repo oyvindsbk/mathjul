@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Recipe } from "@/lib/mock-data";
+import { indexIngredients } from "@/lib/instruction-mentions";
 import { useWakeLock } from "@/hooks/useWakeLock";
 import { IngredientsTab } from "./IngredientsTab";
 import { InstructionsTab } from "./InstructionsTab";
@@ -41,6 +42,7 @@ export function MatlagingsmodusOverlay({
   hasProgress,
 }: MatlagingsmodusOverlayProps) {
   const [tab, setTab] = useState<Tab>("ingredienser");
+  const ingredientsById = indexIngredients(recipe);
   const panelRef = useRef<HTMLDivElement>(null);
   const tablistRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef<number | null>(null);
@@ -266,6 +268,9 @@ export function MatlagingsmodusOverlay({
                 instructionSections={recipe.instructionSections}
                 checkedSteps={checkedSteps}
                 onToggleStep={onToggleStep}
+                ingredientsById={ingredientsById}
+                baseServings={recipe.servings}
+                desiredServings={desiredServings}
               />
             )}
           </div>

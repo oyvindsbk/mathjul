@@ -188,6 +188,33 @@ test.describe('Matlagingsmodus', () => {
     });
     expect(overlayOwnsCenter).toBe(false);
   });
+
+  /**
+   * The point of mentions: a quantity written into a step is no longer dead
+   * text. Recipe 1's first step mentions its spaghetti, so changing the servings
+   * on the ingredients tab has to move the amount rendered inside the step.
+   */
+  test('a mentioned amount inside a step tracks the servings stepper', async ({ page }) => {
+    await openViaFab(page);
+    const overlay = page.getByTestId('matlagingsmodus-overlay');
+
+    await overlay.getByRole('tab', { name: 'Slik gjør du' }).click();
+    const step1 = overlay.getByRole('button', { name: /Trinn 1:/ });
+    await expect(step1).toContainText('Cook 400 g spaghetti');
+
+    // Double 4 servings to 8 from the ingredients tab.
+    await overlay.getByRole('tab', { name: 'Ingredienser' }).click();
+    const more = overlay.getByRole('button', { name: 'Flere' });
+    await more.click();
+    await more.click();
+    await more.click();
+    await more.click();
+    await expect(overlay).toContainText('800 g');
+
+    // The step and the ingredient list stay in lockstep.
+    await overlay.getByRole('tab', { name: 'Slik gjør du' }).click();
+    await expect(step1).toContainText('Cook 800 g spaghetti');
+  });
 });
 
 test.describe('Matlagingsmodus on desktop', () => {

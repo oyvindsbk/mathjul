@@ -3,6 +3,8 @@
 import Link from "next/link";
 import type { InstructionStep, Recipe, StructuredIngredient } from "@/lib/mock-data";
 import { formatIngredientParts } from "@/lib/recipe-format";
+import { indexIngredients, resolveStepSegments, stepPlainText } from "@/lib/instruction-mentions";
+import { StepText } from "@/components/StepText";
 import { ServingsStepper } from "@/components/matlagingsmodus/ServingsStepper";
 
 /**
@@ -43,9 +45,11 @@ export function RecipeBody({
   instructionsAction,
 }: RecipeBodyProps) {
   const interactive = Boolean(onToggleStep);
+  const ingredientsById = indexIngredients(recipe);
 
   const renderStep = (step: InstructionStep, num: number, idPrefix: string) => {
     const checked = checkedSteps?.has(num) ?? false;
+    const segments = resolveStepSegments(step, ingredientsById, recipe.servings, desiredServings);
 
     // Without a toggle handler the step is presentational: no checkbox, no
     // pointer affordance, and the image always shows since it cannot be
@@ -55,7 +59,7 @@ export function RecipeBody({
         <li key={num} className="flex items-start gap-3">
           <div className="flex-1">
             <p className="text-gray-700">
-              <span className="font-semibold text-gray-900">{num}.</span> {step.text}
+              <span className="font-semibold text-gray-900">{num}.</span> <StepText segments={segments} />
             </p>
             {step.imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -83,7 +87,7 @@ export function RecipeBody({
           onChange={() => onToggleStep?.(num)}
           onClick={(e) => e.stopPropagation()}
           className="sr-only"
-          aria-label={`Trinn ${num}: ${step.text}`}
+          aria-label={`Trinn ${num}: ${stepPlainText(step, ingredientsById, recipe.servings, desiredServings)}`}
         />
         <label
           htmlFor={`${idPrefix}-${num}`}
@@ -98,7 +102,7 @@ export function RecipeBody({
         </label>
         <div className={`flex-1 transition-all ${checked ? 'overflow-hidden' : ''}`}>
           <p className={`transition-colors ${checked ? 'line-through text-gray-400 truncate' : 'text-gray-700'}`}>
-            <span className={`font-semibold ${checked ? 'text-gray-400' : 'text-gray-900'}`}>{num}.</span> {step.text}
+            <span className={`font-semibold ${checked ? 'text-gray-400' : 'text-gray-900'}`}>{num}.</span> <StepText segments={segments} />
           </p>
           {!checked && step.imageUrl && (
             // eslint-disable-next-line @next/next/no-img-element

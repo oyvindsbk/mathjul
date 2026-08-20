@@ -19,15 +19,47 @@ public class Category
 
 public class StructuredIngredient
 {
+    /// <summary>
+    /// Stable identity, so an instruction step's mention keeps pointing at this
+    /// ingredient across renames and reordering. Assigned server-side; null on
+    /// rows written before mentions existed, backfilled by
+    /// <see cref="RecipeIngredientIds.EnsureIds"/>.
+    /// </summary>
+    public string? Id { get; set; }
     public decimal? Quantity { get; set; }
     public string? Unit { get; set; }
     public string Name { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// An ingredient referenced from inside an instruction step, so the step renders
+/// the ingredient's scaled amount and follows later edits to it.
+/// </summary>
+public class IngredientMention
+{
+    /// <summary>Matches <see cref="StructuredIngredient.Id"/>.</summary>
+    public string IngredientId { get; set; } = string.Empty;
+
+    /// <summary>
+    /// The ingredient's name at authoring time. Rendered as plain text when the
+    /// ingredient has since been deleted, so the sentence still reads.
+    /// </summary>
+    public string FallbackName { get; set; } = string.Empty;
+
+    /// <summary>"full" (amount + unit + name) or "name" (name only).</summary>
+    public string Display { get; set; } = "full";
+}
+
 public class InstructionStep
 {
+    /// <summary>
+    /// Step text, carrying opaque <c>@[n]</c> tokens that index into
+    /// <see cref="Mentions"/>. Tokens with no matching mention are rendered
+    /// literally rather than treated as an error.
+    /// </summary>
     public string Text { get; set; } = string.Empty;
     public string? ImageUrl { get; set; }
+    public List<IngredientMention> Mentions { get; set; } = new();
 }
 
 public class IngredientSection

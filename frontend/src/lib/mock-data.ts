@@ -4,6 +4,12 @@
  */
 
 export interface StructuredIngredient {
+  /**
+   * Stable id assigned by the backend, used to bind @-mentions in instruction
+   * steps. Absent on rows the form has just added and on legacy recipes that
+   * have not been read back since ids were introduced.
+   */
+  id?: string | null;
   quantity: number | null;
   unit: string | null;
   name: string;
@@ -28,9 +34,24 @@ export interface RecipeRef {
   imageUrl?: string | null;
 }
 
+/** How a mention renders: the full amount, or just the ingredient's name. */
+export type MentionDisplay = "full" | "name";
+
+/** An ingredient referenced from a step's text via an `@[n]` token. */
+export interface IngredientMention {
+  /** Matches {@link StructuredIngredient.id}. */
+  ingredientId: string;
+  /** The ingredient's name at authoring time, shown if the ingredient is gone. */
+  fallbackName: string;
+  /** "full" (amount + unit + name) or "name" (name only). */
+  display: MentionDisplay;
+}
+
 export interface InstructionStep {
+  /** May contain `@[0]`, `@[1]`, … tokens indexing into {@link mentions}. */
   text: string;
   imageUrl?: string | null;
+  mentions?: IngredientMention[];
 }
 
 export interface IngredientSection {
@@ -102,15 +123,25 @@ export const mockRecipes: Recipe[] = [
     id: 1,
     title: 'Classic Spaghetti Carbonara',
     description: 'A traditional Italian pasta dish',
+    // Ids are what mentions bind to; the server assigns them, and this fixture
+    // carries its own so the mention below stays bound in mock mode.
     ingredients: [
-      { quantity: 400, unit: 'g', name: 'spaghetti' },
-      { quantity: 200, unit: 'g', name: 'pancetta' },
-      { quantity: 4, unit: null, name: 'eggs' },
-      { quantity: 100, unit: 'g', name: 'parmesan' },
-      { quantity: null, unit: null, name: 'salt and pepper to taste' },
+      { id: 'mock-1-spaghetti', quantity: 400, unit: 'g', name: 'spaghetti' },
+      { id: 'mock-1-pancetta', quantity: 200, unit: 'g', name: 'pancetta' },
+      { id: 'mock-1-eggs', quantity: 4, unit: null, name: 'eggs' },
+      { id: 'mock-1-parmesan', quantity: 100, unit: 'g', name: 'parmesan' },
+      { id: 'mock-1-salt', quantity: null, unit: null, name: 'salt and pepper to taste' },
     ],
     instructionSteps: [
-      { text: 'Cook spaghetti according to package instructions.' },
+      // Step 1 carries a mention so the read surfaces have something to resolve:
+      // its amount scales with the servings stepper, unlike the dead text in the
+      // steps below it.
+      {
+        text: 'Cook @[0] according to package instructions.',
+        mentions: [
+          { ingredientId: 'mock-1-spaghetti', fallbackName: 'spaghetti', display: 'full' },
+        ],
+      },
       { text: 'Fry pancetta until crispy.' },
       { text: 'Whisk eggs with parmesan.' },
       { text: 'Toss hot pasta with pancetta, remove from heat, add egg mixture.' },
@@ -135,14 +166,27 @@ export const mockRecipes: Recipe[] = [
     title: 'Chicken Tikka Masala',
     description: 'Indian spiced chicken curry',
     ingredients: [
-      { quantity: 600, unit: 'g', name: 'chicken breast' },
-      { quantity: 400, unit: 'ml', name: 'tomato sauce' },
-      { quantity: 200, unit: 'ml', name: 'heavy cream' },
-      { quantity: 2, unit: 'tbsp', name: 'tikka masala spice mix' },
+      { id: 'mock-2-chicken', quantity: 600, unit: 'g', name: 'chicken breast' },
+      { id: 'mock-2-tomato', quantity: 400, unit: 'ml', name: 'tomato sauce' },
+      { id: 'mock-2-cream', quantity: 200, unit: 'ml', name: 'heavy cream' },
+      { id: 'mock-2-spice', quantity: 2, unit: 'tbsp', name: 'tikka masala spice mix' },
     ],
     instructionSteps: [
-      { text: 'Marinate chicken in spices and yogurt for 1 hour.' },
-      { text: 'Grill or pan-fry chicken until cooked.' },
+      {
+        text: 'Marinate @[0] in spices and yogurt for 1 hour.',
+        mentions: [
+          { ingredientId: 'mock-2-chicken', fallbackName: 'chicken breast', display: 'name' },
+        ],
+      },
+      {
+        // A deliberately broken reference: the ingredient it points at was removed
+        // from the list above. The step must still read, falling back to the stored
+        // name as ordinary text — it just stops scaling.
+        text: 'Grill or pan-fry @[0] until cooked.',
+        mentions: [
+          { ingredientId: 'mock-2-removed', fallbackName: 'yogurt', display: 'full' },
+        ],
+      },
       { text: 'Make sauce with tomatoes and cream.' },
       { text: 'Combine chicken and sauce, simmer 10 minutes.' },
     ],
