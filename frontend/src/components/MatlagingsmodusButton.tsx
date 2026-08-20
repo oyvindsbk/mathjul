@@ -2,6 +2,11 @@
 
 interface MatlagingsmodusButtonProps {
   onClick: () => void;
+  /**
+   * Space to leave below the button. Defaults to the height of the app's bottom
+   * nav; the share page has no bottom nav and passes a smaller offset.
+   */
+  bottomOffset?: string;
 }
 
 /**
@@ -15,7 +20,10 @@ interface MatlagingsmodusButtonProps {
  * gating it behind scroll position left the feature unreachable on long
  * recipes. Sits clear of the bottom nav and the home indicator.
  */
-export function MatlagingsmodusButton({ onClick }: MatlagingsmodusButtonProps) {
+export function MatlagingsmodusButton({
+  onClick,
+  bottomOffset = "4rem",
+}: MatlagingsmodusButtonProps) {
   return (
     <button
       onClick={onClick}
@@ -23,7 +31,7 @@ export function MatlagingsmodusButton({ onClick }: MatlagingsmodusButtonProps) {
       data-testid="matlagingsmodus-fab"
       className="md:hidden fixed z-30"
       style={{
-        bottom: "calc(4rem + env(safe-area-inset-bottom) + 0.75rem)",
+        bottom: `calc(${bottomOffset} + env(safe-area-inset-bottom) + 0.75rem)`,
         left: "50%",
         transform: "translateX(-50%)",
       }}

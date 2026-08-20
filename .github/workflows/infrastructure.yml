@@ -62,6 +62,8 @@ jobs:
           googleClientSecret=${{ secrets.GOOGLE_CLIENT_SECRET }}
           jwtSecretKey=${{ secrets.JWT_SECRET_KEY }}
           frontendUrl=${{ vars.FRONTEND_URL }}
+          frontendCustomDomainName=${{ vars.FRONTEND_CUSTOM_DOMAIN }}
+          frontendCustomDomainCertificateName=${{ vars.FRONTEND_CUSTOM_DOMAIN_CERT }}
         failOnStdErr: false
     
     - name: Update backend CORS and share base URL with frontend URL

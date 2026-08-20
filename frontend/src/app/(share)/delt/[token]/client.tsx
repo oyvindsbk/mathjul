@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { recipeService, type SharedRecipe } from "@/lib/services/recipe.service";
 import { RecipeBody } from "@/components/RecipeBody";
+import { MatlagingsmodusButton } from "@/components/MatlagingsmodusButton";
+import { MatlagingsmodusOverlay } from "@/components/matlagingsmodus/MatlagingsmodusOverlay";
+import { useCookingProgress } from "@/hooks/useCookingProgress";
 
 /**
  * The public share page. Reads one recipe through its share token and renders the
@@ -18,6 +21,11 @@ import { RecipeBody } from "@/components/RecipeBody";
  * It is a plain <a>, not next/link, so the recipient leaves the token-scoped share
  * context through a full page load instead of a client-side transition into an app
  * shell this layout never renders.
+ *
+ * Matlagingsmodus is offered here too: it is a cooking surface over the recipe the
+ * recipient already holds, needs no account, and reaches nothing else in the app.
+ * Progress is kept in localStorage under the recipe's own id, so a recipient who
+ * later logs in and opens /recipes/[id] finds the same ticks.
  */
 export default function SharedRecipeClient({ shareToken }: { shareToken: string }) {
   const [shared, setShared] = useState<SharedRecipe | null>(null);
@@ -26,6 +34,18 @@ export default function SharedRecipeClient({ shareToken }: { shareToken: string 
   // A revoked, unknown, or malformed token is not an error to explain — it is
   // just a link that no longer works, so both cases show the same friendly page.
   const [dead, setDead] = useState(false);
+  const [cookingMode, setCookingMode] = useState(false);
+
+  // Same hook as the detail page, keyed by the same recipe id — ticking a step
+  // here and reading the recipe logged in later show the same progress.
+  const {
+    checkedIngredients,
+    checkedSteps,
+    toggleIngredient,
+    toggleStep,
+    reset: resetProgress,
+    hasProgress,
+  } = useCookingProgress(shared?.recipe.id, shared?.recipe.updatedAt);
 
   useEffect(() => {
     let cancelled = false;
@@ -134,6 +154,23 @@ export default function SharedRecipeClient({ shareToken }: { shareToken: string 
           <p className="text-xs text-gray-400 mt-4">Delt fra Mathjul</p>
         </div>
       </div>
+
+      {/* No bottom nav on this layout, so the button sits lower than in the app. */}
+      <MatlagingsmodusButton onClick={() => setCookingMode(true)} bottomOffset="0rem" />
+
+      <MatlagingsmodusOverlay
+        open={cookingMode}
+        onClose={() => setCookingMode(false)}
+        recipe={recipe}
+        desiredServings={desiredServings}
+        onServingsChange={setDesiredServings}
+        checkedIngredients={checkedIngredients}
+        checkedSteps={checkedSteps}
+        onToggleIngredient={toggleIngredient}
+        onToggleStep={toggleStep}
+        onReset={resetProgress}
+        hasProgress={hasProgress}
+      />
     </div>
   );
 }

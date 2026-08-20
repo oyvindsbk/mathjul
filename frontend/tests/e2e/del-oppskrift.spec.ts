@@ -130,8 +130,13 @@ async function mockPublicApi(page: Page, state: ShareState) {
  * cookies or localStorage. That is the property under test — the link has to
  * work for someone who has never logged in.
  */
-async function openAsRecipient(browser: Browser, state: ShareState, url: string) {
-  const context = await browser.newContext();
+async function openAsRecipient(
+  browser: Browser,
+  state: ShareState,
+  url: string,
+  contextOptions: Parameters<Browser['newContext']>[0] = {}
+) {
+  const context = await browser.newContext(contextOptions);
   const page = await context.newPage();
   await mockPublicApi(page, state);
   await page.goto(url);
@@ -259,5 +264,119 @@ test.describe('Del oppskrift med lenke', () => {
     // A dead link is a friendly page, not a bounce to /login.
     expect(new URL(after.page.url()).pathname).not.toContain('/login');
     await after.context.close();
+  });
+});
+
+/**
+ * Matlagingsmodus on the share page.
+ *
+ * The entry point is the floating button, which is mobile-only, so the
+ * recipient's context is sized to a phone rather than inheriting the project
+ * viewport — the desktop projects would otherwise never see this path.
+ *
+ * The phone viewport goes on the recipient's own context instead of a
+ * describe-level `test.use`: these tests open the link in a fresh context by
+ * design, and `test.use` inside a describe is rejected outright when it carries
+ * a browser type.
+ *
+ * The recipient here has never logged in and holds nothing but the link, which
+ * is exactly the claim under test: cooking mode is a surface over the recipe
+ * they already have, so it must work without an account.
+ */
+const PHONE = { viewport: { width: 375, height: 667 } };
+
+test.describe('Matlagingsmodus fra delt oppskrift', () => {
+  /** A logged-out recipient on a phone, with the overlay already open. */
+  async function openCookingModeAsRecipient(browser: Browser) {
+    const state: ShareState = { token: TOKEN };
+    const { context, page } = await openAsRecipient(
+      browser,
+      state,
+      `/delt/${TOKEN}`,
+      PHONE
+    );
+
+    await expect(page.getByTestId('delt-oppskrift')).toBeVisible();
+
+    const fab = page.getByTestId('matlagingsmodus-fab');
+    await expect(fab).toBeVisible();
+    await fab.click();
+    await expect(page.getByTestId('matlagingsmodus-overlay')).toBeVisible();
+
+    return { context, page };
+  }
+
+  test('a recipient with no account can open matlagingsmodus', async ({ browser }) => {
+    const { context, page } = await openCookingModeAsRecipient(browser);
+
+    // The overlay is the shared recipe, not some other one.
+    await expect(
+      page.getByRole('dialog', { name: `Matlagingsmodus: ${RECIPE_TITLE}` })
+    ).toBeVisible();
+    await expect(page.getByRole('button', { name: /fløte/ })).toBeVisible();
+
+    // Still no login step and no way into the rest of the app.
+    expect(new URL(page.url()).pathname).toContain('/delt/');
+    await expect(page.locator('[data-testid^="bottom-nav-"]')).toHaveCount(0);
+
+    await context.close();
+  });
+
+  test('ticking survives closing and reopening the overlay', async ({ browser }) => {
+    const { context, page } = await openCookingModeAsRecipient(browser);
+
+    const ingredient = page.getByRole('button', { name: /fløte/ });
+    await ingredient.click();
+    await expect(ingredient).toHaveAttribute('aria-pressed', 'true');
+
+    await page.getByTestId('matlagingsmodus-tab-instruksjoner').click();
+    const step = page.getByRole('button', { name: /^Trinn 1:/ });
+    await step.click();
+    await expect(step).toHaveAttribute('aria-pressed', 'true');
+
+    await page.getByTestId('matlagingsmodus-close').click();
+    await page.getByTestId('matlagingsmodus-fab').click();
+
+    // The overlay reopens on whichever tab it was left on, so the step is what
+    // is on screen; the ingredient needs a deliberate switch back.
+    await expect(page.getByRole('button', { name: /^Trinn 1:/ })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+
+    await page.getByTestId('matlagingsmodus-tab-ingredienser').click();
+    await expect(page.getByRole('button', { name: /fløte/ })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+
+    await context.close();
+  });
+
+  test('Begynn på nytt clears the recipient progress', async ({ browser }) => {
+    const { context, page } = await openCookingModeAsRecipient(browser);
+
+    const ingredient = page.getByRole('button', { name: /fløte/ });
+    await ingredient.click();
+    await expect(ingredient).toHaveAttribute('aria-pressed', 'true');
+
+    await page.getByTestId('matlagingsmodus-reset').click();
+
+    await expect(page.getByRole('button', { name: /fløte/ })).toHaveAttribute(
+      'aria-pressed',
+      'false'
+    );
+
+    await context.close();
+  });
+
+  test('a dead link offers no way into matlagingsmodus', async ({ browser }) => {
+    const state: ShareState = { token: null };
+    const { context, page } = await openAsRecipient(browser, state, `/delt/${TOKEN}`, PHONE);
+
+    await expect(page.getByTestId('delt-oppskrift-utlopt')).toBeVisible();
+    await expect(page.getByTestId('matlagingsmodus-fab')).toHaveCount(0);
+
+    await context.close();
   });
 });

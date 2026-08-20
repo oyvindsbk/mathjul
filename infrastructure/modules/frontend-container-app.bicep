@@ -17,6 +17,12 @@ param googleClientSecret string = ''
 @description('Public URL of this frontend app, used to construct OAuth redirect URI')
 param appUrl string = ''
 
+@description('Custom domain bound to the ingress, e.g. mathjul.kheradmandi.no. Leave empty to serve only on the generated fqdn.')
+param customDomainName string = ''
+
+@description('Name of the managed certificate for customDomainName, as shown in the Container Apps environment. Leave empty to bind the domain without a certificate (validation only).')
+param customDomainCertificateName string = ''
+
 @description('Container image to deploy')
 param containerImage string = 'mcr.microsoft.com/dotnet/samples:aspnetapp'
 
@@ -64,6 +70,18 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
         targetPort: 3000
         transport: 'auto'
         allowInsecure: false
+        // Declared here on purpose: ARM replaces the ingress block wholesale, so a custom
+        // domain bound out-of-band (portal or CLI) is deleted on the next infra deploy.
+        // The binding has to live in the template to survive.
+        customDomains: empty(customDomainName) ? [] : [
+          {
+            name: customDomainName
+            bindingType: empty(customDomainCertificateName) ? 'Disabled' : 'SniEnabled'
+            certificateId: empty(customDomainCertificateName)
+              ? null
+              : '${containerAppEnvironment.id}/managedCertificates/${customDomainCertificateName}'
+          }
+        ]
       }
       secrets: !empty(googleClientSecret) ? [
         {

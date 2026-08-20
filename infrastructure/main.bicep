@@ -28,6 +28,12 @@ param jwtSecretKey string
 @description('Frontend URL for CORS (leave empty on first deploy, then set after frontend is deployed)')
 param frontendUrl string = ''
 
+@description('Custom domain for the frontend, e.g. mathjul.kheradmandi.no. Must be declared here -- ARM strips any binding made outside the template.')
+param frontendCustomDomainName string = ''
+
+@description('Managed certificate name for frontendCustomDomainName. Leave empty to bind without TLS (domain validation only).')
+param frontendCustomDomainCertificateName string = ''
+
 // Generate unique names
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var sqlServerName = 'sql-recipe-${environment}-${uniqueSuffix}'
@@ -108,6 +114,11 @@ module frontendContainerApp 'modules/frontend-container-app.bicep' = {
     backendApiUrl: containerApp.outputs.containerAppUrl
     googleClientId: googleClientId
     googleClientSecret: googleClientSecret
+    customDomainName: frontendCustomDomainName
+    customDomainCertificateName: frontendCustomDomainCertificateName
+    // The OAuth redirect URI must name the host users actually arrive on, so the custom
+    // domain wins when there is one. Falls back to frontendUrl (the fqdn) otherwise.
+    appUrl: !empty(frontendCustomDomainName) ? 'https://${frontendCustomDomainName}' : frontendUrl
     tags: commonTags
   }
 }

@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "992955827429755244"
+      "templateHash": "1716524386829266861"
     }
   },
   "parameters": {
@@ -60,6 +60,20 @@
       "defaultValue": "",
       "metadata": {
         "description": "Frontend URL for CORS (leave empty on first deploy, then set after frontend is deployed)"
+      }
+    },
+    "frontendCustomDomainName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Custom domain for the frontend, e.g. mathjul.kheradmandi.no. Must be declared here -- ARM strips any binding made outside the template."
+      }
+    },
+    "frontendCustomDomainCertificateName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Managed certificate name for frontendCustomDomainName. Leave empty to bind without TLS (domain validation only)."
       }
     }
   },
@@ -760,6 +774,13 @@
           "googleClientSecret": {
             "value": "[parameters('googleClientSecret')]"
           },
+          "customDomainName": {
+            "value": "[parameters('frontendCustomDomainName')]"
+          },
+          "customDomainCertificateName": {
+            "value": "[parameters('frontendCustomDomainCertificateName')]"
+          },
+          "appUrl": "[if(not(empty(parameters('frontendCustomDomainName'))), createObject('value', format('https://{0}', parameters('frontendCustomDomainName'))), createObject('value', parameters('frontendUrl')))]",
           "tags": {
             "value": "[variables('commonTags')]"
           }
@@ -771,7 +792,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "13626762707218561023"
+              "templateHash": "14807910622047225012"
             }
           },
           "parameters": {
@@ -812,6 +833,20 @@
               "defaultValue": "",
               "metadata": {
                 "description": "Public URL of this frontend app, used to construct OAuth redirect URI"
+              }
+            },
+            "customDomainName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Custom domain bound to the ingress, e.g. mathjul.kheradmandi.no. Leave empty to serve only on the generated fqdn."
+              }
+            },
+            "customDomainCertificateName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Name of the managed certificate for customDomainName, as shown in the Container Apps environment. Leave empty to bind the domain without a certificate (validation only)."
               }
             },
             "containerImage": {
@@ -875,7 +910,8 @@
                     "external": true,
                     "targetPort": 3000,
                     "transport": "auto",
-                    "allowInsecure": false
+                    "allowInsecure": false,
+                    "customDomains": "[if(empty(parameters('customDomainName')), createArray(), createArray(createObject('name', parameters('customDomainName'), 'bindingType', if(empty(parameters('customDomainCertificateName')), 'Disabled', 'SniEnabled'), 'certificateId', if(empty(parameters('customDomainCertificateName')), null(), format('{0}/managedCertificates/{1}', resourceId('Microsoft.App/managedEnvironments', format('{0}-env', parameters('containerAppName'))), parameters('customDomainCertificateName'))))))]"
                   },
                   "secrets": "[if(not(empty(parameters('googleClientSecret'))), createArray(createObject('name', 'google-client-secret', 'value', parameters('googleClientSecret'))), createArray())]"
                 },
