@@ -278,6 +278,11 @@ public class RecipesController : ControllerBase
         if (!canView)
             return StatusCode(403, new { message = "You do not have access to this recipe" });
 
+        // A recipe written before mentions existed has no ingredient ids. Backfill and
+        // persist them here so the detail page and the edit form agree on identity;
+        // UpdatedAt is deliberately left alone, since nothing the reader sees changed.
+        await PersistBackfilledIngredientIdsAsync(recipe);
+
         var isLikedByMe = callerEmail != null
             && await _context.RecipeLikes.AnyAsync(l => l.RecipeId == id && l.UserEmail == callerEmail);
 
@@ -297,22 +302,17 @@ public class RecipesController : ControllerBase
             Visibility = recipe.Visibility,
             OwnerEmail = recipe.OwnerEmail,
             SourceUrl = recipe.SourceUrl,
-            Ingredients = recipe.Ingredients.Select(i => new StructuredIngredientDto
-            {
-                Quantity = i.Quantity,
-                Unit = i.Unit,
-                Name = i.Name
-            }).ToList(),
-            InstructionSteps = recipe.InstructionSteps.Select(s => new InstructionStepDto { Text = s.Text, ImageUrl = s.ImageUrl }).ToList(),
+            Ingredients = recipe.Ingredients.Select(i => i.ToDto()).ToList(),
+            InstructionSteps = recipe.InstructionSteps.Select(s => s.ToDto()).ToList(),
             IngredientSections = recipe.IngredientSections.Select(s => new IngredientSectionDto
             {
                 Heading = s.Heading,
-                Ingredients = s.Ingredients.Select(i => new StructuredIngredientDto { Quantity = i.Quantity, Unit = i.Unit, Name = i.Name }).ToList()
+                Ingredients = s.Ingredients.Select(i => i.ToDto()).ToList()
             }).ToList(),
             InstructionSections = recipe.InstructionSections.Select(s => new InstructionSectionDto
             {
                 Heading = s.Heading,
-                Steps = s.Steps.Select(st => new InstructionStepDto { Text = st.Text, ImageUrl = st.ImageUrl }).ToList()
+                Steps = s.Steps.Select(st => st.ToDto()).ToList()
             }).ToList(),
             Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
             Groups = recipe.Groups.Select(rg => new GroupRefDto { Id = rg.GroupId, Name = rg.Group.Name }).ToList(),
@@ -696,25 +696,20 @@ public class RecipesController : ControllerBase
             Title = request.Title,
             Description = request.Description ?? string.Empty,
             Ingredients = (request.Ingredients ?? new List<StructuredIngredientDto>())
-                .Select(i => new StructuredIngredient
-                {
-                    Quantity = i.Quantity,
-                    Unit = i.Unit,
-                    Name = i.Name
-                }).ToList(),
+                .Select(i => i.ToDomain()).ToList(),
             InstructionSteps = (request.InstructionSteps ?? new List<InstructionStepDto>())
-                .Select(s => new InstructionStep { Text = s.Text, ImageUrl = s.ImageUrl }).ToList(),
+                .Select(s => s.ToDomain()).ToList(),
             IngredientSections = (request.IngredientSections ?? new List<IngredientSectionDto>())
                 .Select(s => new IngredientSection
                 {
                     Heading = s.Heading,
-                    Ingredients = s.Ingredients.Select(i => new StructuredIngredient { Quantity = i.Quantity, Unit = i.Unit, Name = i.Name }).ToList()
+                    Ingredients = s.Ingredients.Select(i => i.ToDomain()).ToList()
                 }).ToList(),
             InstructionSections = (request.InstructionSections ?? new List<InstructionSectionDto>())
                 .Select(s => new InstructionSection
                 {
                     Heading = s.Heading,
-                    Steps = s.Steps.Select(st => new InstructionStep { Text = st.Text, ImageUrl = st.ImageUrl }).ToList()
+                    Steps = s.Steps.Select(st => st.ToDomain()).ToList()
                 }).ToList(),
             PrepTime = request.PrepTime,
             CookTimeMinutes = request.CookTime,
@@ -732,6 +727,9 @@ public class RecipesController : ControllerBase
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
         };
+
+        // Ingredients the client minted no id for get one now, before anything is stored.
+        RecipeIngredientIds.EnsureIds(recipe);
 
         _context.Recipes.Add(recipe);
         await _context.SaveChangesAsync();
@@ -836,26 +834,23 @@ public class RecipesController : ControllerBase
         recipe.Title = request.Title;
         recipe.Description = request.Description ?? string.Empty;
         recipe.Ingredients = (request.Ingredients ?? new List<StructuredIngredientDto>())
-            .Select(i => new StructuredIngredient
-            {
-                Quantity = i.Quantity,
-                Unit = i.Unit,
-                Name = i.Name
-            }).ToList();
+            .Select(i => i.ToDomain()).ToList();
         recipe.InstructionSteps = (request.InstructionSteps ?? new List<InstructionStepDto>())
-            .Select(s => new InstructionStep { Text = s.Text, ImageUrl = s.ImageUrl }).ToList();
+            .Select(s => s.ToDomain()).ToList();
         recipe.IngredientSections = (request.IngredientSections ?? new List<IngredientSectionDto>())
             .Select(s => new IngredientSection
             {
                 Heading = s.Heading,
-                Ingredients = s.Ingredients.Select(i => new StructuredIngredient { Quantity = i.Quantity, Unit = i.Unit, Name = i.Name }).ToList()
+                Ingredients = s.Ingredients.Select(i => i.ToDomain()).ToList()
             }).ToList();
         recipe.InstructionSections = (request.InstructionSections ?? new List<InstructionSectionDto>())
             .Select(s => new InstructionSection
             {
                 Heading = s.Heading,
-                Steps = s.Steps.Select(st => new InstructionStep { Text = st.Text, ImageUrl = st.ImageUrl }).ToList()
+                Steps = s.Steps.Select(st => st.ToDomain()).ToList()
             }).ToList();
+        // Ids the client sent back are kept verbatim; only rows added in the form need one.
+        RecipeIngredientIds.EnsureIds(recipe);
         recipe.PrepTime = request.PrepTime;
         recipe.CookTimeMinutes = request.CookTime;
         recipe.CookTime = request.CookTime.HasValue ? $"{request.CookTime} min" : string.Empty;
@@ -939,22 +934,17 @@ public class RecipesController : ControllerBase
             Visibility = recipe.Visibility,
             OwnerEmail = recipe.OwnerEmail,
             SourceUrl = recipe.SourceUrl,
-            Ingredients = recipe.Ingredients.Select(i => new StructuredIngredientDto
-            {
-                Quantity = i.Quantity,
-                Unit = i.Unit,
-                Name = i.Name
-            }).ToList(),
-            InstructionSteps = recipe.InstructionSteps.Select(s => new InstructionStepDto { Text = s.Text, ImageUrl = s.ImageUrl }).ToList(),
+            Ingredients = recipe.Ingredients.Select(i => i.ToDto()).ToList(),
+            InstructionSteps = recipe.InstructionSteps.Select(s => s.ToDto()).ToList(),
             IngredientSections = recipe.IngredientSections.Select(s => new IngredientSectionDto
             {
                 Heading = s.Heading,
-                Ingredients = s.Ingredients.Select(i => new StructuredIngredientDto { Quantity = i.Quantity, Unit = i.Unit, Name = i.Name }).ToList()
+                Ingredients = s.Ingredients.Select(i => i.ToDto()).ToList()
             }).ToList(),
             InstructionSections = recipe.InstructionSections.Select(s => new InstructionSectionDto
             {
                 Heading = s.Heading,
-                Steps = s.Steps.Select(st => new InstructionStepDto { Text = st.Text, ImageUrl = st.ImageUrl }).ToList()
+                Steps = s.Steps.Select(st => st.ToDto()).ToList()
             }).ToList(),
             Categories = recipe.Categories.Select(c => new CategoryDto { Id = c.Id, Name = c.Name, Group = c.Group }).ToList(),
             Groups = recipe.Groups.Select(rg => new GroupRefDto { Id = rg.GroupId, Name = rg.Group.Name }).ToList(),
@@ -1054,7 +1044,7 @@ public class RecipesController : ControllerBase
         _context.Entry(recipe).Property(r => r.InstructionSteps).IsModified = true;
         await _context.SaveChangesAsync();
 
-        return Ok(new InstructionStepDto { Text = step.Text, ImageUrl = step.ImageUrl });
+        return Ok(step.ToDto());
     }
 
     [HttpDelete("{id:int}/steps/{stepIndex:int}/image")]
@@ -1458,10 +1448,44 @@ public class RecipesController : ControllerBase
         return System.Text.Json.JsonSerializer.Serialize(categories);
     }
 
+    /// <summary>
+    /// Assigns any missing ingredient ids on a tracked recipe and saves only when
+    /// something actually changed. The ingredient collections are JSON columns, so EF
+    /// cannot detect the in-place mutation on its own and needs the explicit signal.
+    /// </summary>
+    private async Task PersistBackfilledIngredientIdsAsync(Recipe recipe)
+    {
+        if (!RecipeIngredientIds.EnsureIds(recipe))
+            return;
+
+        // Best-effort: this is an opportunistic write on a read path, so a failure
+        // must not turn a perfectly good GET into a 500. The ids are already set on
+        // the in-memory graph, so the response is correct either way, and the next
+        // read gets another chance to persist them.
+        try
+        {
+            // JSON columns — EF cannot see the in-place mutation without the signal.
+            _context.Entry(recipe).Property(r => r.Ingredients).IsModified = true;
+            _context.Entry(recipe).Property(r => r.IngredientSections).IsModified = true;
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex)
+        {
+            // Logged rather than swallowed silently: if this keeps failing, the
+            // recipe is retried on every read forever, and that needs to be visible.
+            _logger.LogWarning(
+                ex,
+                "Could not persist backfilled ingredient ids for recipe {RecipeId}",
+                recipe.Id);
+        }
+    }
+
     private static ExtractedRecipeResponse MapToExtractedResponse(ExtractedRecipeDto dto) => new()
     {
         Title = dto.Title,
         Description = dto.Description,
+        // The extraction DTO has no ids and no mentions (see the spec's Out of Scope);
+        // ids are minted when the extracted recipe is saved.
         Ingredients = dto.Ingredients.Select(i => new StructuredIngredientDto
         {
             Quantity = i.Quantity,
@@ -1531,8 +1555,19 @@ public class RecipeDto
 
 public class InstructionStepDto
 {
+    /// <summary>Step text, carrying <c>@[n]</c> tokens indexing into <see cref="Mentions"/>.</summary>
     public string Text { get; set; } = string.Empty;
     public string? ImageUrl { get; set; }
+    public List<IngredientMentionDto> Mentions { get; set; } = new();
+}
+
+/// <summary>Wire shape of <see cref="IngredientMention"/>.</summary>
+public class IngredientMentionDto
+{
+    public string IngredientId { get; set; } = string.Empty;
+    public string FallbackName { get; set; } = string.Empty;
+    /// <summary>"full" (amount + unit + name) or "name" (name only).</summary>
+    public string Display { get; set; } = "full";
 }
 
 public class IngredientSectionDto
@@ -1593,6 +1628,8 @@ public class ShareStatusDto
 
 public class StructuredIngredientDto
 {
+    /// <summary>Stable id a step mention binds to. Null only on ingredients the client has just added.</summary>
+    public string? Id { get; set; }
     public decimal? Quantity { get; set; }
     public string? Unit { get; set; }
     public string Name { get; set; } = string.Empty;

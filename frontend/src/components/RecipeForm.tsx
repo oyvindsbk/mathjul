@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import CropModal from './CropModal';
 import {
   DndContext,
@@ -20,6 +20,10 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import type { RecipeFormData } from '@/lib/services/recipe.service';
 import { TILBEHOR_CATEGORY_ID, type Category, type IngredientSection, type InstructionSection, type InstructionStep, type Recipe, type StructuredIngredient } from '@/lib/mock-data';
+import { findMentionTrigger, indexIngredients, resolveStepSegments } from '@/lib/instruction-mentions';
+import { MentionPicker, filterIngredients, handlePickerKey, optionId } from '@/components/MentionPicker';
+import { StepText } from '@/components/StepText';
+import { useMentions } from '@/hooks/useMentions';
 
 interface RecipeFormProps {
   initialData: RecipeFormData;
@@ -39,6 +43,29 @@ interface RecipeFormProps {
 }
 
 // Drag handle icon
+/**
+ * A client-side ingredient id, so a row can be mentioned before it is ever
+ * saved. The server preserves ids it receives verbatim, so this one survives
+ * the round-trip and the mention stays bound.
+ */
+function newIngredientId(): string {
+  return `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
+
+/** Give every ingredient in the form data an id, preserving the ones it has. */
+function withIngredientIds(data: RecipeFormData): RecipeFormData {
+  const fill = (i: StructuredIngredient): StructuredIngredient =>
+    i.id ? i : { ...i, id: newIngredientId() };
+  return {
+    ...data,
+    ingredients: data.ingredients.map(fill),
+    ingredientSections: data.ingredientSections.map((s) => ({
+      ...s,
+      ingredients: s.ingredients.map(fill),
+    })),
+  };
+}
+
 function GripIcon() {
   return (
     <svg
@@ -113,7 +140,9 @@ function SortableIngredient({ id, index, ingredient, onChange, onRemove }: Sorta
         />
         <button
           type="button"
+          data-testid={`remove-ingredient-${index}`}
           onClick={() => onRemove(index)}
+          aria-label={`Fjern ${ingredient.name.trim() || 'ingrediens'}`}
           className="px-2 sm:px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 shrink-0"
         >
           ✕
@@ -127,19 +156,82 @@ interface SortableInstructionProps {
   id: string;
   index: number;
   step: InstructionStep;
-  onChange: (index: number, text: string) => void;
+  onChange: (index: number, updated: InstructionStep) => void;
   onRemove: (index: number) => void;
   onInsertBelow: (index: number) => void;
   onPhotoSelected?: (index: number, file: File) => Promise<void>;
   onPhotoRemove?: (index: number) => Promise<void>;
+  /** Every mentionable ingredient of the recipe, flat and sectioned. */
+  mentionableIngredients: StructuredIngredient[];
+  /** The same ingredients keyed by id. Built once by the parent rather than per step. */
+  previewIngredients: Map<string, StructuredIngredient>;
+  /** Base servings, so the preview shows the amount a reader would see. */
+  baseServings?: number | null;
 }
 
-function SortableInstruction({ id, index, step, onChange, onRemove, onInsertBelow, onPhotoSelected, onPhotoRemove }: SortableInstructionProps) {
+function SortableInstruction({ id, index, step, onChange, onRemove, onInsertBelow, onPhotoSelected, onPhotoRemove, mentionableIngredients, previewIngredients, baseServings }: SortableInstructionProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const photoInputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [isPhotoLoading, setIsPhotoLoading] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [cropTarget, setCropTarget] = useState<File | null>(null);
+
+  // The open `@` trigger, or null when the picker is closed.
+  const [trigger, setTrigger] = useState<{ start: number; query: string } | null>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+  // Set after an insertion so the caret can be restored once React has painted
+  // the new value — assigning it before that would be overwritten.
+  const pendingCaret = useRef<number | null>(null);
+
+  const { slots, insert, remove, toggleDisplay, syncText } = useMentions(step);
+  const listboxId = `mention-listbox-${id}`;
+  const options = trigger ? filterIngredients(mentionableIngredients, trigger.query) : [];
+
+  useEffect(() => {
+    if (pendingCaret.current === null) return;
+    const caret = pendingCaret.current;
+    pendingCaret.current = null;
+    const field = textareaRef.current;
+    if (!field) return;
+    field.focus();
+    field.setSelectionRange(caret, caret);
+  }, [step.text]);
+
+  /** Re-read the trigger after anything that can move the caret. */
+  const refreshTrigger = (value: string, caret: number | null) => {
+    const next = caret === null ? null : findMentionTrigger(value, caret);
+    setTrigger(next);
+    setActiveIndex(0);
+  };
+
+  const handleTextChange = (value: string, caret: number | null) => {
+    // Route through the hook so a token the author deleted by hand takes its
+    // mention with it.
+    onChange(index, syncText(value));
+    refreshTrigger(value, caret);
+  };
+
+  const acceptOption = (optionIdx: number) => {
+    const ingredient = options[optionIdx];
+    if (!ingredient || !trigger) return;
+    const caret = textareaRef.current?.selectionStart ?? trigger.start;
+    const result = insert(ingredient, trigger.start, caret);
+    if (!result) return;
+    onChange(index, result.step);
+    pendingCaret.current = result.caret;
+    setTrigger(null);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (!trigger) return;
+    const consumed = handlePickerKey(e.key, options.length, activeIndex, {
+      onActiveIndexChange: setActiveIndex,
+      onAccept: acceptOption,
+      onDismiss: () => setTrigger(null),
+    });
+    if (consumed) e.preventDefault();
+  };
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -217,12 +309,98 @@ function SortableInstruction({ id, index, step, onChange, onRemove, onInsertBelo
         {index + 1}
       </span>
       <div className="flex-1 space-y-2">
-        <textarea
-          value={step.text}
-          onChange={(e) => onChange(index, e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-          rows={2}
-        />
+        <div className="relative">
+          <textarea
+            ref={textareaRef}
+            value={step.text}
+            onChange={(e) => handleTextChange(e.target.value, e.target.selectionStart)}
+            onKeyDown={handleKeyDown}
+            // Clicking or arrowing elsewhere can leave or enter a trigger.
+            onSelect={(e) => refreshTrigger(e.currentTarget.value, e.currentTarget.selectionStart)}
+            onBlur={() => setTrigger(null)}
+            role="combobox"
+            aria-expanded={trigger !== null}
+            aria-controls={trigger ? listboxId : undefined}
+            aria-activedescendant={
+              trigger && options.length > 0 ? optionId(listboxId, activeIndex) : undefined
+            }
+            aria-autocomplete="list"
+            data-testid={`instruction-text-${index}`}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
+            rows={2}
+          />
+          {trigger && (
+            <MentionPicker
+              id={listboxId}
+              ingredients={mentionableIngredients}
+              query={trigger.query}
+              activeIndex={activeIndex}
+              onActiveIndexChange={setActiveIndex}
+              onSelect={(ingredient) => {
+                const at = options.findIndex((o) => o.id === ingredient.id);
+                if (at >= 0) acceptOption(at);
+              }}
+              baseServings={baseServings}
+              desiredServings={baseServings ?? 1}
+            />
+          )}
+        </div>
+
+        {/* A textarea cannot style its own content, so the resolved sentence is
+            shown beneath it — otherwise the author only ever sees `@[0]`. */}
+        {slots.length > 0 && (
+          <p
+            className="text-sm text-gray-600 dark:text-gray-400 px-1"
+            data-testid={`instruction-preview-${index}`}
+          >
+            <StepText
+              segments={resolveStepSegments(
+                step,
+                previewIngredients,
+                baseServings,
+                baseServings ?? 1,
+              )}
+            />
+          </p>
+        )}
+
+        {slots.length > 0 && (
+          <div className="flex flex-wrap gap-1.5" data-testid={`mention-chips-${index}`}>
+            {slots.map(({ index: slot, mention }) => {
+              const name =
+                previewIngredients.get(mention.ingredientId)?.name ?? mention.fallbackName;
+              return (
+                <span
+                  key={slot}
+                  className="inline-flex items-center gap-1 rounded-full bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 text-xs text-blue-800 dark:text-blue-200"
+                >
+                  <span>{name}</span>
+                  <button
+                    type="button"
+                    onClick={() => onChange(index, toggleDisplay(slot))}
+                    title={
+                      mention.display === 'full'
+                        ? 'Vis bare navnet'
+                        : 'Vis mengde og navn'
+                    }
+                    aria-label={`${name}: ${mention.display === 'full' ? 'vis bare navnet' : 'vis mengde og navn'}`}
+                    className="rounded px-1 text-[10px] font-semibold uppercase tracking-wide hover:bg-blue-100 dark:hover:bg-blue-800"
+                  >
+                    {mention.display === 'full' ? 'mengde' : 'navn'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onChange(index, remove(slot))}
+                    aria-label={`Fjern ${name} fra trinnet`}
+                    className="rounded px-1 hover:bg-blue-100 dark:hover:bg-blue-800"
+                  >
+                    ✕
+                  </button>
+                </span>
+              );
+            })}
+          </div>
+        )}
         {/* Per-step photo zone — only shown when photo callbacks are wired */}
         {onPhotoSelected && (
           <div onPaste={handlePhotoFilePaste} tabIndex={-1}>
@@ -335,7 +513,12 @@ export default function RecipeForm({
   onStepPhotoSelected,
   onStepPhotoRemove,
 }: RecipeFormProps) {
-  const [formData, setFormData] = useState<RecipeFormData>(initialData);
+  // Ingredients arriving without an id cannot be mentioned. The server backfills
+  // ids on read, but a recipe can still reach the form without them (mock data,
+  // or a draft that has never been saved), so the form mints its own rather than
+  // showing an empty picker. Ids the server did send are kept verbatim — that is
+  // what keeps existing mentions bound.
+  const [formData, setFormData] = useState<RecipeFormData>(() => withIngredientIds(initialData));
 
   // Stable IDs for DnD (index-based keys cause issues when reordering)
   const [ingredientIds] = useState(() => initialData.ingredients.map((_, i) => `ing-${i}-${Date.now()}`));
@@ -352,6 +535,44 @@ export default function RecipeForm({
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
+  // Every ingredient the author can mention, flat and sectioned, in list order.
+  const mentionableIngredients: StructuredIngredient[] = [
+    ...formData.ingredients,
+    ...formData.ingredientSections.flatMap((s) => s.ingredients),
+  ];
+
+  // Keyed once here rather than rebuilt inside every step row.
+  const previewIngredients = indexIngredients({
+    ingredients: mentionableIngredients,
+    ingredientSections: undefined,
+  });
+
+  /**
+   * Step numbers mentioning `ingredientId`, for the warning shown before a
+   * removal. The removal is still allowed — this only tells the author what it
+   * will cost, since those mentions fall back to their stored name.
+   */
+  const stepsMentioning = (ingredientId: string | null | undefined): number[] => {
+    if (!ingredientId) return [];
+    const all = formData.instructionSections.length > 0
+      ? formData.instructionSections.flatMap((s) => s.steps)
+      : formData.instructionSteps;
+    return all
+      .map((step, i) => (step.mentions?.some((m) => m.ingredientId === ingredientId) ? i + 1 : 0))
+      .filter((n) => n > 0);
+  };
+
+  /** Ask before dropping an ingredient some step still points at. */
+  const confirmIngredientRemoval = (ingredient: StructuredIngredient): boolean => {
+    const steps = stepsMentioning(ingredient.id);
+    if (steps.length === 0) return true;
+    const list = steps.join(', ');
+    const label = ingredient.name.trim() || 'Ingrediensen';
+    return window.confirm(
+      `${label} er nevnt i trinn ${list}. Fjerner du den, viser trinnene navnet uten mengde. Fjerne likevel?`
+    );
+  };
+
   const handleField = (field: keyof RecipeFormData, value: RecipeFormData[typeof field]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -364,12 +585,13 @@ export default function RecipeForm({
   };
 
   const handleRemoveIngredient = (index: number) => {
+    if (!confirmIngredientRemoval(formData.ingredients[index])) return;
     handleField('ingredients', formData.ingredients.filter((_, i) => i !== index));
     setIngIds((ids) => ids.filter((_, i) => i !== index));
   };
 
   const handleAddIngredient = () => {
-    handleField('ingredients', [...formData.ingredients, { quantity: null, unit: null, name: '' }]);
+    handleField('ingredients', [...formData.ingredients, { id: newIngredientId(), quantity: null, unit: null, name: '' }]);
     setIngIds((ids) => [...ids, `ing-${Date.now()}`]);
   };
 
@@ -425,6 +647,8 @@ export default function RecipeForm({
   };
 
   const handleRemoveSectionIngredient = (sIdx: number, iIdx: number) => {
+    const target = formData.ingredientSections[sIdx]?.ingredients[iIdx];
+    if (target && !confirmIngredientRemoval(target)) return;
     const sections = formData.ingredientSections.map((s, si) =>
       si === sIdx ? { ...s, ingredients: s.ingredients.filter((_, ii) => ii !== iIdx) } : s
     );
@@ -434,7 +658,7 @@ export default function RecipeForm({
 
   const handleAddSectionIngredient = (sIdx: number) => {
     const sections = formData.ingredientSections.map((s, si) =>
-      si === sIdx ? { ...s, ingredients: [...s.ingredients, { quantity: null, unit: null, name: '' }] } : s
+      si === sIdx ? { ...s, ingredients: [...s.ingredients, { id: newIngredientId(), quantity: null, unit: null, name: '' }] } : s
     );
     handleField('ingredientSections', sections);
     setSectionIngIds((ids) => ids.map((arr, si) => si === sIdx ? [...arr, `sing-${Date.now()}`] : arr));
@@ -500,9 +724,9 @@ export default function RecipeForm({
   };
 
   // Instructions (flat)
-  const handleInstructionChange = (index: number, text: string) => {
+  const handleInstructionChange = (index: number, updated: InstructionStep) => {
     const newSteps = [...formData.instructionSteps];
-    newSteps[index] = { ...newSteps[index], text };
+    newSteps[index] = updated;
     handleField('instructionSteps', newSteps);
   };
 
@@ -590,9 +814,9 @@ export default function RecipeForm({
     setSectionStepIds((ids) => ids.filter((_, i) => i !== sIdx));
   };
 
-  const handleSectionStepChange = (sIdx: number, stIdx: number, text: string) => {
+  const handleSectionStepChange = (sIdx: number, stIdx: number, updated: InstructionStep) => {
     const sections = formData.instructionSections.map((s, si) =>
-      si === sIdx ? { ...s, steps: s.steps.map((st, sti) => (sti === stIdx ? { ...st, text } : st)) } : s
+      si === sIdx ? { ...s, steps: s.steps.map((st, sti) => (sti === stIdx ? updated : st)) } : s
     );
     handleField('instructionSections', sections);
   };
@@ -974,9 +1198,12 @@ export default function RecipeForm({
                               id={(sectionStepIds[sIdx] ?? [])[stIdx] ?? `sstep-${sIdx}-${stIdx}`}
                               index={globalStepOffset + stIdx}
                               step={step}
-                              onChange={(_globalIdx, text) => handleSectionStepChange(sIdx, stIdx, text)}
+                              onChange={(_globalIdx, updated) => handleSectionStepChange(sIdx, stIdx, updated)}
                               onRemove={() => handleRemoveSectionStep(sIdx, stIdx)}
                               onInsertBelow={() => handleInsertSectionStepBelow(sIdx, stIdx)}
+                              mentionableIngredients={mentionableIngredients}
+                              previewIngredients={previewIngredients}
+                              baseServings={formData.servings}
                             />
                           ))}
                         </DroppableSection>
@@ -1016,6 +1243,9 @@ export default function RecipeForm({
                     onInsertBelow={handleInsertInstructionBelow}
                     onPhotoSelected={handleStepPhotoSelected}
                     onPhotoRemove={handleStepPhotoRemove}
+                    mentionableIngredients={mentionableIngredients}
+                    previewIngredients={previewIngredients}
+                    baseServings={formData.servings}
                   />
                 ))}
               </SortableContext>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { recipeService } from '@/lib/services/recipe.service';
 import type { RecipeFormData } from '@/lib/services/recipe.service';
-import type { Category, Recipe } from '@/lib/mock-data';
+import type { Category, IngredientSection, InstructionSection, InstructionStep, Recipe, StructuredIngredient } from '@/lib/mock-data';
 import { useAuth } from '@/lib/context/AuthContext';
 import RecipeForm from '@/components/RecipeForm';
 import MainPhotoUpload from '@/components/MainPhotoUpload';
@@ -45,10 +45,13 @@ export default function EditRecipeClient({ id }: { id: string }) {
         const detail = data as {
           title: string;
           description?: string;
-          ingredients?: { quantity: number | null; unit: string | null; name: string }[];
-          instructionSteps?: { text: string; imageUrl?: string | null }[];
-          ingredientSections?: { heading: string; ingredients: { quantity: number | null; unit: string | null; name: string }[] }[];
-          instructionSections?: { heading: string; steps: { text: string; imageUrl?: string | null }[] }[];
+          // The real types, not a structural echo: these objects are handed
+          // straight to the form, so ingredient ids and step mentions have to
+          // survive the round-trip or every mention comes back unbound.
+          ingredients?: StructuredIngredient[];
+          instructionSteps?: InstructionStep[];
+          ingredientSections?: IngredientSection[];
+          instructionSections?: InstructionSection[];
           prepTime?: number;
           cookTimeMinutes?: number;
           servings?: number;

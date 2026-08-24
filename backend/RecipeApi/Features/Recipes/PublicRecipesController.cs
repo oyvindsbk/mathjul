@@ -23,10 +23,12 @@ public class PublicRecipesController : ControllerBase
     private static readonly TimeSpan LastAccessedThrottle = TimeSpan.FromMinutes(15);
 
     private readonly RecipeDbContext _context;
+    private readonly ILogger<PublicRecipesController> _logger;
 
-    public PublicRecipesController(RecipeDbContext context)
+    public PublicRecipesController(RecipeDbContext context, ILogger<PublicRecipesController> logger)
     {
         _context = context;
+        _logger = logger;
     }
 
     [HttpGet("shared/{token}")]
@@ -38,14 +40,38 @@ public class PublicRecipesController : ControllerBase
         if (share == null)
             return NotFound(new { message = "Denne delingen finnes ikke lenger" });
 
+        // Tracked deliberately: a recipe written before mentions existed needs its
+        // ingredient ids backfilled and persisted below, so the shared page and the
+        // full recipe bind mentions to the same identities.
         var recipe = await _context.Recipes
-            .AsNoTracking()
             .Include(r => r.SideDishes).ThenInclude(sd => sd.SideDishRecipe)
             .AsSplitQuery()
             .FirstOrDefaultAsync(r => r.Id == share.RecipeId);
 
         if (recipe == null)
             return NotFound(new { message = "Denne delingen finnes ikke lenger" });
+
+        if (RecipeIngredientIds.EnsureIds(recipe))
+        {
+            // JSON columns — EF cannot see the in-place mutation without the signal.
+            // Best-effort: a failed write must not turn a valid share into a 500, and
+            // the payload below is correct either way.
+            try
+            {
+                _context.Entry(recipe).Property(r => r.Ingredients).IsModified = true;
+                _context.Entry(recipe).Property(r => r.IngredientSections).IsModified = true;
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                // Logged rather than swallowed silently: if this keeps failing, the
+                // recipe is retried on every view forever, and that needs to be visible.
+                _logger.LogWarning(
+                    ex,
+                    "Could not persist backfilled ingredient ids for shared recipe {RecipeId}",
+                    recipe.Id);
+            }
+        }
 
         var dto = new SharedRecipeDto
         {
@@ -60,22 +86,17 @@ public class PublicRecipesController : ControllerBase
             QuantityType = recipe.QuantityType,
             CustomUnit = recipe.CustomUnit,
             UpdatedAt = recipe.UpdatedAt,
-            Ingredients = recipe.Ingredients.Select(i => new StructuredIngredientDto
-            {
-                Quantity = i.Quantity,
-                Unit = i.Unit,
-                Name = i.Name
-            }).ToList(),
-            InstructionSteps = recipe.InstructionSteps.Select(s => new InstructionStepDto { Text = s.Text, ImageUrl = s.ImageUrl }).ToList(),
+            Ingredients = recipe.Ingredients.Select(i => i.ToDto()).ToList(),
+            InstructionSteps = recipe.InstructionSteps.Select(s => s.ToDto()).ToList(),
             IngredientSections = recipe.IngredientSections.Select(s => new IngredientSectionDto
             {
                 Heading = s.Heading,
-                Ingredients = s.Ingredients.Select(i => new StructuredIngredientDto { Quantity = i.Quantity, Unit = i.Unit, Name = i.Name }).ToList()
+                Ingredients = s.Ingredients.Select(i => i.ToDto()).ToList()
             }).ToList(),
             InstructionSections = recipe.InstructionSections.Select(s => new InstructionSectionDto
             {
                 Heading = s.Heading,
-                Steps = s.Steps.Select(st => new InstructionStepDto { Text = st.Text, ImageUrl = st.ImageUrl }).ToList()
+                Steps = s.Steps.Select(st => st.ToDto()).ToList()
             }).ToList(),
             Tips = recipe.Tips,
             // Plain text, not links: a link would hand the recipient a second recipe.

@@ -4,7 +4,10 @@
       "Bash(echo \"lint exit=$?\")",
       "Bash(echo \"tsc exit=$?\")",
       "Bash(echo \"build exit=$?\")",
-      "Bash(docker version *)"
+      "Bash(docker version *)",
+      "Bash(cd c:/git/privat/mathjul/backend/RecipeApi && grep -rn \"StructuredIngredientDto\\\\|InstructionStepDto\" --include=*.cs .. | head -60)",
+      "Read(//c/git/privat/**)",
+      "PowerShell(dotnet test --logger \"console;verbosity=normal\" 2>&1)"
     ]
   }
 }

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using RecipeApi.Features.Recipes;
 using Xunit;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace RecipeApi.Tests.Recipes;
 
@@ -122,7 +123,7 @@ public class RecipeShareTests
         var share = UnwrapShare(await controller.CreateShare(recipe.Id));
         await controller.RevokeShare(recipe.Id);
 
-        var result = await new PublicRecipesController(ctx.Db).GetSharedRecipe(share.Token!);
+        var result = await new PublicRecipesController(ctx.Db, NullLogger<PublicRecipesController>.Instance).GetSharedRecipe(share.Token!);
 
         Assert.IsType<NotFoundObjectResult>(result.Result);
     }
@@ -134,7 +135,7 @@ public class RecipeShareTests
         var recipe = SeedRecipe(ctx, visibility: "Private");
         var share = UnwrapShare(await ctx.CreateController().CreateShare(recipe.Id));
 
-        var result = await new PublicRecipesController(ctx.Db).GetSharedRecipe(share.Token!);
+        var result = await new PublicRecipesController(ctx.Db, NullLogger<PublicRecipesController>.Instance).GetSharedRecipe(share.Token!);
 
         var dto = Assert.IsType<SharedRecipeDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
         Assert.Equal(recipe.Title, dto.Title);
@@ -153,7 +154,7 @@ public class RecipeShareTests
         await ctx.Db.SaveChangesAsync();
 
         var share = UnwrapShare(await ctx.CreateController().CreateShare(recipe.Id));
-        var result = await new PublicRecipesController(ctx.Db).GetSharedRecipe(share.Token!);
+        var result = await new PublicRecipesController(ctx.Db, NullLogger<PublicRecipesController>.Instance).GetSharedRecipe(share.Token!);
 
         var dto = Assert.IsType<SharedRecipeDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
         Assert.Equal(recipe.UpdatedAt, dto.UpdatedAt);
@@ -171,7 +172,7 @@ public class RecipeShareTests
         var recipe = SeedRecipe(ctx);
         var share = UnwrapShare(await ctx.CreateController().CreateShare(recipe.Id));
 
-        var result = await new PublicRecipesController(ctx.Db).GetSharedRecipe(share.Token!);
+        var result = await new PublicRecipesController(ctx.Db, NullLogger<PublicRecipesController>.Instance).GetSharedRecipe(share.Token!);
 
         var dto = Assert.IsType<SharedRecipeDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
         Assert.Equal(recipe.Id, dto.RecipeId);
@@ -199,7 +200,7 @@ public class RecipeShareTests
         using var ctx = new RecipeTestContext();
         SeedRecipe(ctx);
 
-        var result = await new PublicRecipesController(ctx.Db).GetSharedRecipe(token);
+        var result = await new PublicRecipesController(ctx.Db, NullLogger<PublicRecipesController>.Instance).GetSharedRecipe(token);
 
         Assert.IsType<NotFoundObjectResult>(result.Result);
     }
@@ -211,7 +212,7 @@ public class RecipeShareTests
         using var ctx = new RecipeTestContext();
         var recipe = SeedRecipe(ctx);
         var share = UnwrapShare(await ctx.CreateController().CreateShare(recipe.Id));
-        var publicController = new PublicRecipesController(ctx.Db);
+        var publicController = new PublicRecipesController(ctx.Db, NullLogger<PublicRecipesController>.Instance);
 
         await publicController.GetSharedRecipe(share.Token!);
         var afterFirst = ctx.Db.RecipeShares.Single(s => s.Token == share.Token).LastAccessedAt;
@@ -261,7 +262,7 @@ public class RecipeShareTests
 
         Assert.IsType<NoContentResult>(await admin.RevokeShare(recipe.Id));
 
-        var afterRevoke = await new PublicRecipesController(ctx.Db).GetSharedRecipe(created.Token!);
+        var afterRevoke = await new PublicRecipesController(ctx.Db, NullLogger<PublicRecipesController>.Instance).GetSharedRecipe(created.Token!);
         Assert.IsType<NotFoundObjectResult>(afterRevoke.Result);
     }
 
