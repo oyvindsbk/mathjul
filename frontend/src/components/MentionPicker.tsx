@@ -21,6 +21,8 @@ import { formatIngredientParts } from "@/lib/recipe-format";
 export interface MentionPickerProps {
   /** Every mentionable ingredient, flat and sectioned, in list order. */
   ingredients: StructuredIngredient[];
+  /** Section heading per ingredient id, for ingredients that belong to a section. */
+  sectionById?: Map<string, string>;
   /** The text typed after `@`, filtering the list. */
   query: string;
   /** Index of the highlighted option, owned by the parent's key handling. */
@@ -93,6 +95,7 @@ export function handlePickerKey(
 
 export function MentionPicker({
   ingredients,
+  sectionById,
   query,
   activeIndex,
   onActiveIndexChange,
@@ -133,6 +136,8 @@ export function MentionPicker({
       {options.map((ingredient, index) => {
         const active = index === activeIndex;
         const { qtyUnit, name } = formatIngredientParts(ingredient, baseServings, desiredServings);
+        const sectionHeading = ingredient.id ? sectionById?.get(ingredient.id) : undefined;
+        const label = sectionHeading ? `${sectionHeading} - ${name}` : name;
         return (
           <li
             key={ingredient.id}
@@ -149,7 +154,7 @@ export function MentionPicker({
             }`}
           >
             {qtyUnit && <span className="shrink-0 font-semibold">{qtyUnit}</span>}
-            <span>{name}</span>
+            <span>{label}</span>
           </li>
         );
       })}

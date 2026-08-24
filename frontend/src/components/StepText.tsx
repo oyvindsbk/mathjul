@@ -13,7 +13,7 @@ export function StepText({ segments }: { segments: InstructionSegment[] }) {
     <>
       {segments.map((segment, index) =>
         segment.kind === "mention" && segment.resolved ? (
-          <span key={index} className="font-medium text-gray-900" data-mention>
+          <span key={index} className="font-semibold text-gray-900" data-mention>
             {segment.text}
           </span>
         ) : (

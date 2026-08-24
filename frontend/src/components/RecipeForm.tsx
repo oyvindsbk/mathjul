@@ -163,13 +163,15 @@ interface SortableInstructionProps {
   onPhotoRemove?: (index: number) => Promise<void>;
   /** Every mentionable ingredient of the recipe, flat and sectioned. */
   mentionableIngredients: StructuredIngredient[];
+  /** Section heading per ingredient id, for ingredients that belong to a section. */
+  mentionSectionById: Map<string, string>;
   /** The same ingredients keyed by id. Built once by the parent rather than per step. */
   previewIngredients: Map<string, StructuredIngredient>;
   /** Base servings, so the preview shows the amount a reader would see. */
   baseServings?: number | null;
 }
 
-function SortableInstruction({ id, index, step, onChange, onRemove, onInsertBelow, onPhotoSelected, onPhotoRemove, mentionableIngredients, previewIngredients, baseServings }: SortableInstructionProps) {
+function SortableInstruction({ id, index, step, onChange, onRemove, onInsertBelow, onPhotoSelected, onPhotoRemove, mentionableIngredients, mentionSectionById, previewIngredients, baseServings }: SortableInstructionProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const photoInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -333,6 +335,7 @@ function SortableInstruction({ id, index, step, onChange, onRemove, onInsertBelo
             <MentionPicker
               id={listboxId}
               ingredients={mentionableIngredients}
+              sectionById={mentionSectionById}
               query={trigger.query}
               activeIndex={activeIndex}
               onActiveIndexChange={setActiveIndex}
@@ -540,6 +543,15 @@ export default function RecipeForm({
     ...formData.ingredients,
     ...formData.ingredientSections.flatMap((s) => s.ingredients),
   ];
+
+  // Section heading per ingredient id, so the picker can show "<section> - <ingredient>"
+  // for ingredients that belong to a section.
+  const mentionSectionById = new Map<string, string>();
+  formData.ingredientSections.forEach((section) => {
+    section.ingredients.forEach((ingredient) => {
+      if (ingredient.id) mentionSectionById.set(ingredient.id, section.heading);
+    });
+  });
 
   // Keyed once here rather than rebuilt inside every step row.
   const previewIngredients = indexIngredients({
@@ -1202,6 +1214,7 @@ export default function RecipeForm({
                               onRemove={() => handleRemoveSectionStep(sIdx, stIdx)}
                               onInsertBelow={() => handleInsertSectionStepBelow(sIdx, stIdx)}
                               mentionableIngredients={mentionableIngredients}
+                              mentionSectionById={mentionSectionById}
                               previewIngredients={previewIngredients}
                               baseServings={formData.servings}
                             />
@@ -1244,6 +1257,7 @@ export default function RecipeForm({
                     onPhotoSelected={handleStepPhotoSelected}
                     onPhotoRemove={handleStepPhotoRemove}
                     mentionableIngredients={mentionableIngredients}
+                    mentionSectionById={mentionSectionById}
                     previewIngredients={previewIngredients}
                     baseServings={formData.servings}
                   />
