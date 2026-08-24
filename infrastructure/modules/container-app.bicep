@@ -121,12 +121,14 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
               name: 'KeyVault__VaultUri'
               value: keyVault.properties.vaultUri
             }
-{
+// Seeds CORS/Sharing on first creation only. infrastructure.yml's post-deploy step
+            // immediately overwrites both with the live frontend URL(s) (custom domain +
+            // ingress fqdn) in the same job run, via `az containerapp update --set-env-vars` --
+            // so frontendUrl only needs to be a reasonable value, never the source of truth.
+            {
               name: 'Cors__AllowedOrigins__0'
               value: frontendUrl != '' ? frontendUrl : 'https://placeholder-update-after-deployment.com'
             }
-            // Base URL for share links. Without it the API falls back to its own
-            // request origin, which is the API host -- never where /delt/ lives.
             {
               name: 'Sharing__PublicBaseUrl'
               value: frontendUrl != '' ? frontendUrl : 'https://placeholder-update-after-deployment.com'
