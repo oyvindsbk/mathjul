@@ -65,27 +65,6 @@ jobs:
           frontendCustomDomainName=${{ vars.FRONTEND_CUSTOM_DOMAIN }}
           frontendCustomDomainCertificateName=${{ vars.FRONTEND_CUSTOM_DOMAIN_CERT }}
         failOnStdErr: false
-    
-    - name: Update backend CORS and share base URL with frontend URL
-      # The bicep output is the container app's ingress fqdn, which stops being the host users
-      # reach once a custom domain is bound to it. Prefer PUBLIC_APP_URL so an infra deploy
-      # cannot revert what the app deploy set, and keep the fqdn as a second allowed origin so
-      # requests from the old host still pass CORS.
-      run: |
-        FQDN_URL="${{ steps.bicep-deploy.outputs.frontendUrl }}"
-        FRONTEND_URL="${{ vars.PUBLIC_APP_URL }}"
-        FRONTEND_URL="${FRONTEND_URL:-$FQDN_URL}"
-        BACKEND_NAME=$(az containerapp list \
-          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --query "[?contains(name, 'recipe-api')].name | [0]" -o tsv)
-        az containerapp update \
-          --name "$BACKEND_NAME" \
-          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --set-env-vars \
-            "Cors__AllowedOrigins__0=${FRONTEND_URL}" \
-            "Cors__AllowedOrigins__1=${FQDN_URL}" \
-            "Sharing__PublicBaseUrl=${FRONTEND_URL}"
-        echo "CORS + share base URL set to: ${FRONTEND_URL} (also allowing ${FQDN_URL})"
 
     - name: Display deployment info
       run: |

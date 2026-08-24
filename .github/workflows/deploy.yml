@@ -291,36 +291,3 @@ jobs:
     outputs:
       frontend-url: ${{ steps.frontend-url.outputs.url }}
       frontend-fqdn-url: ${{ steps.frontend-url.outputs.fqdn-url }}
-
-  update-backend-cors:
-    runs-on: ubuntu-latest
-    needs: [get-resources, deploy-frontend]
-    
-    steps:
-    - name: Azure Login
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.AZURE_CREDENTIALS }}
-    
-    - name: Update Backend Frontend-URL Configuration
-      # Both vars must track the live frontend URL: CORS to allow its origin, and
-      # Sharing__PublicBaseUrl so /delt/ share links point at the frontend rather
-      # than falling back to the API's own request origin.
-      #
-      # CORS gets both hosts. The policy uses AllowCredentials(), so wildcards are not an
-      # option and every origin the browser may send has to be listed exactly -- the custom
-      # domain for normal traffic, the ingress fqdn for anyone still arriving on the old
-      # host. Drop the fqdn entry once that host is retired. Share links get only the
-      # canonical URL: a link should never hand out the host we are migrating away from.
-      run: |
-        echo "🔧 Pointing backend CORS + share links at: ${{ needs.deploy-frontend.outputs.frontend-url }}"
-
-        az containerapp update \
-          --name "${{ needs.get-resources.outputs.container-app-name }}" \
-          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --set-env-vars \
-            "Cors__AllowedOrigins__0=${{ needs.deploy-frontend.outputs.frontend-url }}" \
-            "Cors__AllowedOrigins__1=${{ needs.deploy-frontend.outputs.frontend-fqdn-url }}" \
-            "Sharing__PublicBaseUrl=${{ needs.deploy-frontend.outputs.frontend-url }}"
-
-        echo "✅ Backend CORS + share base URL updated successfully!"
