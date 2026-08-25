@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import CropModal from './CropModal';
 import {
   DndContext,
@@ -24,6 +24,7 @@ import { findMentionTrigger, indexIngredients, resolveStepSegments } from '@/lib
 import { MentionPicker, filterIngredients, handlePickerKey, optionId } from '@/components/MentionPicker';
 import { StepText } from '@/components/StepText';
 import { useMentions } from '@/hooks/useMentions';
+import { parseQuantityInput, toFractionString } from '@/lib/fraction';
 
 interface RecipeFormProps {
   initialData: RecipeFormData;
@@ -66,6 +67,15 @@ function withIngredientIds(data: RecipeFormData): RecipeFormData {
   };
 }
 
+/**
+ * Render a stored quantity for the input field. Fractions round-trip as
+ * fractions, so a quantity entered as "1/4" is not shown back as 0.25.
+ */
+function formatQuantityInput(quantity: number | null | undefined): string {
+  if (quantity == null) return '';
+  return toFractionString(quantity) ?? quantity.toString();
+}
+
 function GripIcon() {
   return (
     <svg
@@ -91,10 +101,36 @@ interface SortableIngredientProps {
   ingredient: StructuredIngredient;
   onChange: (index: number, updated: StructuredIngredient) => void;
   onRemove: (index: number) => void;
+  /** Reports whether this row's quantity text is unparseable, so save can be blocked. */
+  onQuantityValidityChange: (id: string, invalid: boolean) => void;
 }
 
-function SortableIngredient({ id, index, ingredient, onChange, onRemove }: SortableIngredientProps) {
+function SortableIngredient({ id, index, ingredient, onChange, onRemove, onQuantityValidityChange }: SortableIngredientProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+  // The quantity field holds raw text so fractions can be typed: "1/4" passes
+  // through "1" and "1/" on the way, and parsing each keystroke would rewrite
+  // the field under the user. Parsing happens on blur instead.
+  const [quantityText, setQuantityText] = useState(() => formatQuantityInput(ingredient.quantity));
+  const [quantityFocused, setQuantityFocused] = useState(false);
+  const quantityInvalid = quantityText.trim() !== '' && parseQuantityInput(quantityText) === null;
+
+  // Follow external changes to the quantity (scaling, undo, a loaded recipe),
+  // but never while the field is focused — that would fight the typist.
+  useEffect(() => {
+    if (quantityFocused) return;
+    setQuantityText(formatQuantityInput(ingredient.quantity));
+  }, [ingredient.quantity, quantityFocused]);
+
+  useEffect(() => {
+    onQuantityValidityChange(id, quantityInvalid);
+  }, [id, quantityInvalid, onQuantityValidityChange]);
+
+  // Clear this row's invalid flag when it unmounts, so a removed row cannot
+  // block saving forever.
+  useEffect(() => {
+    return () => onQuantityValidityChange(id, false);
+  }, [id, onQuantityValidityChange]);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -115,12 +151,36 @@ function SortableIngredient({ id, index, ingredient, onChange, onRemove }: Sorta
           <GripIcon />
         </button>
         <input
-          type="number"
-          step="any"
-          value={ingredient.quantity ?? ''}
-          onChange={(e) => onChange(index, { ...ingredient, quantity: e.target.value ? parseFloat(e.target.value) : null })}
+          type="text"
+          inputMode="decimal"
+          value={quantityText}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setQuantityText(raw);
+            // Commit only parseable input; partial text like "1/" leaves the
+            // stored quantity alone until blur resolves it.
+            const parsed = parseQuantityInput(raw);
+            if (raw.trim() === '') {
+              onChange(index, { ...ingredient, quantity: null });
+            } else if (parsed !== null) {
+              onChange(index, { ...ingredient, quantity: parsed });
+            }
+          }}
+          onFocus={() => setQuantityFocused(true)}
+          onBlur={() => {
+            setQuantityFocused(false);
+            const parsed = parseQuantityInput(quantityText);
+            if (parsed !== null) setQuantityText(formatQuantityInput(parsed));
+          }}
           placeholder="Antall"
-          className="w-16 sm:w-20 px-2 sm:px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-sm"
+          aria-invalid={quantityInvalid}
+          aria-label="Mengde"
+          title={quantityInvalid ? 'Ugyldig mengde. Bruk tall eller brøk, f.eks. 1/4 eller 1 1/2.' : undefined}
+          className={`w-16 sm:w-20 px-2 sm:px-3 py-2 border rounded-lg bg-white dark:bg-gray-800 text-sm ${
+            quantityInvalid
+              ? 'border-red-500 dark:border-red-500 text-red-600 dark:text-red-400'
+              : 'border-gray-300 dark:border-gray-700'
+          }`}
         />
         <input
           type="text"
@@ -947,7 +1007,22 @@ export default function RecipeForm({
     handleField('sideDishIds', arrayMove(current, from, to));
   };
 
+  // Ingredient rows with unparseable quantity text, keyed by row id. Saving is
+  // blocked while any remain, so a typo cannot silently store a null quantity.
+  const [invalidQuantityIds, setInvalidQuantityIds] = useState<Set<string>>(new Set());
+  const hasInvalidQuantity = invalidQuantityIds.size > 0;
+
+  const handleQuantityValidityChange = useCallback((id: string, invalid: boolean) => {
+    setInvalidQuantityIds((prev) => {
+      if (invalid === prev.has(id)) return prev;
+      const next = new Set(prev);
+      if (invalid) next.add(id); else next.delete(id);
+      return next;
+    });
+  }, []);
+
   const handleSubmit = async () => {
+    if (hasInvalidQuantity) return;
     await onSave({ ...formData, tips: (formData.tips ?? []).filter(t => t.trim() !== '') });
   };
 
@@ -1101,6 +1176,7 @@ export default function RecipeForm({
                             ingredient={ingredient}
                             onChange={(i, updated) => handleSectionIngredientChange(sIdx, i, updated)}
                             onRemove={(i) => handleRemoveSectionIngredient(sIdx, i)}
+                            onQuantityValidityChange={handleQuantityValidityChange}
                           />
                         ))}
                       </DroppableSection>
@@ -1136,6 +1212,7 @@ export default function RecipeForm({
                     ingredient={ingredient}
                     onChange={handleIngredientChange}
                     onRemove={handleRemoveIngredient}
+                    onQuantityValidityChange={handleQuantityValidityChange}
                   />
                 ))}
               </SortableContext>
@@ -1425,9 +1502,15 @@ export default function RecipeForm({
 
       {/* Action Buttons */}
       <div className="flex flex-col sm:flex-row gap-3 pt-4">
+        {hasInvalidQuantity && (
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400 self-center">
+            Rett opp ugyldig mengde før du lagrer.
+          </p>
+        )}
         <button
           onClick={handleSubmit}
-          disabled={isSaving}
+          disabled={isSaving || hasInvalidQuantity}
+          title={hasInvalidQuantity ? 'Rett opp ugyldig mengde før du lagrer.' : undefined}
           className="flex-1 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
         >
           {isSaving ? 'Lagrer...' : submitLabel}

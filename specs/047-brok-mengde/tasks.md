@@ -12,12 +12,12 @@
       oppskriftsvisning, matlagingsmodus og ingrediensomtaler alle viser brøk (de deler denne
       funksjonen). Verifiser med lint + tsc + build.
 
-- [ ] Task 3: Gjør mengdefeltet i `IngredientRow` (`RecipeForm.tsx`) om til `type="text"` med
+- [x] Task 3: Gjør mengdefeltet i `IngredientRow` (`RecipeForm.tsx`) om til `type="text"` med
       `inputMode="decimal"`, råtekst-state per rad og parsing ved `blur` via
       `parseQuantityInput`. Vis eksisterende mengde som brøk når feltet ikke har fokus. Gjelder
       både flat liste og seksjonerte ingredienser. Verifiser med lint + tsc + build.
 
-- [ ] Task 4: Feilhåndtering ved ugyldig inndata — marker feltet og blokker lagring framfor å
+- [x] Task 4: Feilhåndtering ved ugyldig inndata — marker feltet og blokker lagring framfor å
       lagre `null`. Verifiser med lint + tsc + build.
 
 - [ ] Task 5: Playwright E2E i `frontend/tests/e2e/` — skriv `1/4` i mengdefeltet, lagre, og
