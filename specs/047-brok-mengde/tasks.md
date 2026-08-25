@@ -7,7 +7,7 @@
       `toFractionString` (vanlige kjøkkenbrøker med toleranse, blandet tall over 1, `null` når
       ingen brøk passer). Rene funksjoner, ingen React. Verifiser med lint + tsc.
 
-- [ ] Task 2: Koble brøkvisning på `formatQuantity` i `frontend/src/lib/recipe-format.ts` — bruk
+- [x] Task 2: Koble brøkvisning på `formatQuantity` i `frontend/src/lib/recipe-format.ts` — bruk
       `toFractionString`, fall tilbake til dagens desimalformatering når den gir `null`. Sjekk at
       oppskriftsvisning, matlagingsmodus og ingrediensomtaler alle viser brøk (de deler denne
       funksjonen). Verifiser med lint + tsc + build.

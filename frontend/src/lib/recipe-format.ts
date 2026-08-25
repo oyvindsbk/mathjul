@@ -7,10 +7,17 @@
  */
 
 import type { StructuredIngredient } from "@/lib/mock-data";
+import { toFractionString } from "@/lib/fraction";
 
-/** Format a scaled quantity: integers stay bare, fractions get up to 2 decimals with trailing zeros trimmed. */
+/**
+ * Format a scaled quantity. Common kitchen fractions render as fractions
+ * (0.25 becomes "1/4"), since that is how recipes are read; integers stay bare,
+ * and anything else falls back to up to 2 decimals with trailing zeros trimmed.
+ */
 export function formatQuantity(quantity: number): string {
   if (quantity % 1 === 0) return quantity.toString();
+  const fraction = toFractionString(quantity);
+  if (fraction !== null) return fraction;
   return parseFloat(quantity.toFixed(2)).toString();
 }
 
