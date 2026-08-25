@@ -2,7 +2,7 @@
 
 ## Tasks
 
-- [ ] Task 1: Lag `frontend/src/lib/fraction.ts` med `parseQuantityInput` (enkel brøk, blandet
+- [x] Task 1: Lag `frontend/src/lib/fraction.ts` med `parseQuantityInput` (enkel brøk, blandet
       tall, unicode-brøktegn, komma/punktum-desimal, heltall; `null` ved ugyldig) og
       `toFractionString` (vanlige kjøkkenbrøker med toleranse, blandet tall over 1, `null` når
       ingen brøk passer). Rene funksjoner, ingen React. Verifiser med lint + tsc.
