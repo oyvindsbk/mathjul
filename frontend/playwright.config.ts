@@ -1,5 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 
+// Defaults to 3000; override with PLAYWRIGHT_PORT when that port is occupied.
+const port = process.env.PLAYWRIGHT_PORT ?? '3000';
+const baseURL = `http://localhost:${port}`;
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -9,7 +13,7 @@ export default defineConfig({
   reporter: 'html',
 
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -30,8 +34,8 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
+    command: `npx next dev -p ${port}`,
+    url: baseURL,
     reuseExistingServer: true,
     timeout: 120_000,
   },

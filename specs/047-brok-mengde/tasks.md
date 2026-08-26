@@ -20,5 +20,5 @@
 - [x] Task 4: Feilhåndtering ved ugyldig inndata — marker feltet og blokker lagring framfor å
       lagre `null`. Verifiser med lint + tsc + build.
 
-- [ ] Task 5: Playwright E2E i `frontend/tests/e2e/` — skriv `1/4` i mengdefeltet, lagre, og
+- [x] Task 5: Playwright E2E i `frontend/tests/e2e/` — skriv `1/4` i mengdefeltet, lagre, og
       bekreft at oppskriften viser `1/4 ts salt`. Dekk også blandet tall og ugyldig inndata.

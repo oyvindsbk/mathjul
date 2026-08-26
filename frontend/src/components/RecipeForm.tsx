@@ -115,12 +115,14 @@ function SortableIngredient({ id, index, ingredient, onChange, onRemove, onQuant
   const [quantityFocused, setQuantityFocused] = useState(false);
   const quantityInvalid = quantityText.trim() !== '' && parseQuantityInput(quantityText) === null;
 
-  // Follow external changes to the quantity (scaling, undo, a loaded recipe),
-  // but never while the field is focused — that would fight the typist.
+  // Follow external changes to the quantity (scaling, undo, a loaded recipe).
+  // Skipped while the field is focused, and while the text is unparseable —
+  // otherwise the sync would erase what the user typed and hide the error,
+  // since an invalid edit deliberately leaves the stored quantity untouched.
   useEffect(() => {
-    if (quantityFocused) return;
+    if (quantityFocused || quantityInvalid) return;
     setQuantityText(formatQuantityInput(ingredient.quantity));
-  }, [ingredient.quantity, quantityFocused]);
+  }, [ingredient.quantity, quantityFocused, quantityInvalid]);
 
   useEffect(() => {
     onQuantityValidityChange(id, quantityInvalid);
