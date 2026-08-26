@@ -44,6 +44,16 @@ const DISPLAY_FRACTIONS: ReadonlyArray<{ value: number; label: string }> = [
   { value: 3 / 8, label: "3/8" },
   { value: 5 / 8, label: "5/8" },
   { value: 7 / 8, label: "7/8" },
+  // Sixteenths keep halved quantities readable: a 1/4 ts scaled down twice is
+  // 1/16, which reads better in an ingredient list than 0.06.
+  { value: 1 / 16, label: "1/16" },
+  { value: 3 / 16, label: "3/16" },
+  { value: 5 / 16, label: "5/16" },
+  { value: 7 / 16, label: "7/16" },
+  { value: 9 / 16, label: "9/16" },
+  { value: 11 / 16, label: "11/16" },
+  { value: 13 / 16, label: "13/16" },
+  { value: 15 / 16, label: "15/16" },
 ];
 
 /**

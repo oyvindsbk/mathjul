@@ -12,6 +12,30 @@ interface ServingsStepperProps {
   size?: "default" | "large";
 }
 
+/** Half a portion is the smallest step; below that the amounts stop being useful. */
+const MIN_SERVINGS = 0.5;
+
+/**
+ * Step down from the current value.
+ *
+ * Values snap back onto the whole-number grid rather than carrying an offset:
+ * stepping down from 1.5 gives 1, not 0.5. Only 1 steps down to the half
+ * portion, so + and − are inverses everywhere.
+ */
+export function stepDown(value: number): number {
+  if (value <= 1) return MIN_SERVINGS;
+  return Math.max(1, Math.ceil(value) - 1);
+}
+
+/**
+ * Step up from the current value, snapping onto the whole-number grid: 0.5
+ * goes to 1 (not 1.5), and 1.5 goes to 2.
+ */
+export function stepUp(value: number): number {
+  if (value < 1) return 1;
+  return Math.floor(value) + 1;
+}
+
 /**
  * The −/+/input control for scaling a recipe.
  *
@@ -34,8 +58,9 @@ export function ServingsStepper({
     <div className="flex items-center gap-3">
       <button
         type="button"
-        onClick={() => onChange(Math.max(0.5, value - 1))}
-        className={`${button} rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold flex items-center justify-center`}
+        onClick={() => onChange(stepDown(value))}
+        disabled={value <= MIN_SERVINGS}
+        className={`${button} rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold flex items-center justify-center disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-100`}
         aria-label="Færre"
       >
         −
@@ -54,7 +79,7 @@ export function ServingsStepper({
       />
       <button
         type="button"
-        onClick={() => onChange(value + 1)}
+        onClick={() => onChange(stepUp(value))}
         className={`${button} rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 font-bold flex items-center justify-center`}
         aria-label="Flere"
       >
