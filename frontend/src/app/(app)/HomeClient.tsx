@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { HeartButton } from "@/components/HeartButton";
 import { useAuth } from "@/lib/context/AuthContext";
 import { recipeService } from "@/lib/services/recipe.service";
@@ -12,6 +13,8 @@ import HomeLoading from "./loading";
 
 type VisibilityTab = "all" | "public" | "myGroups" | "private" | "favoritter";
 
+const VALID_VISIBILITY_TABS: VisibilityTab[] = ["public", "myGroups", "private", "favoritter"];
+
 export default function HomeClient() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
@@ -21,7 +24,62 @@ export default function HomeClient() {
   const [error, setError] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
   const [backendEnv, setBackendEnv] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const { token, isLoading: authLoading } = useAuth();
+  const requestIdRef = useRef(0);
+  const hasLoadedOnceRef = useRef(false);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const hasReadUrlRef = useRef(false);
+
+  // Read initial state from the URL once on mount
+  useEffect(() => {
+    if (hasReadUrlRef.current) return;
+    hasReadUrlRef.current = true;
+
+    const q = searchParams.get("q");
+    const cat = searchParams.get("cat");
+    const vis = searchParams.get("vis");
+
+    if (q) {
+      setSearchTerm(q);
+    }
+    if (cat) {
+      const ids = cat
+        .split(",")
+        .map((s) => parseInt(s, 10))
+        .filter((n) => !Number.isNaN(n));
+      if (ids.length > 0) setSelectedCategoryIds(ids);
+    }
+    if (vis && VALID_VISIBILITY_TABS.includes(vis as VisibilityTab)) {
+      setVisibilityTab(vis as VisibilityTab);
+    }
+    if (cat || vis) {
+      setFilterOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Stay in sync when the URL's `q` changes from elsewhere (e.g. the header search box)
+  useEffect(() => {
+    if (!hasReadUrlRef.current) return;
+    const q = searchParams.get("q") ?? "";
+    setSearchTerm((prev) => (prev === q ? prev : q));
+  }, [searchParams]);
+
+  // Mirror filter state back to the URL after changes
+  useEffect(() => {
+    if (!hasReadUrlRef.current) return;
+
+    const params = new URLSearchParams();
+    if (searchTerm) params.set("q", searchTerm);
+    if (selectedCategoryIds.length > 0) params.set("cat", selectedCategoryIds.join(","));
+    if (visibilityTab !== "all") params.set("vis", visibilityTab);
+
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }, [searchTerm, selectedCategoryIds, visibilityTab, router, pathname]);
 
   // Best-effort: fetch backend environment for dev banner only
   useEffect(() => {
@@ -42,23 +100,32 @@ export default function HomeClient() {
   useEffect(() => {
     if (authLoading) return;
 
+    const requestId = ++requestIdRef.current;
+
     const fetchRecipes = async () => {
       try {
-        // For "My groups", fetch per group and merge (or use first group as filter)
-        // Simple approach: fetch all and filter client-side by visibility field
-        const data = await recipeService.getAllRecipes(token || undefined, selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined);
+        const data = await recipeService.getAllRecipes(
+          token || undefined,
+          selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
+          undefined,
+          searchTerm || undefined
+        );
+        if (requestId !== requestIdRef.current) return;
         setRecipes(data);
         setError(null);
       } catch (err) {
+        if (requestId !== requestIdRef.current) return;
         console.error("Error fetching recipes:", err);
         setError(err instanceof Error ? err.message : "Failed to fetch recipes");
       } finally {
+        if (requestId !== requestIdRef.current) return;
+        hasLoadedOnceRef.current = true;
         setLoading(false);
       }
     };
 
     fetchRecipes();
-  }, [authLoading, token, selectedCategoryIds]);
+  }, [authLoading, token, selectedCategoryIds, searchTerm]);
 
   const filteredRecipes = recipes.filter((r) => {
     const rec = r as Recipe & { visibility?: string };
@@ -81,7 +148,7 @@ export default function HomeClient() {
     process.env.NODE_ENV !== "production" &&
     (appConfig.mocking.enabled || backendEnv === "Development");
 
-  if (loading) {
+  if (loading && !hasLoadedOnceRef.current) {
     return <HomeLoading />;
   }
 
@@ -106,36 +173,13 @@ export default function HomeClient() {
           </div>
         )}
 
-        {/* Visibility filter tabs */}
-        <div className="flex gap-2 mb-6 flex-wrap">
-          {(
-            [
-              { key: "all", label: "Alle" },
-              { key: "public", label: "🌍 Offentlig" },
-              { key: "myGroups", label: "👥 Mine grupper" },
-              { key: "private", label: "🔒 Privat" },
-              { key: "favoritter", label: "❤️ Favoritter" },
-            ] as { key: VisibilityTab; label: string }[]
-          ).map(({ key, label }) => (
-            <button
-              key={key}
-              onClick={() => setVisibilityTab(key)}
-              className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
-                visibilityTab === key
-                  ? "bg-emerald-600 text-white border-emerald-600"
-                  : "bg-white text-gray-600 border-gray-300 hover:border-gray-400"
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-
         {availableCategories.length > 0 && (() => {
           const groups = Array.from(new Set(availableCategories.map((c) => c.group)));
+          const activeFilterCount = selectedCategoryIds.length + (visibilityTab !== "all" ? 1 : 0);
           return (
             <div className="mb-8 bg-white rounded-lg shadow-sm border border-gray-200">
               <button
+                data-testid="filter-toggle"
                 onClick={() => setFilterOpen((o) => !o)}
                 className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-lg transition-colors"
               >
@@ -143,10 +187,10 @@ export default function HomeClient() {
                   <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
                   </svg>
-                  <span>Filtrer etter kategori</span>
-                  {selectedCategoryIds.length > 0 && (
+                  <span>Filtre</span>
+                  {activeFilterCount > 0 && (
                     <span className="ml-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs">
-                      {selectedCategoryIds.length}
+                      {activeFilterCount}
                     </span>
                   )}
                 </div>
@@ -160,9 +204,9 @@ export default function HomeClient() {
               {filterOpen && (
                 <div className="px-4 pb-4 border-t border-gray-100">
                   <div className="flex justify-end pt-2 mb-2">
-                    {selectedCategoryIds.length > 0 && (
+                    {activeFilterCount > 0 && (
                       <button
-                        onClick={() => { setSelectedCategoryIds([]); setLoading(true); }}
+                        onClick={() => { setSelectedCategoryIds([]); setVisibilityTab("all"); setLoading(true); }}
                         className="text-xs text-blue-600 hover:text-blue-800 cursor-pointer"
                       >
                         Fjern alle filtre
@@ -170,6 +214,30 @@ export default function HomeClient() {
                     )}
                   </div>
                   <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <span className="text-xs text-gray-400 w-28 shrink-0">Synlighet</span>
+                      {(
+                        [
+                          { key: "all", label: "Alle" },
+                          { key: "public", label: "🌍 Offentlig" },
+                          { key: "myGroups", label: "👥 Mine grupper" },
+                          { key: "private", label: "🔒 Privat" },
+                          { key: "favoritter", label: "❤️ Favoritter" },
+                        ] as { key: VisibilityTab; label: string }[]
+                      ).map(({ key, label }) => (
+                        <button
+                          key={key}
+                          onClick={() => setVisibilityTab(key)}
+                          className={`px-3 py-1 rounded-full text-sm border transition-colors cursor-pointer ${
+                            visibilityTab === key
+                              ? "bg-blue-500 text-white border-blue-500"
+                              : "bg-white text-gray-600 border-gray-300 hover:border-blue-400"
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
                     {groups.map((group) => (
                       <div key={group} className="flex flex-wrap gap-2 items-center">
                         <span className="text-xs text-gray-400 w-28 shrink-0">{group}</span>
@@ -198,6 +266,21 @@ export default function HomeClient() {
           );
         })()}
 
+        {filteredRecipes.length === 0 ? (
+          <div className="text-center py-16 px-4" data-testid="empty-state">
+            <p className="text-gray-600 mb-4">Ingen oppskrifter matcher søket</p>
+            <button
+              onClick={() => {
+                setSearchTerm("");
+                setSelectedCategoryIds([]);
+                setVisibilityTab("all");
+              }}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm cursor-pointer"
+            >
+              Nullstill søk og filtre
+            </button>
+          </div>
+        ) : (
         <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6" data-testid="recipe-grid">
           {filteredRecipes.map((recipe) => (
             <div key={recipe.id} data-testid={`recipe-card-${recipe.id}`} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col">
@@ -261,6 +344,7 @@ export default function HomeClient() {
             </div>
           ))}
         </div>
+        )}
       </div>
     </div>
   );

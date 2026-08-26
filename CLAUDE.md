@@ -72,6 +72,7 @@ Run verification after every meaningful change. Cheapest checks first.
 - All steps for the affected stack must pass before marking a task complete
 - If a step fails: read the error, fix it, re-run from that step -- don't skip ahead
 - Run the full check for the relevant stack as the gate at the end of each task
+- After a plan finishes implementation (all its tasks are done, checks green), start the app (Aspire for backend + `npm run dev` for frontend, or just the frontend dev server if the change is frontend-only) and open it in Chrome so the user can test manually
 
 ## Project Structure
 

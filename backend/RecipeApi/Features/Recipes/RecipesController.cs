@@ -174,7 +174,8 @@ public class RecipesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<RecipeDto>>> GetAllRecipes(
         [FromQuery] string? categories = null,
-        [FromQuery] int? groupId = null)
+        [FromQuery] int? groupId = null,
+        [FromQuery] string? search = null)
     {
         var callerEmail = GetCallerEmail();
 
@@ -216,6 +217,17 @@ public class RecipesController : ControllerBase
                 if (idsByGroup.Count == 0)
                     query = query.Where(r => false);
             }
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            if (term.Length > 100)
+                term = term[..100];
+
+            term = term.Replace("[", "[[]").Replace("%", "[%]").Replace("_", "[_]");
+
+            query = query.Where(r => EF.Functions.Like(r.Title, $"%{term}%"));
         }
 
         var likedIds = callerEmail != null

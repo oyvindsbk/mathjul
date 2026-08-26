@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
+import { recipeService } from "@/lib/services/recipe.service";
+import type { Recipe } from "@/lib/mock-data";
 
 function getEmailFromToken(token: string): string | null {
   try {
@@ -18,10 +20,175 @@ const mainNavLinks = [
   { href: "/alle-oppskrifter", label: "Alle oppskrifter", testId: "nav-alle-oppskrifter" },
   { href: "/profil", label: "Min side", testId: "nav-min-side" },
   { href: "/ukesplanlegger", label: "Ukesplanlegger", testId: "nav-ukesplanlegger" },
-  { href: "/grupper", label: "Grupper", testId: "nav-groups" },
   { href: "/spin-the-wheel", label: "Spin the Wheel", testId: "nav-spin" },
   { href: "/last-opp-oppskrift", label: "Last opp oppskrift", testId: "nav-upload" },
 ];
+
+const RECIPES_PATH = "/alle-oppskrifter";
+
+function HeaderSearchBox() {
+  const router = useRouter();
+  const { token } = useAuth();
+  const [value, setValue] = useState("");
+  const [suggestions, setSuggestions] = useState<Recipe[]>([]);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const requestIdRef = useRef(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Debounce fetching suggestions as the user types
+  useEffect(() => {
+    const query = value.trim();
+    if (query.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    const requestId = ++requestIdRef.current;
+    const handle = setTimeout(() => {
+      recipeService
+        .getAllRecipes(token || undefined, undefined, undefined, query)
+        .then((data) => {
+          if (requestId !== requestIdRef.current) return;
+          setSuggestions(data.slice(0, 8));
+          setActiveIndex(-1);
+        })
+        .catch(() => {
+          if (requestId !== requestIdRef.current) return;
+          setSuggestions([]);
+          setActiveIndex(-1);
+        });
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [value, token]);
+
+  // Close the suggestions dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setSuggestionsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const goToRecipe = (recipeId: number) => {
+    setSuggestionsOpen(false);
+    setActiveIndex(-1);
+    setValue("");
+    router.push(`/recipes/${recipeId}`);
+  };
+
+  const confirmSearch = () => {
+    const query = value.trim();
+    if (!query) return;
+    setSuggestionsOpen(false);
+    setActiveIndex(-1);
+    router.push(`${RECIPES_PATH}?q=${encodeURIComponent(query)}`);
+  };
+
+  const showSuggestions = suggestionsOpen && value.trim().length >= 2;
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (showSuggestions && suggestions.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActiveIndex((prev) => (prev + 1) % suggestions.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActiveIndex((prev) => (prev <= 0 ? suggestions.length - 1 : prev - 1));
+        return;
+      }
+      if (e.key === "Escape") {
+        setSuggestionsOpen(false);
+        setActiveIndex(-1);
+        return;
+      }
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (activeIndex >= 0 && activeIndex < suggestions.length) {
+        goToRecipe(suggestions[activeIndex].id);
+      } else {
+        confirmSearch();
+      }
+    }
+  };
+
+  return (
+    <div className="hidden md:flex items-center relative w-full max-w-xl" ref={containerRef}>
+      <svg
+        className="absolute left-3 w-4 h-4 text-slate-400 pointer-events-none"
+        fill="none" stroke="currentColor" viewBox="0 0 24 24"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+      </svg>
+      <input
+        type="text"
+        role="combobox"
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value);
+          setActiveIndex(-1);
+        }}
+        onFocus={() => setSuggestionsOpen(true)}
+        onKeyDown={handleKeyDown}
+        placeholder="Søk i oppskrifter …"
+        data-testid="header-search"
+        className="w-full pl-9 pr-8 py-1.5 rounded-md bg-slate-800 border border-slate-700 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        aria-expanded={showSuggestions && suggestions.length > 0}
+        aria-controls="header-search-suggestions"
+        aria-autocomplete="list"
+      />
+      {value && (
+        <button
+          onClick={() => setValue("")}
+          aria-label="Tøm søk"
+          className="absolute right-2.5 text-slate-400 hover:text-white cursor-pointer"
+        >
+          ×
+        </button>
+      )}
+      {showSuggestions && suggestions.length > 0 && (
+        <ul
+          id="header-search-suggestions"
+          role="listbox"
+          className="absolute z-10 top-full mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden text-gray-800"
+        >
+          {suggestions.map((recipe, index) => (
+            <li
+              key={recipe.id}
+              role="option"
+              aria-selected={index === activeIndex}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                goToRecipe(recipe.id);
+              }}
+              onMouseEnter={() => setActiveIndex(index)}
+              className={`flex items-center gap-3 px-3 py-2 cursor-pointer text-sm ${
+                index === activeIndex ? "bg-blue-50" : "hover:bg-gray-50"
+              }`}
+            >
+              <div className="w-8 h-8 rounded bg-gray-200 flex items-center justify-center overflow-hidden shrink-0">
+                {recipe.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={recipe.imageUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M14 8h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                )}
+              </div>
+              <span className="line-clamp-1">{recipe.title}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -57,7 +224,7 @@ export function Sidebar() {
         </Link>
 
         {/* Desktop nav links */}
-        <nav className="hidden md:flex items-stretch flex-1 px-4">
+        <nav className="hidden md:flex items-stretch shrink-0 px-4">
           {mainNavLinks.map(({ href, label, testId }) => (
             <Link
               key={href}
@@ -74,8 +241,13 @@ export function Sidebar() {
           ))}
         </nav>
 
+        {/* Search box — centered in the remaining space */}
+        <div className="flex flex-1 items-center justify-center px-2 min-w-0">
+          <HeaderSearchBox />
+        </div>
+
         {/* Right icons */}
-        <div className="flex items-stretch ml-auto">
+        <div className="flex items-stretch">
           {/* Feature Planner icon — desktop only */}
           <Link
             href="/feature-planner"

@@ -74,13 +74,22 @@ export default function ProfilPage() {
           recipeCount={myRecipes.length}
           favoriteCount={favorites.length}
           action={
-            <Link
-              href="/profil/rediger"
-              data-testid="rediger-profil"
-              className="inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors min-h-[44px]"
-            >
-              Rediger profil
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/grupper"
+                data-testid="nav-groups"
+                className="inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors min-h-[44px]"
+              >
+                Grupper
+              </Link>
+              <Link
+                href="/profil/rediger"
+                data-testid="rediger-profil"
+                className="inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors min-h-[44px]"
+              >
+                Rediger profil
+              </Link>
+            </div>
           }
         />
 

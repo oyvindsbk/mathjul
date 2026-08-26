@@ -72,11 +72,16 @@ export interface ShareStatus {
 
 class RecipeService {
   /**
-   * Fetch all recipes, optionally filtered by category IDs. Ids in the same
-   * category group are OR-ed together; different groups are AND-ed.
+   * Fetch all recipes, optionally filtered by category IDs and/or a title search
+   * term. Ids in the same category group are OR-ed together; different groups
+   * are AND-ed. `search` matches substrings of the title, case-insensitively.
    */
-  async getAllRecipes(token?: string, categoryIds?: number[], groupId?: number): Promise<Recipe[]> {
+  async getAllRecipes(token?: string, categoryIds?: number[], groupId?: number, search?: string): Promise<Recipe[]> {
     if (appConfig.mocking.enabled) {
+      const term = search?.trim().toLowerCase();
+      if (term) {
+        return mockRecipes.filter((r) => r.title.toLowerCase().includes(term));
+      }
       return mockRecipes;
     }
 
@@ -87,6 +92,9 @@ class RecipeService {
       }
       if (groupId !== undefined) {
         url.searchParams.set('groupId', String(groupId));
+      }
+      if (search && search.trim()) {
+        url.searchParams.set('search', search.trim());
       }
 
       const response = await this.fetchWithTimeout(
