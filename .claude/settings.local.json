@@ -7,7 +7,16 @@
       "Bash(docker version *)",
       "Bash(cd c:/git/privat/mathjul/backend/RecipeApi && grep -rn \"StructuredIngredientDto\\\\|InstructionStepDto\" --include=*.cs .. | head -60)",
       "Read(//c/git/privat/**)",
-      "PowerShell(dotnet test --logger \"console;verbosity=normal\" 2>&1)"
+      "PowerShell(dotnet test --logger \"console;verbosity=normal\" 2>&1)",
+      "Bash(npm run *)",
+      "Bash(disown)",
+      "Read(//tmp/**)",
+      "Bash(sleep 4; tail -30 /tmp/nextdev.log)",
+      "Bash(tail -60 /tmp/nextdev.log)",
+      "Bash(kill %1)",
+      "Bash(pkill -f \"next dev\")",
+      "Bash(powershell -Command \"Stop-Process -Id 68892 -Force\")",
+      "Bash(taskkill //PID 68892 //F)"
     ]
   }
 }

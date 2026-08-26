@@ -118,9 +118,9 @@ function HeaderSearchBox() {
   };
 
   return (
-    <div className="hidden md:flex items-center relative w-full max-w-xl" ref={containerRef}>
+    <div className="hidden md:flex items-center relative w-full max-w-md" ref={containerRef}>
       <svg
-        className="absolute left-3 w-4 h-4 text-slate-400 pointer-events-none"
+        className="absolute left-4 w-4 h-4 text-slate-400 pointer-events-none"
         fill="none" stroke="currentColor" viewBox="0 0 24 24"
       >
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
@@ -135,9 +135,9 @@ function HeaderSearchBox() {
         }}
         onFocus={() => setSuggestionsOpen(true)}
         onKeyDown={handleKeyDown}
-        placeholder="Søk i oppskrifter …"
+        placeholder="Hva vil du lage i dag?"
         data-testid="header-search"
-        className="w-full pl-9 pr-8 py-1.5 rounded-md bg-slate-800 border border-slate-700 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        className="w-full pl-10 pr-9 py-2.5 rounded-full bg-slate-800 border border-slate-700 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         aria-expanded={showSuggestions && suggestions.length > 0}
         aria-controls="header-search-suggestions"
         aria-autocomplete="list"
@@ -146,7 +146,7 @@ function HeaderSearchBox() {
         <button
           onClick={() => setValue("")}
           aria-label="Tøm søk"
-          className="absolute right-2.5 text-slate-400 hover:text-white cursor-pointer"
+          className="absolute right-3.5 text-slate-400 hover:text-white cursor-pointer"
         >
           ×
         </button>
@@ -213,27 +213,27 @@ export function Sidebar() {
 
   return (
     <header className="sticky top-0 z-50 w-full bg-slate-900 text-white shadow-md">
-      <div className="flex items-stretch h-16">
+      <div className="flex items-stretch h-16 max-w-7xl mx-auto px-6">
         {/* Logo */}
         <Link
           href="/"
           data-testid="sidebar-title"
-          className="flex items-center px-6 gap-2 hover:bg-slate-800 transition-colors duration-200 shrink-0"
+          className="flex items-center gap-2 pr-6 hover:opacity-80 transition-opacity duration-200 shrink-0"
         >
           <span className="text-xl font-bold tracking-wide text-white">Matoppskrifter</span>
         </Link>
 
         {/* Desktop nav links */}
-        <nav className="hidden md:flex items-stretch shrink-0 px-4">
+        <nav className="hidden md:flex items-center gap-1 shrink-0">
           {mainNavLinks.map(({ href, label, testId }) => (
             <Link
               key={href}
               href={href}
               data-testid={testId}
-              className={`flex items-center px-4 text-sm font-medium border-b-2 transition-colors duration-200 ${
+              className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
                 isActive(href)
-                  ? "border-blue-400 text-blue-400"
-                  : "border-transparent text-slate-300 hover:text-white hover:border-slate-500"
+                  ? "text-blue-400"
+                  : "text-slate-300 hover:text-white hover:bg-slate-800"
               }`}
             >
               {label}
@@ -242,21 +242,21 @@ export function Sidebar() {
         </nav>
 
         {/* Search box — centered in the remaining space */}
-        <div className="flex flex-1 items-center justify-center px-2 min-w-0">
+        <div className="flex flex-1 items-center justify-center px-4 min-w-0">
           <HeaderSearchBox />
         </div>
 
         {/* Right icons */}
-        <div className="flex items-stretch">
+        <div className="flex items-center gap-1 pl-4">
           {/* Feature Planner icon — desktop only */}
           <Link
             href="/feature-planner"
             data-testid="nav-feature-planner"
             title="Feature Planner"
-            className={`hidden md:flex items-center px-5 border-b-2 transition-colors duration-200 ${
+            className={`hidden md:flex items-center justify-center w-9 h-9 rounded-full transition-colors duration-200 ${
               isActive("/feature-planner")
-                ? "border-blue-400 text-blue-400"
-                : "border-transparent text-slate-300 hover:text-white hover:bg-slate-800"
+                ? "text-blue-400 bg-slate-800"
+                : "text-slate-300 hover:text-white hover:bg-slate-800"
             }`}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -266,22 +266,21 @@ export function Sidebar() {
 
           {/* User menu */}
           {isAuthenticated && token && (
-            <div className="relative flex items-stretch">
+            <div className="relative flex items-center">
               <button
                 onClick={() => setUserMenuOpen((o) => !o)}
                 title={email ?? "Bruker"}
-                className="flex items-center gap-2 px-5 border-b-2 border-transparent text-slate-300 hover:text-white hover:bg-slate-800 transition-colors duration-200"
+                className="flex items-center justify-center w-9 h-9 rounded-full bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 transition-colors duration-200"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <span className="hidden lg:block text-sm max-w-[140px] truncate">{email ?? "Bruker"}</span>
               </button>
 
               {userMenuOpen && (
                 <>
                   <div className="fixed inset-0 z-10" onClick={() => setUserMenuOpen(false)} />
-                  <div className="absolute right-0 top-full mt-0 w-48 bg-slate-800 border border-slate-700 rounded-b-lg shadow-xl z-20 overflow-hidden">
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 overflow-hidden">
                     <div className="px-4 py-3 border-b border-slate-700">
                       <p className="text-xs text-slate-400 truncate">{email ?? "Bruker"}</p>
                     </div>
