@@ -16,7 +16,8 @@
       "Bash(kill %1)",
       "Bash(pkill -f \"next dev\")",
       "Bash(powershell -Command \"Stop-Process -Id 68892 -Force\")",
-      "Bash(taskkill //PID 68892 //F)"
+      "Bash(taskkill //PID 68892 //F)",
+      "Bash(netstat -ano)"
     ]
   }
 }

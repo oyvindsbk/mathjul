@@ -26,7 +26,13 @@ const mainNavLinks = [
 
 const RECIPES_PATH = "/alle-oppskrifter";
 
-function HeaderSearchBox() {
+function HeaderSearchBox({
+  className = "hidden md:flex",
+  autoFocus = false,
+}: {
+  className?: string;
+  autoFocus?: boolean;
+}) {
   const router = useRouter();
   const { token } = useAuth();
   const [value, setValue] = useState("");
@@ -118,7 +124,7 @@ function HeaderSearchBox() {
   };
 
   return (
-    <div className="hidden md:flex items-center relative w-full max-w-md" ref={containerRef}>
+    <div className={`${className} items-center relative w-full max-w-md`} ref={containerRef}>
       <svg
         className="absolute left-4 w-4 h-4 text-slate-400 pointer-events-none"
         fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -137,6 +143,7 @@ function HeaderSearchBox() {
         onKeyDown={handleKeyDown}
         placeholder="Hva vil du lage i dag?"
         data-testid="header-search"
+        autoFocus={autoFocus}
         className="w-full pl-10 pr-9 py-2.5 rounded-full bg-slate-800 border border-slate-700 text-sm text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         aria-expanded={showSuggestions && suggestions.length > 0}
         aria-controls="header-search-suggestions"
@@ -194,6 +201,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const { isAuthenticated, token, logout } = useAuth();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -218,7 +226,9 @@ export function Sidebar() {
         <Link
           href="/"
           data-testid="sidebar-title"
-          className="flex items-center gap-2 pr-6 hover:opacity-80 transition-opacity duration-200 shrink-0"
+          className={`items-center gap-2 pr-6 hover:opacity-80 transition-opacity duration-200 shrink-0 ${
+            mobileSearchOpen ? "hidden md:flex" : "flex"
+          }`}
         >
           <span className="text-xl font-bold tracking-wide text-white">Matoppskrifter</span>
         </Link>
@@ -241,13 +251,41 @@ export function Sidebar() {
           ))}
         </nav>
 
-        {/* Search box — centered in the remaining space */}
+        {/* Search box — centered in the remaining space (desktop) */}
         <div className="flex flex-1 items-center justify-center px-4 min-w-0">
           <HeaderSearchBox />
+          {/* Mobile search — replaces the row content when open */}
+          {mobileSearchOpen && (
+            <div className="flex md:hidden items-center gap-2 w-full">
+              <HeaderSearchBox className="flex" autoFocus />
+              <button
+                onClick={() => setMobileSearchOpen(false)}
+                aria-label="Lukk søk"
+                data-testid="mobile-search-close"
+                className="shrink-0 flex items-center justify-center w-9 h-9 rounded-full text-slate-300 hover:text-white hover:bg-slate-800 transition-colors duration-200"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Right icons */}
-        <div className="flex items-center gap-1 pl-4">
+        <div className={`items-center gap-1 pl-4 ${mobileSearchOpen ? "hidden md:flex" : "flex"}`}>
+          {/* Mobile search toggle */}
+          <button
+            onClick={() => setMobileSearchOpen(true)}
+            aria-label="Søk"
+            data-testid="mobile-search-toggle"
+            className="flex md:hidden items-center justify-center w-9 h-9 rounded-full text-slate-300 hover:text-white hover:bg-slate-800 transition-colors duration-200"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M11 19a8 8 0 100-16 8 8 0 000 16z" />
+            </svg>
+          </button>
+
           {/* Feature Planner icon — desktop only */}
           <Link
             href="/feature-planner"
