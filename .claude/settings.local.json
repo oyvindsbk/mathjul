@@ -17,7 +17,8 @@
       "Bash(pkill -f \"next dev\")",
       "Bash(powershell -Command \"Stop-Process -Id 68892 -Force\")",
       "Bash(taskkill //PID 68892 //F)",
-      "Bash(netstat -ano)"
+      "Bash(netstat -ano)",
+      "PowerShell(rtk npm run build)"
     ]
   }
 }
