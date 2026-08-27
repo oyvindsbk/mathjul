@@ -276,18 +276,7 @@ jobs:
         echo "url=$URL" >> $GITHUB_OUTPUT
         echo "fqdn-url=$FQDN_URL" >> $GITHUB_OUTPUT
         echo "✅ Frontend deployed to: $URL (ingress: $FQDN_URL)"
-    
-    - name: Set NEXTAUTH_URL on frontend
-      # NEXTAUTH_URL must equal the app's own public URL so Google OAuth redirect URIs resolve correctly.
-      # This is a runtime env var (not baked into the image), so we set it after the URL is known.
-      run: |
-        FRONTEND_URL="${{ steps.frontend-url.outputs.url }}"
-        az containerapp update \
-          --name "${{ needs.get-resources.outputs.frontend-container-app-name }}" \
-          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
-          --set-env-vars "NEXTAUTH_URL=${FRONTEND_URL}"
-        echo "🔑 NEXTAUTH_URL set to: ${FRONTEND_URL}"
-    
+
     outputs:
       frontend-url: ${{ steps.frontend-url.outputs.url }}
       frontend-fqdn-url: ${{ steps.frontend-url.outputs.fqdn-url }}
