@@ -19,19 +19,15 @@ const SEGMENT_COLORS = [
 
 const SPIN_DURATION = 3500; // ms
 
-function recipeHasIngredient(recipe: Recipe, name: string): boolean {
+function recipeHasIngredient(ingredientNames: string[] | undefined, name: string): boolean {
   const term = name.toLowerCase();
-  if (recipe.ingredients?.some(i => i.name.toLowerCase().includes(term))) {
-    return true;
-  }
-  return !!recipe.ingredientSections?.some(section =>
-    section.ingredients.some(i => i.name.toLowerCase().includes(term))
-  );
+  return !!ingredientNames?.some(n => n.toLowerCase().includes(term));
 }
 
 export default function SnurrClient() {
   const [allRecipes, setAllRecipes] = useState<Recipe[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [ingredientNamesByRecipe, setIngredientNamesByRecipe] = useState<Record<number, string[]>>({});
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,12 +44,14 @@ export default function SnurrClient() {
     if (authLoading) return;
     const fetchData = async () => {
       try {
-        const [recipesData, categoriesData] = await Promise.all([
+        const [recipesData, categoriesData, ingredientNamesData] = await Promise.all([
           recipeService.getAllRecipes(token || undefined),
           recipeService.getAllCategories(token || undefined),
+          recipeService.getIngredientNamesByRecipe(token || undefined),
         ]);
         setAllRecipes(recipesData);
         setCategories(categoriesData);
+        setIngredientNamesByRecipe(ingredientNamesData);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Kunne ikke laste oppskrifter');
@@ -86,20 +84,14 @@ export default function SnurrClient() {
 
   const allIngredientNames = useMemo(() => {
     const names = new Set<string>();
-    for (const recipe of allRecipes) {
-      for (const ingredient of recipe.ingredients ?? []) {
-        const trimmed = ingredient.name.trim();
+    for (const recipeNames of Object.values(ingredientNamesByRecipe)) {
+      for (const name of recipeNames) {
+        const trimmed = name.trim();
         if (trimmed) names.add(trimmed);
-      }
-      for (const section of recipe.ingredientSections ?? []) {
-        for (const ingredient of section.ingredients) {
-          const trimmed = ingredient.name.trim();
-          if (trimmed) names.add(trimmed);
-        }
       }
     }
     return Array.from(names).sort((a, b) => a.localeCompare(b, 'nb'));
-  }, [allRecipes]);
+  }, [ingredientNamesByRecipe]);
 
   const filteredRecipes = allRecipes.filter(r => {
     const categoryOk =
@@ -107,7 +99,7 @@ export default function SnurrClient() {
       r.categories?.some(c => selectedCategoryIds.includes(c.id));
     const ingredientsOk =
       selectedIngredients.length === 0 ||
-      selectedIngredients.every(name => recipeHasIngredient(r, name));
+      selectedIngredients.every(name => recipeHasIngredient(ingredientNamesByRecipe[r.id], name));
     return categoryOk && ingredientsOk;
   });
 

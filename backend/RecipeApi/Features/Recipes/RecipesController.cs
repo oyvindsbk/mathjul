@@ -263,6 +263,37 @@ public class RecipesController : ControllerBase
         return Ok(recipes);
     }
 
+    /// <summary>
+    /// Lightweight ingredient names per recipe, for client-side ingredient filtering
+    /// (e.g. Snurr mathjulet). Deliberately excludes quantities/units/categories/etc.
+    /// so it stays cheap even though the ingredient columns are JSON blobs that EF
+    /// must materialize in full before it can pick the names out.
+    /// </summary>
+    [HttpGet("ingredient-names")]
+    public async Task<ActionResult<List<RecipeIngredientNamesDto>>> GetRecipeIngredientNames()
+    {
+        var callerEmail = GetCallerEmail();
+
+        IQueryable<Recipe> query = _context.Recipes;
+        query = ApplyVisibilityFilter(query, callerEmail);
+
+        var recipes = await query
+            .Select(r => new { r.Id, r.Ingredients, r.IngredientSections })
+            .ToListAsync();
+
+        var result = recipes.Select(r => new RecipeIngredientNamesDto
+        {
+            RecipeId = r.Id,
+            IngredientNames = r.Ingredients.Select(i => i.Name)
+                .Concat(r.IngredientSections.SelectMany(s => s.Ingredients.Select(i => i.Name)))
+                .Where(n => !string.IsNullOrWhiteSpace(n))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList()
+        }).ToList();
+
+        return Ok(result);
+    }
+
     [HttpGet("{id:int}")]
     public async Task<ActionResult<RecipeDetailDto>> GetRecipeById(int id)
     {
@@ -1563,6 +1594,13 @@ public class RecipeDto
     public List<CategoryDto> Categories { get; set; } = new();
     public List<GroupRefDto> Groups { get; set; } = new();
     public bool IsLikedByMe { get; set; }
+}
+
+/// <summary>Wire shape for <see cref="RecipesController.GetRecipeIngredientNames"/>.</summary>
+public class RecipeIngredientNamesDto
+{
+    public int RecipeId { get; set; }
+    public List<string> IngredientNames { get; set; } = new();
 }
 
 public class InstructionStepDto

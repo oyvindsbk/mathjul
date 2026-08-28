@@ -136,6 +136,48 @@ class RecipeService {
   }
 
   /**
+   * Fetch ingredient names per recipe, for client-side ingredient filtering
+   * (Snurr mathjulet). The regular list endpoint (getAllRecipes) omits
+   * ingredients entirely to keep its payload small, so this dedicated
+   * endpoint exists to fetch just the names.
+   */
+  async getIngredientNamesByRecipe(token?: string): Promise<Record<number, string[]>> {
+    if (appConfig.mocking.enabled) {
+      const result: Record<number, string[]> = {};
+      for (const recipe of mockRecipes) {
+        const names = new Set<string>();
+        for (const ingredient of recipe.ingredients ?? []) {
+          if (ingredient.name.trim()) names.add(ingredient.name.trim());
+        }
+        for (const section of recipe.ingredientSections ?? []) {
+          for (const ingredient of section.ingredients) {
+            if (ingredient.name.trim()) names.add(ingredient.name.trim());
+          }
+        }
+        result[recipe.id] = Array.from(names);
+      }
+      return result;
+    }
+
+    const response = await this.fetchWithTimeout(
+      `${appConfig.api.baseUrl}/api/recipes/ingredient-names`,
+      appConfig.mocking.fetchTimeout,
+      token
+    );
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch recipe ingredient names: ${response.statusText}`);
+    }
+
+    const data: { recipeId: number; ingredientNames: string[] }[] = await response.json();
+    const result: Record<number, string[]> = {};
+    for (const entry of data) {
+      result[entry.recipeId] = entry.ingredientNames;
+    }
+    return result;
+  }
+
+  /**
    * Fetch recipes marked as Tilbehør, for the side-dish picker
    */
   async getTilbehorRecipes(token?: string): Promise<Recipe[]> {
