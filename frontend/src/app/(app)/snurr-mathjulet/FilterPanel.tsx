@@ -39,17 +39,17 @@ export default function FilterPanel({
         .slice(0, MAX_SUGGESTIONS)
     : [];
 
-  function addIngredient(name: string) {
-    onToggleIngredient(name);
+  function addIngredient() {
+    const trimmed = ingredientInput.trim();
+    if (!trimmed) return;
+    onToggleIngredient(trimmed);
     setIngredientInput('');
   }
 
   function handleInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key !== 'Enter') return;
     e.preventDefault();
-    const trimmed = ingredientInput.trim();
-    if (!trimmed) return;
-    addIngredient(suggestions[0] ?? trimmed);
+    addIngredient();
   }
 
   return (
@@ -133,7 +133,7 @@ export default function FilterPanel({
                   {suggestions.map(name => (
                     <button
                       key={name}
-                      onClick={() => addIngredient(name)}
+                      onClick={addIngredient}
                       className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50"
                     >
                       {name}
