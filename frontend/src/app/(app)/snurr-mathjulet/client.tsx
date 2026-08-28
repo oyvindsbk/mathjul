@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { recipeService } from '@/lib/services/recipe.service';
 import { useAuth } from '@/lib/context/AuthContext';
 import type { Recipe, Category } from '@/lib/mock-data';
-import SpinLoading from './loading';
+import SnurrLoading from './loading';
+import FilterPanel from './FilterPanel';
 
 const MAX_SEGMENTS = 20;
 
@@ -18,20 +19,26 @@ const SEGMENT_COLORS = [
 
 const SPIN_DURATION = 3500; // ms
 
-function truncate(text: string, maxLen: number): string {
-  return text.length > maxLen ? text.slice(0, maxLen - 1) + '…' : text;
+function recipeHasIngredient(recipe: Recipe, name: string): boolean {
+  const term = name.toLowerCase();
+  if (recipe.ingredients?.some(i => i.name.toLowerCase().includes(term))) {
+    return true;
+  }
+  return !!recipe.ingredientSections?.some(section =>
+    section.ingredients.some(i => i.name.toLowerCase().includes(term))
+  );
 }
 
-export default function SpinClient() {
+export default function SnurrClient() {
   const [allRecipes, setAllRecipes] = useState<Recipe[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
+  const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
-  const [filterOpen, setFilterOpen] = useState(false);
   const { token, isLoading: authLoading } = useAuth();
 
   // Track cumulative rotation so each spin builds on the last, preventing rollback
@@ -64,22 +71,52 @@ export default function SpinClient() {
     setSelectedRecipe(null);
   }
 
-  function clearCategories() {
-    setSelectedCategoryIds([]);
+  function toggleIngredient(name: string) {
+    setSelectedIngredients(prev =>
+      prev.includes(name) ? prev.filter(i => i !== name) : [...prev, name]
+    );
     setSelectedRecipe(null);
   }
 
-  const filteredRecipes = selectedCategoryIds.length === 0
-    ? allRecipes
-    : allRecipes.filter(r =>
-        r.categories?.some(c => selectedCategoryIds.includes(c.id))
-      );
+  function clearAllFilters() {
+    setSelectedCategoryIds([]);
+    setSelectedIngredients([]);
+    setSelectedRecipe(null);
+  }
+
+  const allIngredientNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const recipe of allRecipes) {
+      for (const ingredient of recipe.ingredients ?? []) {
+        const trimmed = ingredient.name.trim();
+        if (trimmed) names.add(trimmed);
+      }
+      for (const section of recipe.ingredientSections ?? []) {
+        for (const ingredient of section.ingredients) {
+          const trimmed = ingredient.name.trim();
+          if (trimmed) names.add(trimmed);
+        }
+      }
+    }
+    return Array.from(names).sort((a, b) => a.localeCompare(b, 'nb'));
+  }, [allRecipes]);
+
+  const filteredRecipes = allRecipes.filter(r => {
+    const categoryOk =
+      selectedCategoryIds.length === 0 ||
+      r.categories?.some(c => selectedCategoryIds.includes(c.id));
+    const ingredientsOk =
+      selectedIngredients.length === 0 ||
+      selectedIngredients.every(name => recipeHasIngredient(r, name));
+    return categoryOk && ingredientsOk;
+  });
 
   const recipes = filteredRecipes.slice(0, MAX_SEGMENTS);
 
   const segments = recipes;
   const segmentAngle = segments.length > 0 ? 360 / segments.length : 0;
 
+  const hasActiveFilters = selectedCategoryIds.length > 0 || selectedIngredients.length > 0;
 
   function spin() {
     if (spinning || segments.length < 2) return;
@@ -115,7 +152,7 @@ export default function SpinClient() {
   }
 
   if (loading) {
-    return <SpinLoading />;
+    return <SnurrLoading />;
   }
 
   if (error) {
@@ -130,9 +167,9 @@ export default function SpinClient() {
   }
 
   if (segments.length < 2) {
-    const reason = selectedCategoryIds.length > 0
-      ? 'Ingen oppskrifter matcher de valgte kategoriene. Prøv å fjerne noen filtre.'
-      : 'Du trenger minst 2 oppskrifter for å bruke hjulet.';
+    const reason = hasActiveFilters
+      ? 'Ingen oppskrifter matcher filtrene dine. Prøv å fjerne noen filtre.'
+      : 'Du trenger minst 2 oppskrifter som matcher filtrene dine for å snurre mathjulet.';
     return (
       <div className="min-h-screen bg-gray-50 py-12 px-4">
         <div className="max-w-2xl mx-auto">
@@ -142,64 +179,20 @@ export default function SpinClient() {
             </Link>
           </div>
           <h1 className="text-3xl font-bold text-gray-900 text-center mb-2">
-            Spin the Wheel 🎡
+            Snurr mathjulet 🎡
           </h1>
           <p className="text-gray-600 text-center mb-6">
-            Kan ikke bestemme deg? La hjulet velge for deg!
+            Usikker på hva det skal bli i kveld? Snurr mathjulet og la tilfeldighetene bestemme middagen — eller bruk filtrene for å styre litt selv.
           </p>
-          {categories.length > 0 && (
-            <div className="mb-8">
-              <button
-                onClick={() => setFilterOpen(o => !o)}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
-              >
-                <span>Filtrer kategorier</span>
-                {selectedCategoryIds.length > 0 && (
-                  <span className="bg-blue-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
-                    {selectedCategoryIds.length}
-                  </span>
-                )}
-                <span className="ml-1 text-gray-400">{filterOpen ? '▲' : '▼'}</span>
-              </button>
-              {filterOpen && (
-                <div className="mt-3 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
-                  {Object.entries(
-                    categories.reduce<Record<string, Category[]>>((acc, cat) => {
-                      (acc[cat.group] ??= []).push(cat);
-                      return acc;
-                    }, {})
-                  ).map(([group, cats]) => (
-                    <div key={group} className="mb-4 last:mb-0">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{group}</p>
-                      <div className="flex flex-wrap gap-2">
-                        {cats.map(cat => (
-                          <button
-                            key={cat.id}
-                            onClick={() => toggleCategory(cat.id)}
-                            className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
-                              selectedCategoryIds.includes(cat.id)
-                                ? 'bg-blue-500 text-white border-blue-500'
-                                : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                            }`}
-                          >
-                            {cat.name}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                  {selectedCategoryIds.length > 0 && (
-                    <button
-                      onClick={clearCategories}
-                      className="mt-2 text-sm text-gray-500 hover:text-gray-700 underline"
-                    >
-                      Fjern alle filtre
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+          <FilterPanel
+            categories={categories}
+            selectedCategoryIds={selectedCategoryIds}
+            onToggleCategory={toggleCategory}
+            allIngredientNames={allIngredientNames}
+            selectedIngredients={selectedIngredients}
+            onToggleIngredient={toggleIngredient}
+            onClearAll={clearAllFilters}
+          />
           <div className="text-center">
             <p className="text-2xl mb-2">🍽️</p>
             <p className="text-gray-700 mb-4">{reason}</p>
@@ -229,67 +222,21 @@ export default function SpinClient() {
         </div>
 
         <h1 className="text-3xl font-bold text-gray-900 text-center mb-2">
-          Spin hjulet 🎡
+          Snurr mathjulet 🎡
         </h1>
         <p className="text-gray-600 text-center mb-6">
-          Kan ikke bestemme deg? La hjulet velge for deg!
+          Usikker på hva det skal bli i kveld? Snurr mathjulet og la tilfeldighetene bestemme middagen — eller bruk filtrene for å styre litt selv.
         </p>
 
-        {/* Category filter */}
-        {categories.length > 0 && (
-          <div className="mb-8">
-            <button
-              onClick={() => setFilterOpen(o => !o)}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors text-sm font-medium text-gray-700"
-            >
-              <span>Filtrer kategorier</span>
-              {selectedCategoryIds.length > 0 && (
-                <span className="bg-blue-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
-                  {selectedCategoryIds.length}
-                </span>
-              )}
-              <span className="ml-1 text-gray-400">{filterOpen ? '▲' : '▼'}</span>
-            </button>
-
-            {filterOpen && (
-              <div className="mt-3 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
-                {Object.entries(
-                  categories.reduce<Record<string, Category[]>>((acc, cat) => {
-                    (acc[cat.group] ??= []).push(cat);
-                    return acc;
-                  }, {})
-                ).map(([group, cats]) => (
-                  <div key={group} className="mb-4 last:mb-0">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">{group}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {cats.map(cat => (
-                        <button
-                          key={cat.id}
-                          onClick={() => toggleCategory(cat.id)}
-                          className={`px-3 py-1 rounded-full text-sm font-medium border transition-colors ${
-                            selectedCategoryIds.includes(cat.id)
-                              ? 'bg-blue-500 text-white border-blue-500'
-                              : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
-                          }`}
-                        >
-                          {cat.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                {selectedCategoryIds.length > 0 && (
-                  <button
-                    onClick={clearCategories}
-                    className="mt-2 text-sm text-gray-500 hover:text-gray-700 underline"
-                  >
-                    Fjern alle filtre
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        )}
+        <FilterPanel
+          categories={categories}
+          selectedCategoryIds={selectedCategoryIds}
+          onToggleCategory={toggleCategory}
+          allIngredientNames={allIngredientNames}
+          selectedIngredients={selectedIngredients}
+          onToggleIngredient={toggleIngredient}
+          onClearAll={clearAllFilters}
+        />
 
         {/* Wheel container */}
         <div className="flex flex-col items-center gap-8">
@@ -325,38 +272,6 @@ export default function SpinClient() {
                 position: 'relative',
               }}
             >
-              {/* Segment labels */}
-              {segments.map((recipe, i) => {
-                const midAngle = i * segmentAngle + segmentAngle / 2;
-                // Place text ~35% from center toward edge
-                const r = 110; // px from center
-                const rad = ((midAngle - 90) * Math.PI) / 180;
-                const x = 160 + r * Math.cos(rad);
-                const y = 160 + r * Math.sin(rad);
-                return (
-                  <div
-                    key={recipe.id}
-                    style={{
-                      position: 'absolute',
-                      left: x,
-                      top: y,
-                      transform: `translate(-50%, -50%) rotate(${midAngle}deg)`,
-                      fontSize: 11,
-                      fontWeight: 600,
-                      color: '#1f2937',
-                      whiteSpace: 'nowrap',
-                      pointerEvents: 'none',
-                      textShadow: '0 1px 2px rgba(255,255,255,0.8)',
-                      maxWidth: 90,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {truncate(recipe.title, 14)}
-                  </div>
-                );
-              })}
-
               {/* Center circle */}
               <div
                 style={{
@@ -372,6 +287,23 @@ export default function SpinClient() {
                 }}
               />
             </div>
+          </div>
+
+          {/* Legend */}
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
+            {segments.map((recipe, i) => (
+              <div key={recipe.id} className="flex items-center gap-2 min-w-0">
+                <span
+                  className="shrink-0 rounded-full"
+                  style={{
+                    width: 10,
+                    height: 10,
+                    background: SEGMENT_COLORS[i % SEGMENT_COLORS.length],
+                  }}
+                />
+                <span className="text-sm text-gray-700 truncate">{recipe.title}</span>
+              </div>
+            ))}
           </div>
 
           {/* Spin button */}

@@ -20,7 +20,7 @@ const mainNavLinks = [
   { href: "/alle-oppskrifter", label: "Alle oppskrifter", testId: "nav-alle-oppskrifter" },
   { href: "/profil", label: "Min side", testId: "nav-min-side" },
   { href: "/ukesplanlegger", label: "Ukesplanlegger", testId: "nav-ukesplanlegger" },
-  { href: "/spin-the-wheel", label: "Spin the Wheel", testId: "nav-spin" },
+  { href: "/snurr-mathjulet", label: "Snurr mathjulet", testId: "nav-snurr" },
   { href: "/last-opp-oppskrift", label: "Last opp oppskrift", testId: "nav-upload" },
 ];
 

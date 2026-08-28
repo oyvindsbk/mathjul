@@ -11,7 +11,7 @@ const LIST_PAGES: Record<string, string> = {
   "/profil": "Min side",
   "/ukesplanlegger": "Ukesplanlegger",
   "/grupper": "Grupper",
-  "/spin-the-wheel": "Spin the Wheel",
+  "/snurr-mathjulet": "Snurr mathjulet",
   "/last-opp-oppskrift": "Last opp oppskrift",
   "/feature-planner": "Feature Planner",
 };

@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/Skeleton";
 
-export default function SpinLoading() {
+export default function SnurrLoading() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-2xl mx-auto text-center">
