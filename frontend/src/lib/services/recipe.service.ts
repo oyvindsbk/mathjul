@@ -18,9 +18,23 @@ export interface RecipeFormData {
   instructionSections: InstructionSection[];
   prepTime?: number | null;
   cookTime?: number | null;
+  /**
+   * Portion count, or — for `quantityType === "form"` — the baking tin's
+   * volume in cm³, which is what the scaling pipeline divides.
+   */
   servings?: number | null;
   quantityType?: string;
   customUnit?: string | null;
+  /**
+   * The baking tin — cake recipes only. Kept alongside the volume in `servings`
+   * because volume alone is ambiguous: a round Ø24 and a springform Ø24 measure
+   * the same, and only the shape tells them apart.
+   */
+  panShape?: string | null;
+  panDiameter?: number | null;
+  panLength?: number | null;
+  panWidth?: number | null;
+  panHeight?: number | null;
   categoryIds?: number[];
   /** Ids of Tilbehør-marked recipes to attach. List order becomes the display order. */
   sideDishIds?: number[];
@@ -45,6 +59,12 @@ interface SharedRecipeDto {
   servings?: number | null;
   quantityType: string;
   customUnit?: string | null;
+  /** Baking tin — cake recipes only. See lib/pan-size.ts. */
+  panShape?: string | null;
+  panDiameter?: number | null;
+  panLength?: number | null;
+  panWidth?: number | null;
+  panHeight?: number | null;
   ingredients: StructuredIngredient[];
   instructionSteps: InstructionStep[];
   ingredientSections: IngredientSection[];
@@ -418,6 +438,13 @@ class RecipeService {
         servings: dto.servings,
         quantityType: dto.quantityType,
         customUnit: dto.customUnit,
+        // Carried through so a shared cake's pan picker can mark the original
+        // tin and warn on conversion, exactly as the detail page does.
+        panShape: dto.panShape,
+        panDiameter: dto.panDiameter,
+        panLength: dto.panLength,
+        panWidth: dto.panWidth,
+        panHeight: dto.panHeight,
         imageUrl: dto.imageUrl,
         tips: dto.tips,
         sideDishes: dto.sideDishes.map((title, index) => ({ id: index, title })),

@@ -46,9 +46,15 @@ function mentionText(
   ingredient: StructuredIngredient,
   display: string,
   baseServings: number | null | undefined,
-  desiredServings: number
+  desiredServings: number,
+  quantityType?: string
 ): string {
-  const { qtyUnit, name } = formatIngredientParts(ingredient, baseServings, desiredServings);
+  const { qtyUnit, name } = formatIngredientParts(
+    ingredient,
+    baseServings,
+    desiredServings,
+    quantityType
+  );
   if (display === "name") return name;
   return [qtyUnit, name].filter(Boolean).join(" ");
 }
@@ -64,7 +70,8 @@ export function resolveStepSegments(
   step: InstructionStep | null | undefined,
   ingredientsById: Map<string, StructuredIngredient>,
   baseServings: number | null | undefined,
-  desiredServings: number
+  desiredServings: number,
+  quantityType?: string
 ): InstructionSegment[] {
   const text = step?.text ?? "";
   const mentions = step?.mentions ?? [];
@@ -87,7 +94,13 @@ export function resolveStepSegments(
       ingredient
         ? {
             kind: "mention",
-            text: mentionText(ingredient, mention.display, baseServings, desiredServings),
+            text: mentionText(
+              ingredient,
+              mention.display,
+              baseServings,
+              desiredServings,
+              quantityType
+            ),
             resolved: true,
           }
         : { kind: "mention", text: mention.fallbackName ?? "", resolved: false }
@@ -103,14 +116,22 @@ export function resolveStepSegments(
   return segments;
 }
 
-/** The step's text with every mention resolved — for `aria-label`s and plain-text use. */
+/**
+ * The step's text with every mention resolved — for `aria-label`s and
+ * plain-text use.
+ *
+ * Takes `quantityType` for the same reason the rendered segments do: a cake's
+ * amounts are rounded per unit, and a screen reader announcing the raw
+ * "2.6533 egg" beside a visible "8 egg" would disagree with the page.
+ */
 export function stepPlainText(
   step: InstructionStep | null | undefined,
   ingredientsById: Map<string, StructuredIngredient>,
   baseServings: number | null | undefined,
-  desiredServings: number
+  desiredServings: number,
+  quantityType?: string
 ): string {
-  return resolveStepSegments(step, ingredientsById, baseServings, desiredServings)
+  return resolveStepSegments(step, ingredientsById, baseServings, desiredServings, quantityType)
     .map((segment) => segment.text)
     .join("");
 }

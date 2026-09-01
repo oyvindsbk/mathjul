@@ -7,6 +7,7 @@ import { recipeHref } from "@/lib/recipe-url";
 import { indexIngredients, resolveStepSegments, stepPlainText } from "@/lib/instruction-mentions";
 import { StepText } from "@/components/StepText";
 import { ServingsStepper } from "@/components/matlagingsmodus/ServingsStepper";
+import { FormVelger } from "@/components/FormVelger";
 
 /**
  * The recipe content shared by the authenticated detail page and the public
@@ -50,7 +51,13 @@ export function RecipeBody({
 
   const renderStep = (step: InstructionStep, num: number, idPrefix: string) => {
     const checked = checkedSteps?.has(num) ?? false;
-    const segments = resolveStepSegments(step, ingredientsById, recipe.servings, desiredServings);
+    const segments = resolveStepSegments(
+      step,
+      ingredientsById,
+      recipe.servings,
+      desiredServings,
+      recipe.quantityType
+    );
 
     // Without a toggle handler the step is presentational: no checkbox, no
     // pointer affordance, and the image always shows since it cannot be
@@ -88,7 +95,7 @@ export function RecipeBody({
           onChange={() => onToggleStep?.(num)}
           onClick={(e) => e.stopPropagation()}
           className="sr-only"
-          aria-label={`Trinn ${num}: ${stepPlainText(step, ingredientsById, recipe.servings, desiredServings)}`}
+          aria-label={`Trinn ${num}: ${stepPlainText(step, ingredientsById, recipe.servings, desiredServings, recipe.quantityType)}`}
         />
         <label
           htmlFor={`${idPrefix}-${num}`}
@@ -122,7 +129,12 @@ export function RecipeBody({
     ingredient: StructuredIngredient,
     key: number,
   ) => {
-    const { qtyUnit, name } = formatIngredientParts(ingredient, recipe.servings, desiredServings);
+    const { qtyUnit, name } = formatIngredientParts(
+      ingredient,
+      recipe.servings,
+      desiredServings,
+      recipe.quantityType
+    );
     return (
       <li key={key} className="flex items-baseline gap-1.5">
         {qtyUnit && <span className="font-semibold text-gray-900 shrink-0">{qtyUnit}</span>}
@@ -202,12 +214,23 @@ export function RecipeBody({
             <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4" data-testid="ingredients-heading">Ingredienser</h2>
             {recipe.servings ? (
               <div className="mb-5 pb-4 border-b border-gray-100">
-                <ServingsStepper
-                  value={desiredServings}
-                  onChange={onServingsChange ?? (() => {})}
-                  quantityType={recipe.quantityType}
-                  customUnit={recipe.customUnit}
-                />
+                {recipe.quantityType === "form" ? (
+                  <FormVelger
+                    sourceShape={recipe.panShape}
+                    sourceDiameter={recipe.panDiameter}
+                    sourceLength={recipe.panLength}
+                    sourceWidth={recipe.panWidth}
+                    value={desiredServings}
+                    onChange={onServingsChange ?? (() => {})}
+                  />
+                ) : (
+                  <ServingsStepper
+                    value={desiredServings}
+                    onChange={onServingsChange ?? (() => {})}
+                    quantityType={recipe.quantityType}
+                    customUnit={recipe.customUnit}
+                  />
+                )}
               </div>
             ) : null}
             {recipe.ingredientSections && recipe.ingredientSections.length > 0 ? (

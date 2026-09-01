@@ -17,6 +17,8 @@ interface InstructionsTabProps {
   baseServings?: number | null;
   /** Servings the cook has dialled in, so steps and the ingredients tab agree. */
   desiredServings: number;
+  /** Rounds mention amounts exactly as the ingredients tab rounds the list. */
+  quantityType?: string;
 }
 
 export function InstructionsTab({
@@ -27,6 +29,7 @@ export function InstructionsTab({
   ingredientsById,
   baseServings,
   desiredServings,
+  quantityType,
 }: InstructionsTabProps) {
   const sections = normalizeInstructions(instructionSteps, instructionSections);
 
@@ -46,14 +49,20 @@ export function InstructionsTab({
           <ol className="space-y-3">
             {section.items.map(({ step, number }) => {
               const checked = checkedSteps.has(number);
-              const segments = resolveStepSegments(step, ingredientsById, baseServings, desiredServings);
+              const segments = resolveStepSegments(
+                step,
+                ingredientsById,
+                baseServings,
+                desiredServings,
+                quantityType
+              );
               return (
                 <li key={number}>
                   <button
                     type="button"
                     onClick={() => onToggleStep(number)}
                     aria-pressed={checked}
-                    aria-label={`Trinn ${number}: ${stepPlainText(step, ingredientsById, baseServings, desiredServings)}`}
+                    aria-label={`Trinn ${number}: ${stepPlainText(step, ingredientsById, baseServings, desiredServings, quantityType)}`}
                     className="w-full flex items-start gap-3 text-left rounded-lg border border-gray-200 bg-white px-4 py-3 min-h-[44px] hover:border-gray-300 active:bg-gray-50 transition-colors"
                   >
                     <span className="mt-0.5">

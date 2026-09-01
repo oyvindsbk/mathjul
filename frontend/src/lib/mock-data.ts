@@ -76,10 +76,24 @@ export interface Recipe {
   cookTime?: string | null;
   cookTimeMinutes?: number | null;
   servings?: number | null;
-  /** How `servings` is counted: "porsjoner" (default), "antall", or "custom". */
+  /**
+   * How `servings` is counted: "porsjoner" (default), "antall", "custom", or
+   * "form". For "form" the recipe is a cake and `servings` holds the baking
+   * tin's volume in cm³ rather than a portion count — see lib/pan-size.ts.
+   */
   quantityType?: string;
   /** Unit label used when quantityType is "custom". */
   customUnit?: string | null;
+  /** Baking tin shape — "form" recipes only. See PanShape in lib/pan-size.ts. */
+  panShape?: string | null;
+  /** cm — round and springform tins. */
+  panDiameter?: number | null;
+  /** cm — rectangular tins. */
+  panLength?: number | null;
+  /** cm — rectangular tins. */
+  panWidth?: number | null;
+  /** cm. Part of the tin's volume, so it does affect scaling. */
+  panHeight?: number | null;
   imageUrl?: string | null;
   categories?: Category[];
   tips?: string[];
@@ -116,6 +130,9 @@ export const mockCategories: Category[] = [
   { id: 14, name: 'Under 1 time', group: 'Tilberedningstid' },
   { id: 15, name: 'Over 1 time', group: 'Tilberedningstid' },
   { id: TILBEHOR_CATEGORY_ID, name: 'Tilbehør', group: 'Måltidstype' },
+  // Matches the backend seed (RecipeCategories.KakeId), which the mock list
+  // had drifted behind.
+  { id: 17, name: 'Kake', group: 'Måltidstype' },
 ];
 
 export const mockRecipes: Recipe[] = [
@@ -251,6 +268,50 @@ export const mockRecipes: Recipe[] = [
       { id: 2, name: 'Lunsj', group: 'Måltidstype' },
       { id: 9, name: 'Enkel', group: 'Vanskelighetsgrad' },
       { id: 12, name: 'Under 15 min', group: 'Tilberedningstid' },
+    ],
+  },
+  {
+    // The cake fixture. `quantityType: 'form'` makes this the one recipe that
+    // scales by pan area instead of portion count, and `servings` is that area
+    // in cm³ (a round Ø24 at standard depth is 2941), not a number of people.
+    //
+    // The units are picked to cover one rounding class each, so scaling this
+    // recipe exercises every branch of roundForUnit: countable, gram, spoon
+    // and decilitre.
+    id: 5,
+    title: 'Sjokoladekake',
+    description: 'Saftig sjokoladekake bakt i rund form',
+    ingredients: [
+      { id: 'mock-5-egg', quantity: 3, unit: null, name: 'egg' },
+      { quantity: 200, unit: 'g', name: 'sukker' },
+      { quantity: 2, unit: 'ts', name: 'bakepulver' },
+      { quantity: 2, unit: 'dl', name: 'melk' },
+      { quantity: 1, unit: 'ts', name: 'vaniljesukker' },
+    ],
+    instructionSteps: [
+      { text: 'Sett stekeovnen på 175°C.' },
+      // Carries a mention so a cake's step text exercises the rounding too: the
+      // amount here has to read "8 egg" after a conversion, not "7.96 egg".
+      {
+        text: 'Visp @[0] og sukker til eggedosis.',
+        mentions: [{ ingredientId: 'mock-5-egg', fallbackName: 'egg', display: 'full' }],
+      },
+      { text: 'Vend inn de tørre ingrediensene og melken.' },
+      { text: 'Stek kaken i 35 minutter.' },
+    ],
+    prepTime: 20,
+    cookTimeMinutes: 35,
+    servings: 2941,
+    quantityType: 'form',
+    panShape: 'rund',
+    panDiameter: 24,
+    panHeight: 7,
+
+    categories: [
+      { id: 4, name: 'Dessert', group: 'Måltidstype' },
+      { id: 17, name: 'Kake', group: 'Måltidstype' },
+      { id: 10, name: 'Middels', group: 'Vanskelighetsgrad' },
+      { id: 15, name: 'Over 1 time', group: 'Tilberedningstid' },
     ],
   },
 ];

@@ -22,6 +22,7 @@ import type { RecipeFormData } from '@/lib/services/recipe.service';
 import { TILBEHOR_CATEGORY_ID, type Category, type IngredientSection, type InstructionSection, type InstructionStep, type Recipe, type StructuredIngredient } from '@/lib/mock-data';
 import { findMentionTrigger, indexIngredients, resolveStepSegments } from '@/lib/instruction-mentions';
 import { MentionPicker, filterIngredients, handlePickerKey, optionId } from '@/components/MentionPicker';
+import { PAN_PRESETS, findPreset, groupedPresets, presetVolume, type PanPreset } from '@/lib/pan-size';
 import { StepText } from '@/components/StepText';
 import { useMentions } from '@/hooks/useMentions';
 import { parseQuantityInput, toFractionString } from '@/lib/fraction';
@@ -585,6 +586,14 @@ export default function RecipeForm({
   // what keeps existing mentions bound.
   const [formData, setFormData] = useState<RecipeFormData>(() => withIngredientIds(initialData));
 
+  // Derived from the stored shape and dimensions rather than held in state, so
+  // the highlighted chip can never disagree with what a save would post.
+  const selectedPanPreset = findPreset(formData.panShape, {
+    diameter: formData.panDiameter,
+    length: formData.panLength,
+    width: formData.panWidth,
+  });
+
   // Stable IDs for DnD (index-based keys cause issues when reordering)
   const [ingredientIds] = useState(() => initialData.ingredients.map((_, i) => `ing-${i}-${Date.now()}`));
   const [instructionIds, setInstructionIds] = useState(() => initialData.instructionSteps.map((_, i) => `ins-${i}-${Date.now()}`));
@@ -649,6 +658,54 @@ export default function RecipeForm({
 
   const handleField = (field: keyof RecipeFormData, value: RecipeFormData[typeof field]) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  /**
+   * Switch the quantity type, keeping the fields that only apply to one type
+   * from surviving into another.
+   *
+   * Written as a single update rather than several `handleField` calls: each of
+   * those reads `prev` separately, and clearing a stale pan while setting a new
+   * type has to be one transition or the intermediate state can post a "form"
+   * recipe with no tin — which the API rejects.
+   */
+  const handleQuantityType = (type: 'porsjoner' | 'antall' | 'custom' | 'form') => {
+    setFormData((prev) => ({
+      ...prev,
+      quantityType: type,
+      customUnit: type === 'custom' ? prev.customUnit : null,
+      // Servings means portions for every type but "form", where it means the
+      // tin's volume. Carrying the number across either boundary is nonsense in
+      // both directions: 4 portions would claim a 4 cm³ tin, and a 2941 cm³ tin
+      // would claim 2941 portions. Only a switch between two portion-counted
+      // types keeps the value.
+      servings:
+        type === 'form' || prev.quantityType === 'form' ? null : prev.servings,
+      ...(type === 'form'
+        ? {}
+        : { panShape: null, panDiameter: null, panLength: null, panWidth: null, panHeight: null }),
+    }));
+  };
+
+  /**
+   * Record the tin the recipe is authored for.
+   *
+   * Stores the preset's own dimensions alongside the volume, because the volume
+   * is ambiguous on its own — a round Ø24 and a springform Ø24 are the same number
+   * — and the detail page needs the shape to mark the original tin.
+   */
+  const handlePanPreset = (preset: PanPreset) => {
+    setFormData((prev) => ({
+      ...prev,
+      quantityType: 'form',
+      servings: Math.round(presetVolume(preset)),
+      panShape: preset.shape,
+      panDiameter: preset.diameter ?? null,
+      panLength: preset.length ?? null,
+      panWidth: preset.width ?? null,
+      // Height is the user's own field, not the preset's — leave it alone.
+      panHeight: prev.panHeight ?? null,
+    }));
   };
 
   // Ingredients (flat)
@@ -1014,6 +1071,10 @@ export default function RecipeForm({
   const [invalidQuantityIds, setInvalidQuantityIds] = useState<Set<string>>(new Set());
   const hasInvalidQuantity = invalidQuantityIds.size > 0;
 
+  // A cake with no tin has no area to scale by, and the API rejects it outright.
+  // Blocking here turns a round-trip 400 into an answer the user can act on.
+  const missingPan = formData.quantityType === 'form' && !formData.panShape;
+
   const handleQuantityValidityChange = useCallback((id: string, invalid: boolean) => {
     setInvalidQuantityIds((prev) => {
       if (invalid === prev.has(id)) return prev;
@@ -1024,7 +1085,7 @@ export default function RecipeForm({
   }, []);
 
   const handleSubmit = async () => {
-    if (hasInvalidQuantity) return;
+    if (hasInvalidQuantity || missingPan) return;
     await onSave({ ...formData, tips: (formData.tips ?? []).filter(t => t.trim() !== '') });
   };
 
@@ -1059,44 +1120,100 @@ export default function RecipeForm({
       <div>
         <label className="block text-sm font-medium mb-2">Antall / Porsjoner</label>
         <div className="flex flex-wrap gap-2 mb-2">
-          {(['porsjoner', 'antall', 'custom'] as const).map((type) => (
+          {(['porsjoner', 'antall', 'custom', 'form'] as const).map((type) => (
             <button
               key={type}
               type="button"
-              onClick={() => {
-                handleField('quantityType', type);
-                if (type !== 'custom') handleField('customUnit', null);
-              }}
+              onClick={() => handleQuantityType(type)}
               className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
                 (formData.quantityType ?? 'porsjoner') === type
                   ? 'bg-blue-600 text-white border-blue-600'
                   : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:border-blue-400'
               }`}
             >
-              {type === 'porsjoner' ? 'Porsjoner' : type === 'antall' ? 'Antall (stk)' : 'Egendefinert'}
+              {type === 'porsjoner'
+                ? 'Porsjoner'
+                : type === 'antall'
+                  ? 'Antall (stk)'
+                  : type === 'custom'
+                    ? 'Egendefinert'
+                    : 'Kakeform'}
             </button>
           ))}
         </div>
-        <div className="flex gap-2">
-          <input
-            type="number"
-            step="any"
-            min="0"
-            placeholder={(formData.quantityType ?? 'porsjoner') === 'porsjoner' ? 'Porsjoner' : (formData.quantityType === 'custom' ? 'Antall' : 'Antall (stk)')}
-            value={formData.servings ?? ''}
-            onChange={(e) => handleField('servings', e.target.value === '' ? null : parseFloat(e.target.value))}
-            className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-          />
-          {formData.quantityType === 'custom' && (
+        {formData.quantityType === 'form' ? (
+          // A cake has no portion count to type — it has a tin. Picking one sets
+          // both the dimensions and the area the scaling reads from `servings`.
+          <div data-testid="form-picker">
+            {/* A select rather than fourteen chips, matching FormVelger on the
+                recipe page. This form cannot reuse that component: it needs the
+                preset object to store the shape and dimensions, where the
+                recipe page only ever needs the resulting area. */}
+            <select
+              aria-label="Bakeform"
+              value={selectedPanPreset?.id ?? ''}
+              onChange={(e) => {
+                const preset = PAN_PRESETS.find((p) => p.id === e.target.value);
+                if (preset) handlePanPreset(preset);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
+            >
+              {!selectedPanPreset && <option value="">Velg form</option>}
+              {groupedPresets().map((group) => (
+                <optgroup key={group.shape} label={group.label}>
+                  {group.presets.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+
+            <div className="mt-3 flex items-center gap-2">
+              <label className="text-sm text-gray-700 dark:text-gray-300" htmlFor="pan-height">
+                Høyde (cm)
+              </label>
+              <input
+                id="pan-height"
+                type="number"
+                step="any"
+                min="0"
+                placeholder="Valgfritt"
+                value={formData.panHeight ?? ''}
+                onChange={(e) =>
+                  handleField('panHeight', e.target.value === '' ? null : parseFloat(e.target.value))
+                }
+                className="w-28 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
+              />
+            </div>
+
+            {!formData.panShape && (
+              <p className="mt-2 text-sm text-amber-700">Velg en bakeform for kakeoppskriften.</p>
+            )}
+          </div>
+        ) : (
+          <div className="flex gap-2">
             <input
-              type="text"
-              placeholder="Enhet (f.eks. brød, brett)"
-              value={formData.customUnit ?? ''}
-              onChange={(e) => handleField('customUnit', e.target.value || null)}
-              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
+              type="number"
+              step="any"
+              min="0"
+              placeholder={(formData.quantityType ?? 'porsjoner') === 'porsjoner' ? 'Porsjoner' : (formData.quantityType === 'custom' ? 'Antall' : 'Antall (stk)')}
+              value={formData.servings ?? ''}
+              onChange={(e) => handleField('servings', e.target.value === '' ? null : parseFloat(e.target.value))}
+              className="w-32 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
             />
-          )}
-        </div>
+            {formData.quantityType === 'custom' && (
+              <input
+                type="text"
+                placeholder="Enhet (f.eks. brød, brett)"
+                value={formData.customUnit ?? ''}
+                onChange={(e) => handleField('customUnit', e.target.value || null)}
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
+              />
+            )}
+          </div>
+        )}
       </div>
 
       {/* Prep Time, Cook Time */}
@@ -1511,7 +1628,7 @@ export default function RecipeForm({
         )}
         <button
           onClick={handleSubmit}
-          disabled={isSaving || hasInvalidQuantity}
+          disabled={isSaving || hasInvalidQuantity || missingPan}
           title={hasInvalidQuantity ? 'Rett opp ugyldig mengde før du lagrer.' : undefined}
           className="flex-1 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
         >

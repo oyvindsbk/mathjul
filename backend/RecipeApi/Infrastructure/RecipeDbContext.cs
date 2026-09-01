@@ -167,6 +167,14 @@ public class RecipeDbContext : DbContext
             entity.Property(e => e.Visibility).IsRequired().HasMaxLength(20).HasDefaultValue("Public");
             entity.Property(e => e.OwnerEmail).HasMaxLength(200);
 
+            // Pan dimensions are centimetres to at most one decimal; the default
+            // decimal(18,2) would be 16 digits of headroom no tin will ever use.
+            entity.Property(e => e.PanShape).HasMaxLength(20);
+            entity.Property(e => e.PanDiameter).HasPrecision(5, 1);
+            entity.Property(e => e.PanLength).HasPrecision(5, 1);
+            entity.Property(e => e.PanWidth).HasPrecision(5, 1);
+            entity.Property(e => e.PanHeight).HasPrecision(5, 1);
+
             entity.Property(e => e.Ingredients)
                 .HasConversion(
                     v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
@@ -368,7 +376,9 @@ public class RecipeDbContext : DbContext
             new Category { Id = 14, Name = "Under 1 time", Group = "Tilberedningstid" },
             new Category { Id = 15, Name = "Over 1 time", Group = "Tilberedningstid" },
             // Tilbehør — marks a recipe as attachable as a side dish to other recipes
-            new Category { Id = RecipeCategories.TilbehorId, Name = RecipeCategories.TilbehorName, Group = RecipeCategories.MealTypeGroup }
+            new Category { Id = RecipeCategories.TilbehorId, Name = RecipeCategories.TilbehorName, Group = RecipeCategories.MealTypeGroup },
+            // Kake — recipes scaled by pan area rather than portion count
+            new Category { Id = RecipeCategories.KakeId, Name = RecipeCategories.KakeName, Group = RecipeCategories.MealTypeGroup }
         );
 
         modelBuilder.Entity<Recipe>().HasData(

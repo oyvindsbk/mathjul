@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { toPng } from 'html-to-image';
 import { featurePlannerService, type FeatureColumnData } from '@/lib/services/feature-planner.service';
 import { useAuth } from '@/lib/context/AuthContext';
 
@@ -295,6 +294,12 @@ function SnippingOverlay({ onCapture, onCancel }: SnippingOverlayProps) {
     setCapturing(true);
 
     try {
+      // Imported here rather than at module scope: html-to-image needs `document`,
+      // and this component sits in the (app) layout, so a top-level import pulls
+      // it into the server bundle of every route under it. Next's dev-mode
+      // static-paths worker then fails to resolve the chunk and the whole route
+      // 500s with MODULE_NOT_FOUND.
+      const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(document.body, {
         cacheBust: true,
         pixelRatio: window.devicePixelRatio,

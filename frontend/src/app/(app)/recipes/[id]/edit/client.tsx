@@ -60,6 +60,11 @@ export default function EditRecipeClient({ id: routeParam }: { id: string }) {
           servings?: number;
           quantityType?: string;
           customUnit?: string | null;
+          panShape?: string | null;
+          panDiameter?: number | null;
+          panLength?: number | null;
+          panWidth?: number | null;
+          panHeight?: number | null;
           categories?: Category[];
           imageUrl?: string | null;
           visibility?: string;
@@ -83,6 +88,14 @@ export default function EditRecipeClient({ id: routeParam }: { id: string }) {
           servings: detail.servings ?? null,
           quantityType: detail.quantityType ?? 'porsjoner',
           customUnit: detail.customUnit ?? null,
+          // Load-bearing for the same reason as sideDishIds below: the save
+          // posts every field, so omitting the tin here would clear it on the
+          // next save of an otherwise untouched cake.
+          panShape: detail.panShape ?? null,
+          panDiameter: detail.panDiameter ?? null,
+          panLength: detail.panLength ?? null,
+          panWidth: detail.panWidth ?? null,
+          panHeight: detail.panHeight ?? null,
           categoryIds: detail.categories?.map((c) => c.id) ?? [],
           // Load-bearing: the API replaces side dishes on every save, so omitting
           // this would silently drop them.

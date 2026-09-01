@@ -32,6 +32,8 @@ export interface MentionPickerProps {
   /** Base servings, so an option previews the same amount the step will show. */
   baseServings?: number | null;
   desiredServings: number;
+  /** Opts the preview into the same unit-aware rounding the list uses. */
+  quantityType?: string;
   /** Id of the listbox, referenced by the textarea's `aria-controls`. */
   id: string;
 }
@@ -102,6 +104,7 @@ export function MentionPicker({
   onSelect,
   baseServings,
   desiredServings,
+  quantityType,
   id,
 }: MentionPickerProps) {
   const listRef = useRef<HTMLUListElement>(null);
@@ -135,7 +138,12 @@ export function MentionPicker({
     >
       {options.map((ingredient, index) => {
         const active = index === activeIndex;
-        const { qtyUnit, name } = formatIngredientParts(ingredient, baseServings, desiredServings);
+        const { qtyUnit, name } = formatIngredientParts(
+          ingredient,
+          baseServings,
+          desiredServings,
+          quantityType
+        );
         const sectionHeading = ingredient.id ? sectionById?.get(ingredient.id) : undefined;
         const label = sectionHeading ? `${sectionHeading} - ${name}` : name;
         return (

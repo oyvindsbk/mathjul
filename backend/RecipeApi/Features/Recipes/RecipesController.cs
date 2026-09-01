@@ -342,6 +342,11 @@ public class RecipesController : ControllerBase
             Servings = recipe.Servings,
             QuantityType = recipe.QuantityType,
             CustomUnit = recipe.CustomUnit,
+            PanShape = recipe.PanShape,
+            PanDiameter = recipe.PanDiameter,
+            PanLength = recipe.PanLength,
+            PanWidth = recipe.PanWidth,
+            PanHeight = recipe.PanHeight,
             Visibility = recipe.Visibility,
             OwnerEmail = recipe.OwnerEmail,
             SourceUrl = recipe.SourceUrl,
@@ -732,6 +737,12 @@ public class RecipesController : ControllerBase
         if (sideDishError != null)
             return BadRequest(new { message = sideDishError });
 
+        var panError = ValidatePanFields(
+            request.QuantityType, request.PanShape,
+            request.PanDiameter, request.PanLength, request.PanWidth, request.PanHeight);
+        if (panError != null)
+            return BadRequest(new { message = panError });
+
         var visibility = request.Visibility ?? "Public";
 
         var recipe = new Recipe
@@ -760,6 +771,11 @@ public class RecipesController : ControllerBase
             Servings = request.Servings,
             QuantityType = request.QuantityType,
             CustomUnit = request.CustomUnit,
+            PanShape = request.PanShape,
+            PanDiameter = request.PanDiameter,
+            PanLength = request.PanLength,
+            PanWidth = request.PanWidth,
+            PanHeight = request.PanHeight,
             ImageUrl = request.MainImageUrl,
             SourceUrl = request.SourceUrl,
             SourceImageUrl = request.SourceImageUrl,
@@ -773,6 +789,7 @@ public class RecipesController : ControllerBase
 
         // Ingredients the client minted no id for get one now, before anything is stored.
         RecipeIngredientIds.EnsureIds(recipe);
+        ClearPanFieldsForNonForm(recipe);
 
         _context.Recipes.Add(recipe);
         await _context.SaveChangesAsync();
@@ -817,6 +834,92 @@ public class RecipesController : ControllerBase
         };
 
         return CreatedAtAction(nameof(GetAllRecipes), new { id = recipe.Id }, recipeDto);
+    }
+
+    /// <summary>
+    /// Shapes a "form" recipe's pan is allowed to have. Values match
+    /// <see cref="Recipe.PanShape"/> and the frontend's preset table.
+    /// </summary>
+    private static readonly string[] PanShapes = ["rund", "springform", "rektangulaer", "muffins"];
+
+    /// <summary>
+    /// Upper bound for any pan measurement, in centimetres. Comfortably above the
+    /// largest real tin, and well inside what the decimal(5,1) columns can store.
+    /// </summary>
+    private const decimal MaxPanDimensionCm = 500m;
+
+    /// <summary>
+    /// Validates the pan fields of a create/update request. Returns a Norwegian error
+    /// message, or null when the request is acceptable.
+    ///
+    /// Only <c>QuantityType == "form"</c> carries a pan. Other quantity types are left
+    /// alone rather than rejected for sending pan fields: the form always posts every
+    /// field, and clearing them is <see cref="ClearPanFieldsForNonForm"/>'s job.
+    /// </summary>
+    private static string? ValidatePanFields(
+        string quantityType,
+        string? panShape,
+        decimal? panDiameter,
+        decimal? panLength,
+        decimal? panWidth,
+        decimal? panHeight)
+    {
+        if (quantityType != "form")
+            return null;
+
+        if (string.IsNullOrWhiteSpace(panShape))
+            return "Kakeoppskrifter må ha en formtype.";
+
+        if (!PanShapes.Contains(panShape))
+            return $"Ukjent formtype: {panShape}.";
+
+        // Every dimension is bounded above as well as below. The columns are
+        // decimal(5,1), so a larger value is not merely implausible for a baking
+        // tin — it overflows on save and surfaces as a 500 instead of this 400.
+        if (panDiameter > MaxPanDimensionCm || panLength > MaxPanDimensionCm
+            || panWidth > MaxPanDimensionCm || panHeight > MaxPanDimensionCm)
+            return $"Målene på formen må være mindre enn {MaxPanDimensionCm} cm.";
+
+        // Height is optional for every shape, but a value that is present must be sane.
+        if (panHeight is <= 0)
+            return "Høyden på formen må være større enn 0.";
+
+        switch (panShape)
+        {
+            case "rund":
+            case "springform":
+                if (panDiameter is null or <= 0)
+                    return "Runde former må ha en diameter større enn 0.";
+                break;
+
+            case "rektangulaer":
+                if (panLength is null or <= 0 || panWidth is null or <= 0)
+                    return "Rektangulære former må ha lengde og bredde større enn 0.";
+                break;
+
+            // Muffins are counted, not measured: the tin count lives in Servings as a
+            // volume equivalent, so no dimension is required.
+            case "muffins":
+                break;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Drops pan fields on a recipe that is not a cake, so switching a recipe away from
+    /// "form" cannot leave a stale tin behind that a later switch back would resurrect.
+    /// </summary>
+    private static void ClearPanFieldsForNonForm(Recipe recipe)
+    {
+        if (recipe.QuantityType == "form")
+            return;
+
+        recipe.PanShape = null;
+        recipe.PanDiameter = null;
+        recipe.PanLength = null;
+        recipe.PanWidth = null;
+        recipe.PanHeight = null;
     }
 
     /// <summary>
@@ -874,6 +977,14 @@ public class RecipesController : ControllerBase
 
         // Alle innloggede brukere kan redigere alle oppskrifter.
 
+        // Validated before the tracked entity is touched, so a rejected request leaves
+        // the change tracker clean.
+        var panError = ValidatePanFields(
+            request.QuantityType, request.PanShape,
+            request.PanDiameter, request.PanLength, request.PanWidth, request.PanHeight);
+        if (panError != null)
+            return BadRequest(new { message = panError });
+
         recipe.Title = request.Title;
         recipe.Description = request.Description ?? string.Empty;
         recipe.Ingredients = (request.Ingredients ?? new List<StructuredIngredientDto>())
@@ -900,6 +1011,12 @@ public class RecipesController : ControllerBase
         recipe.Servings = request.Servings;
         recipe.QuantityType = request.QuantityType;
         recipe.CustomUnit = request.CustomUnit;
+        recipe.PanShape = request.PanShape;
+        recipe.PanDiameter = request.PanDiameter;
+        recipe.PanLength = request.PanLength;
+        recipe.PanWidth = request.PanWidth;
+        recipe.PanHeight = request.PanHeight;
+        ClearPanFieldsForNonForm(recipe);
         recipe.Tips = request.Tips ?? new List<string>();
         recipe.UpdatedAt = DateTime.UtcNow;
 
@@ -974,6 +1091,11 @@ public class RecipesController : ControllerBase
             Servings = recipe.Servings,
             QuantityType = recipe.QuantityType,
             CustomUnit = recipe.CustomUnit,
+            PanShape = recipe.PanShape,
+            PanDiameter = recipe.PanDiameter,
+            PanLength = recipe.PanLength,
+            PanWidth = recipe.PanWidth,
+            PanHeight = recipe.PanHeight,
             Visibility = recipe.Visibility,
             OwnerEmail = recipe.OwnerEmail,
             SourceUrl = recipe.SourceUrl,
@@ -1644,6 +1766,16 @@ public class RecipeDetailDto
     public double? Servings { get; set; }
     public string QuantityType { get; set; } = "porsjoner";
     public string? CustomUnit { get; set; }
+    /// <summary>Baking tin shape for <c>QuantityType == "form"</c>; null otherwise.</summary>
+    public string? PanShape { get; set; }
+    /// <summary>Tin diameter in cm — round and springform tins.</summary>
+    public decimal? PanDiameter { get; set; }
+    /// <summary>Tin length in cm — rectangular tins.</summary>
+    public decimal? PanLength { get; set; }
+    /// <summary>Tin width in cm — rectangular tins.</summary>
+    public decimal? PanWidth { get; set; }
+    /// <summary>Tin height in cm. Carried through but not used in the scaling factor.</summary>
+    public decimal? PanHeight { get; set; }
     public string Visibility { get; set; } = "Public";
     public string? OwnerEmail { get; set; }
     /// <summary>Owner shown by name rather than email. Null when the recipe has no owner.</summary>
@@ -1733,6 +1865,16 @@ public class SaveExtractedRecipeRequest
     public double? Servings { get; set; }
     public string QuantityType { get; set; } = "porsjoner";
     public string? CustomUnit { get; set; }
+    /// <summary>Baking tin shape for <c>QuantityType == "form"</c>; null otherwise.</summary>
+    public string? PanShape { get; set; }
+    /// <summary>Tin diameter in cm — round and springform tins.</summary>
+    public decimal? PanDiameter { get; set; }
+    /// <summary>Tin length in cm — rectangular tins.</summary>
+    public decimal? PanLength { get; set; }
+    /// <summary>Tin width in cm — rectangular tins.</summary>
+    public decimal? PanWidth { get; set; }
+    /// <summary>Tin height in cm. Carried through but not used in the scaling factor.</summary>
+    public decimal? PanHeight { get; set; }
     public List<int>? CategoryIds { get; set; }
     public List<string>? Tips { get; set; }
     /// <summary>Pre-uploaded blob URL from AI dish extraction (pending blob path will be renamed on save).</summary>
@@ -1760,6 +1902,16 @@ public class UpdateRecipeRequest
     public double? Servings { get; set; }
     public string QuantityType { get; set; } = "porsjoner";
     public string? CustomUnit { get; set; }
+    /// <summary>Baking tin shape for <c>QuantityType == "form"</c>; null otherwise.</summary>
+    public string? PanShape { get; set; }
+    /// <summary>Tin diameter in cm — round and springform tins.</summary>
+    public decimal? PanDiameter { get; set; }
+    /// <summary>Tin length in cm — rectangular tins.</summary>
+    public decimal? PanLength { get; set; }
+    /// <summary>Tin width in cm — rectangular tins.</summary>
+    public decimal? PanWidth { get; set; }
+    /// <summary>Tin height in cm. Carried through but not used in the scaling factor.</summary>
+    public decimal? PanHeight { get; set; }
     public List<int>? CategoryIds { get; set; }
     public List<string>? Tips { get; set; }
     public string? Visibility { get; set; }

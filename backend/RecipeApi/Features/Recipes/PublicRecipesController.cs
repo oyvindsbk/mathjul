@@ -85,6 +85,11 @@ public class PublicRecipesController : ControllerBase
             Servings = recipe.Servings,
             QuantityType = recipe.QuantityType,
             CustomUnit = recipe.CustomUnit,
+            PanShape = recipe.PanShape,
+            PanDiameter = recipe.PanDiameter,
+            PanLength = recipe.PanLength,
+            PanWidth = recipe.PanWidth,
+            PanHeight = recipe.PanHeight,
             UpdatedAt = recipe.UpdatedAt,
             Ingredients = recipe.Ingredients.Select(i => i.ToDto()).ToList(),
             InstructionSteps = recipe.InstructionSteps.Select(s => s.ToDto()).ToList(),
@@ -168,6 +173,18 @@ public class SharedRecipeDto
     public double? Servings { get; set; }
     public string QuantityType { get; set; } = "porsjoner";
     public string? CustomUnit { get; set; }
+
+    /// <summary>
+    /// The baking tin the recipe was authored for -- cake recipes
+    /// (QuantityType "form") only. Without it the share page can show the pan
+    /// picker but cannot mark the original tin or warn about a conversion.
+    /// Dimensions only, so nothing here identifies the owner.
+    /// </summary>
+    public string? PanShape { get; set; }
+    public decimal? PanDiameter { get; set; }
+    public decimal? PanLength { get; set; }
+    public decimal? PanWidth { get; set; }
+    public decimal? PanHeight { get; set; }
     public List<StructuredIngredientDto> Ingredients { get; set; } = new();
     public List<InstructionStepDto> InstructionSteps { get; set; } = new();
     public List<IngredientSectionDto> IngredientSections { get; set; } = new();

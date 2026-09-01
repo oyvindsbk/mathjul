@@ -5,6 +5,7 @@ import { formatIngredientParts } from "@/lib/recipe-format";
 import { normalizeIngredients } from "@/lib/recipe-sections";
 import { CheckCircle } from "./CheckCircle";
 import { ServingsStepper } from "./ServingsStepper";
+import { FormVelger } from "@/components/FormVelger";
 
 interface IngredientsTabProps {
   ingredients?: StructuredIngredient[];
@@ -12,6 +13,11 @@ interface IngredientsTabProps {
   servings?: number | null;
   quantityType?: string;
   customUnit?: string | null;
+  /** The recipe's own tin — cake recipes only, marked as the source in the picker. */
+  panShape?: string | null;
+  panDiameter?: number | null;
+  panLength?: number | null;
+  panWidth?: number | null;
   desiredServings: number;
   onServingsChange: (n: number) => void;
   checkedIngredients: Set<string>;
@@ -24,6 +30,10 @@ export function IngredientsTab({
   servings,
   quantityType,
   customUnit,
+  panShape,
+  panDiameter,
+  panLength,
+  panWidth,
   desiredServings,
   onServingsChange,
   checkedIngredients,
@@ -39,13 +49,25 @@ export function IngredientsTab({
     <div>
       {servings ? (
         <div className="pb-4 mb-4 border-b border-gray-100">
-          <ServingsStepper
-            value={desiredServings}
-            onChange={onServingsChange}
-            quantityType={quantityType}
-            customUnit={customUnit}
-            size="large"
-          />
+          {quantityType === "form" ? (
+            <FormVelger
+              sourceShape={panShape}
+              sourceDiameter={panDiameter}
+              sourceLength={panLength}
+              sourceWidth={panWidth}
+              value={desiredServings}
+              onChange={onServingsChange}
+              size="large"
+            />
+          ) : (
+            <ServingsStepper
+              value={desiredServings}
+              onChange={onServingsChange}
+              quantityType={quantityType}
+              customUnit={customUnit}
+              size="large"
+            />
+          )}
         </div>
       ) : null}
 
@@ -59,7 +81,12 @@ export function IngredientsTab({
             )}
             <ul className="space-y-2">
               {section.items.map(({ ingredient, key }) => {
-                const { qtyUnit, name } = formatIngredientParts(ingredient, servings, desiredServings);
+                const { qtyUnit, name } = formatIngredientParts(
+                  ingredient,
+                  servings,
+                  desiredServings,
+                  quantityType
+                );
                 const checked = checkedIngredients.has(key);
                 const label = [qtyUnit, name].filter(Boolean).join(" ");
                 return (

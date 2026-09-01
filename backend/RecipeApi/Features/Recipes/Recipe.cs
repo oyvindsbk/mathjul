@@ -108,6 +108,31 @@ public class Recipe
     [StringLength(100)]
     public string? CustomUnit { get; set; }
 
+    /// <summary>
+    /// Baking tin shape for <c>QuantityType == "form"</c> recipes:
+    /// "rund" | "rektangulaer" | "springform" | "muffins". Null for every other
+    /// quantity type.
+    /// </summary>
+    [StringLength(20)]
+    public string? PanShape { get; set; }
+
+    /// <summary>Tin diameter in cm — round and springform tins.</summary>
+    public decimal? PanDiameter { get; set; }
+
+    /// <summary>Tin length in cm — rectangular tins.</summary>
+    public decimal? PanLength { get; set; }
+
+    /// <summary>Tin width in cm — rectangular tins.</summary>
+    public decimal? PanWidth { get; set; }
+
+    /// <summary>
+    /// Tin height in cm. Part of the scaling factor: a langpanne is roughly half
+    /// the depth of a round tin, so a factor built on footprint alone overstates
+    /// the batter. Optional — the frontend falls back to the standard depth for
+    /// the shape when it is not set.
+    /// </summary>
+    public decimal? PanHeight { get; set; }
+
     public string? ImageUrl { get; set; }
 
     public string? SourceUrl { get; set; }

@@ -17,4 +17,13 @@ public static class RecipeCategories
 
     /// <summary>Display name of the Tilbehør category.</summary>
     public const string TilbehorName = "Tilbehør";
+
+    /// <summary>
+    /// "Kake" — groups recipes that scale by pan size rather than portion count.
+    /// Referenced by id for the same reason as <see cref="TilbehorId"/>.
+    /// </summary>
+    public const int KakeId = 17;
+
+    /// <summary>Display name of the Kake category.</summary>
+    public const string KakeName = "Kake";
 }

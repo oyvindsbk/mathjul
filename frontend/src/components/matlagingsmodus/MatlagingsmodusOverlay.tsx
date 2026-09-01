@@ -249,6 +249,10 @@ export function MatlagingsmodusOverlay({
                 servings={recipe.servings}
                 quantityType={recipe.quantityType}
                 customUnit={recipe.customUnit}
+                panShape={recipe.panShape}
+                panDiameter={recipe.panDiameter}
+                panLength={recipe.panLength}
+                panWidth={recipe.panWidth}
                 desiredServings={desiredServings}
                 onServingsChange={onServingsChange}
                 checkedIngredients={checkedIngredients}
@@ -271,6 +275,7 @@ export function MatlagingsmodusOverlay({
                 ingredientsById={ingredientsById}
                 baseServings={recipe.servings}
                 desiredServings={desiredServings}
+                quantityType={recipe.quantityType}
               />
             )}
           </div>
