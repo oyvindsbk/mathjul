@@ -12,9 +12,11 @@ import { useCookingProgress } from "@/hooks/useCookingProgress";
 import type { Recipe } from "@/lib/mock-data";
 import { RecipeBody } from "@/components/RecipeBody";
 import { ShareRecipeModal } from "@/components/ShareRecipeModal";
+import { parseRecipeId, recipeHref } from "@/lib/recipe-url";
 import RecipeDetailLoading from "./loading";
 
-export default function RecipeDetailClient({ id }: { id: string }) {
+export default function RecipeDetailClient({ id: routeParam }: { id: string }) {
+  const id = parseRecipeId(routeParam) ?? routeParam;
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -193,7 +195,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
                   </svg>
                 </button>
                 <Link
-                  href={`/recipes/${id}/edit`}
+                  href={`${recipeHref(Number(id), recipe.title)}/edit`}
                   aria-label="Rediger oppskrift"
                   className="mt-1 flex items-center justify-center text-gray-400 hover:text-blue-500 transition-colors hover:scale-110 active:scale-95"
                 >
@@ -254,7 +256,7 @@ export default function RecipeDetailClient({ id }: { id: string }) {
               {recipe.usedAsSideDishIn.map((main) => (
                 <Link
                   key={main.id}
-                  href={`/recipes/${main.id}`}
+                  href={recipeHref(main.id, main.title)}
                   className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm hover:bg-gray-200 transition-colors"
                 >
                   {main.title}

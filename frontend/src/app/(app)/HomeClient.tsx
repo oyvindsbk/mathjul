@@ -9,6 +9,7 @@ import { recipeService } from "@/lib/services/recipe.service";
 import { groupsService } from "@/lib/services/groups.service";
 import { appConfig } from "@/lib/config";
 import type { Category, Recipe } from "@/lib/mock-data";
+import { recipeHref } from "@/lib/recipe-url";
 import HomeLoading from "./loading";
 
 type VisibilityTab = "all" | "public" | "myGroups" | "private" | "favoritter";
@@ -286,7 +287,7 @@ export default function HomeClient() {
             <div key={recipe.id} data-testid={`recipe-card-${recipe.id}`} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col">
               <div className="h-28 md:h-48 bg-gray-200 flex items-center justify-center overflow-hidden relative">
                 <Link
-                  href={`/recipes/${recipe.id}`}
+                  href={recipeHref(recipe.id, recipe.title)}
                   aria-label={recipe.title}
                   className="w-full h-full flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
                 >
@@ -312,7 +313,7 @@ export default function HomeClient() {
               <div className="p-3 md:p-6 flex flex-col flex-1">
                 <h3 className="text-sm md:text-xl font-semibold text-gray-900 mb-1 md:mb-2 line-clamp-2">
                   <Link
-                    href={`/recipes/${recipe.id}`}
+                    href={recipeHref(recipe.id, recipe.title)}
                     className="hover:text-blue-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
                   >
                     {recipe.title}
@@ -335,7 +336,7 @@ export default function HomeClient() {
                   </div>
                 )}
                 <Link
-                  href={`/recipes/${recipe.id}`}
+                  href={recipeHref(recipe.id, recipe.title)}
                   className="block w-full bg-blue-600 text-white py-2 px-2 md:px-4 rounded-md hover:bg-blue-700 transition-colors duration-200 text-center mt-auto text-xs md:text-sm min-h-[44px] flex items-center justify-center"
                 >
                   Vis oppskrift

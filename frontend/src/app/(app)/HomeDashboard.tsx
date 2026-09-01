@@ -6,13 +6,14 @@ import { HeartButton } from "@/components/HeartButton";
 import { useAuth } from "@/lib/context/AuthContext";
 import { recipeService } from "@/lib/services/recipe.service";
 import type { Recipe } from "@/lib/mock-data";
+import { recipeHref } from "@/lib/recipe-url";
 
 function RecipeCard({ recipe, token }: { recipe: Recipe; token: string | null }) {
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300 flex flex-col">
       <div className="h-48 bg-gray-200 flex items-center justify-center overflow-hidden relative">
         <Link
-          href={`/recipes/${recipe.id}`}
+          href={recipeHref(recipe.id, recipe.title)}
           aria-label={recipe.title}
           className="w-full h-full flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500"
         >
@@ -38,7 +39,7 @@ function RecipeCard({ recipe, token }: { recipe: Recipe; token: string | null })
       <div className="p-6 flex flex-col flex-1">
         <h3 className="text-xl font-semibold text-gray-900 mb-2">
           <Link
-            href={`/recipes/${recipe.id}`}
+            href={recipeHref(recipe.id, recipe.title)}
             className="hover:text-blue-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded"
           >
             {recipe.title}
@@ -48,7 +49,7 @@ function RecipeCard({ recipe, token }: { recipe: Recipe; token: string | null })
           {recipe.description || "Ingen beskrivelse"}
         </p>
         <Link
-          href={`/recipes/${recipe.id}`}
+          href={recipeHref(recipe.id, recipe.title)}
           className="block w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors duration-200 text-center mt-auto"
         >
           Vis oppskrift

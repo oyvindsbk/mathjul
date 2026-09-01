@@ -5,6 +5,7 @@ import Link from "next/link";
 import { LEVERANDOR_COLORS, LEVERANDOR_LABELS, type Leverandor } from "@/lib/services/matkasse.service";
 import type { MealPlan } from "@/lib/services/mealplan.service";
 import { formatDate, formatDateLabel, parseDateKey, resolveEntryDisplay } from "./entryDisplay";
+import { recipeHref } from "@/lib/recipe-url";
 
 interface Props {
   date: Date;
@@ -247,7 +248,7 @@ export function DayDetailModal({
                       <div className="mt-2 flex flex-wrap gap-1">
                         {plan.recipeId != null && (
                           <Link
-                            href={`/recipes/${plan.recipeId}`}
+                            href={recipeHref(plan.recipeId, plan.recipe?.title ?? "")}
                             className={`${ACTION_BUTTON} inline-flex items-center text-blue-600 hover:bg-blue-50`}
                           >
                             Åpne

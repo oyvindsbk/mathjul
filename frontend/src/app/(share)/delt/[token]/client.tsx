@@ -6,6 +6,7 @@ import { RecipeBody } from "@/components/RecipeBody";
 import { MatlagingsmodusButton } from "@/components/MatlagingsmodusButton";
 import { MatlagingsmodusOverlay } from "@/components/matlagingsmodus/MatlagingsmodusOverlay";
 import { useCookingProgress } from "@/hooks/useCookingProgress";
+import { recipeHref } from "@/lib/recipe-url";
 
 /**
  * The public share page. Reads one recipe through its share token and renders the
@@ -144,7 +145,7 @@ export default function SharedRecipeClient({ shareToken }: { shareToken: string 
 
         <div className="text-center pb-6">
           <a
-            href={`/recipes/${recipe.id}`}
+            href={recipeHref(recipe.id, recipe.title)}
             className="inline-block text-sm font-medium text-emerald-700 hover:text-emerald-800 hover:underline"
             data-testid="delt-full-oppskrift-lenke"
           >

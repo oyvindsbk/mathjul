@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAuth } from "@/lib/context/AuthContext";
 import { recipeService } from "@/lib/services/recipe.service";
 import type { Recipe } from "@/lib/mock-data";
+import { recipeHref } from "@/lib/recipe-url";
 
 function getEmailFromToken(token: string): string | null {
   try {
@@ -78,11 +79,11 @@ function HeaderSearchBox({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const goToRecipe = (recipeId: number) => {
+  const goToRecipe = (recipe: Recipe) => {
     setSuggestionsOpen(false);
     setActiveIndex(-1);
     setValue("");
-    router.push(`/recipes/${recipeId}`);
+    router.push(recipeHref(recipe.id, recipe.title));
   };
 
   const confirmSearch = () => {
@@ -116,7 +117,7 @@ function HeaderSearchBox({
     if (e.key === "Enter") {
       e.preventDefault();
       if (activeIndex >= 0 && activeIndex < suggestions.length) {
-        goToRecipe(suggestions[activeIndex].id);
+        goToRecipe(suggestions[activeIndex]);
       } else {
         confirmSearch();
       }
@@ -171,7 +172,7 @@ function HeaderSearchBox({
               aria-selected={index === activeIndex}
               onMouseDown={(e) => {
                 e.preventDefault();
-                goToRecipe(recipe.id);
+                goToRecipe(recipe);
               }}
               onMouseEnter={() => setActiveIndex(index)}
               className={`flex items-center gap-3 px-3 py-2 cursor-pointer text-sm ${

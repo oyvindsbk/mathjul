@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { recipeService } from "@/lib/services/recipe.service";
 import { useAuth } from "@/lib/context/AuthContext";
+import { parseRecipeId, recipeHref } from "@/lib/recipe-url";
 
 const LIST_PAGES: Record<string, string> = {
   "/alle-oppskrifter": "Alle oppskrifter",
@@ -23,7 +24,8 @@ interface CrumbItem {
 
 function getRecipeIdFromPath(pathname: string): string | null {
   const match = pathname.match(/^\/recipes\/([^/]+)/);
-  return match ? match[1] : null;
+  if (!match) return null;
+  return parseRecipeId(match[1]);
 }
 
 function buildCrumbs(
@@ -46,7 +48,7 @@ function buildCrumbs(
     ];
 
     if (isEdit) {
-      crumbs.push({ label: recipeLabel, href: `/recipes/${recipeId}` });
+      crumbs.push({ label: recipeLabel, href: recipeHref(Number(recipeId), recipeTitle ?? "") });
       crumbs.push({ label: "Rediger" });
     } else {
       crumbs.push({ label: recipeLabel });

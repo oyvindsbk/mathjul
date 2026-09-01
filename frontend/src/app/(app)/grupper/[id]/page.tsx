@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/context/AuthContext";
 import { groupsService, type GroupDetail, type GroupMember } from "@/lib/services/groups.service";
+import { recipeHref } from "@/lib/recipe-url";
 
 export default function GroupDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: idStr } = use(params);
@@ -190,7 +191,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
             <ul className="space-y-2">
               {group.recipes.map((r) => (
                 <li key={r.id}>
-                  <Link href={`/recipes/${r.id}`} className="text-blue-600 hover:underline text-sm">
+                  <Link href={recipeHref(r.id, r.title)} className="text-blue-600 hover:underline text-sm">
                     {r.title}
                   </Link>
                 </li>

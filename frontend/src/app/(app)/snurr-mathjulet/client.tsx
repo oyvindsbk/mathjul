@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { recipeService } from '@/lib/services/recipe.service';
 import { useAuth } from '@/lib/context/AuthContext';
 import type { Recipe, Category } from '@/lib/mock-data';
+import { recipeHref } from '@/lib/recipe-url';
 import SnurrLoading from './loading';
 import FilterPanel from './FilterPanel';
 
@@ -319,7 +320,7 @@ export default function SnurrClient() {
               )}
               <div className="flex flex-col sm:flex-row gap-3 justify-center">
                 <Link
-                  href={`/recipes/${selectedRecipe.id}`}
+                  href={recipeHref(selectedRecipe.id, selectedRecipe.title)}
                   className="inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   Se oppskrift →

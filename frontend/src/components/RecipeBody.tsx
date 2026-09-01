@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { InstructionStep, Recipe, StructuredIngredient } from "@/lib/mock-data";
 import { formatIngredientParts } from "@/lib/recipe-format";
+import { recipeHref } from "@/lib/recipe-url";
 import { indexIngredients, resolveStepSegments, stepPlainText } from "@/lib/instruction-mentions";
 import { StepText } from "@/components/StepText";
 import { ServingsStepper } from "@/components/matlagingsmodus/ServingsStepper";
@@ -140,7 +141,7 @@ export function RecipeBody({
               sideDishesAsLinks ? (
                 <Link
                   key={side.id}
-                  href={`/recipes/${side.id}`}
+                  href={recipeHref(side.id, side.title)}
                   className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-sm hover:bg-emerald-200 transition-colors"
                 >
                   {side.title}

@@ -10,10 +10,13 @@ import { useAuth } from '@/lib/context/AuthContext';
 import RecipeForm from '@/components/RecipeForm';
 import MainPhotoUpload from '@/components/MainPhotoUpload';
 import VisibilitySelector, { type Visibility } from '@/components/VisibilitySelector';
+import { parseRecipeId, recipeHref } from '@/lib/recipe-url';
 import EditRecipeLoading from './loading';
 
-export default function EditRecipeClient({ id }: { id: string }) {
+export default function EditRecipeClient({ id: routeParam }: { id: string }) {
+  const id = parseRecipeId(routeParam) ?? routeParam;
   const [initialData, setInitialData] = useState<RecipeFormData | null>(null);
+  const [title, setTitle] = useState<string>('');
   const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
   const [availableSideDishes, setAvailableSideDishes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +67,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
           tips?: string[];
           sideDishes?: { id: number; title: string }[];
         };
+        setTitle(detail.title);
         setCurrentMainImageUrl(detail.imageUrl ?? null);
         setVisibility((detail.visibility as Visibility) ?? 'Public');
         setGroupIds(detail.groups?.map((g) => g.id) ?? []);
@@ -127,7 +131,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
     setIsSaving(true);
     try {
       await recipeService.updateRecipe(id, { ...data, visibility, groupIds } as RecipeFormData & { visibility: Visibility; groupIds: number[] }, token || undefined);
-      router.push(`/recipes/${id}`);
+      router.push(recipeHref(Number(id), data.title));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Kunne ikke oppdatere oppskriften';
       setSaveError(message);
@@ -166,7 +170,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
         <div className="flex flex-wrap gap-3 justify-between items-center mb-6">
           <h1 className="text-2xl sm:text-4xl font-bold">Rediger oppskrift</h1>
           <Link
-            href={`/recipes/${id}`}
+            href={recipeHref(Number(id), title)}
             className="px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors text-sm sm:text-base"
           >
             ← Tilbake
@@ -198,7 +202,7 @@ export default function EditRecipeClient({ id }: { id: string }) {
           <RecipeForm
             initialData={initialData}
             onSave={handleSave}
-            onCancel={() => router.push(`/recipes/${id}`)}
+            onCancel={() => router.push(recipeHref(Number(id), title))}
             isSaving={isSaving}
             submitLabel="Lagre endringer"
             availableCategories={availableCategories}
