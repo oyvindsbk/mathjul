@@ -64,6 +64,9 @@ export default function RecipeDetailClient({ id: routeParam }: { id: string }) {
         } else {
           setRecipe(data);
           setDesiredServings(data.servings ?? 0);
+          if (routeParam === String(data.id)) {
+            router.replace(recipeHref(data.id, data.title));
+          }
         }
       } catch (err) {
         console.error('Error fetching recipe:', err);
@@ -75,7 +78,7 @@ export default function RecipeDetailClient({ id: routeParam }: { id: string }) {
 
     if (authLoading || !id) return;
     fetchRecipe();
-  }, [id, authLoading, token]);
+  }, [id, authLoading, token, routeParam, router]);
 
   if (loading) {
     return <RecipeDetailLoading />;
