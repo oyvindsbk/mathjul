@@ -293,6 +293,46 @@ export function conversionWarning(from: PanPreset | null, to: PanPreset | null):
   return `Kaken blir ${thinner} enn originalen. Følg med på steketiden.`;
 }
 
+/** A concrete oven temperature and bake-time range for one pan preset. */
+export interface BakeGuidance {
+  tempMinC: number;
+  tempMaxC: number;
+  timeMinMinutes: number;
+  timeMaxMinutes: number;
+}
+
+/**
+ * Temperature and bake-time ranges reproduced from a published Norwegian
+ * baking chart ("Grader og steketider"), keyed by preset id.
+ *
+ * A lookup, not a formula: the chart's own bands are not a function of
+ * volume — Ø26, Ø28 and Ø30 share one band, then Ø33 breaks the trend with
+ * both a lower temperature and a longer time. No volume-ratio model
+ * reproduces that, so only the chart's actual entries are encoded here.
+ *
+ * Deliberately partial. The chart's Ø23 and Ø33 rows have no matching entry
+ * in {@link PAN_PRESETS} and are omitted; brødform, stor langpanne and
+ * muffins aren't addressed by the chart at all. A preset missing here falls
+ * back to {@link conversionWarning}'s qualitative guidance — see callers.
+ */
+const BAKE_GUIDANCE: Partial<Record<string, BakeGuidance>> = {
+  "rund-24": { tempMinC: 175, tempMaxC: 180, timeMinMinutes: 30, timeMaxMinutes: 35 },
+  "rund-26": { tempMinC: 175, tempMaxC: 180, timeMinMinutes: 35, timeMaxMinutes: 40 },
+  "rund-28": { tempMinC: 175, tempMaxC: 180, timeMinMinutes: 35, timeMaxMinutes: 40 },
+  "rund-30": { tempMinC: 175, tempMaxC: 180, timeMinMinutes: 35, timeMaxMinutes: 40 },
+  "liten-langpanne-20x30": { tempMinC: 175, tempMaxC: 180, timeMinMinutes: 25, timeMaxMinutes: 30 },
+  "langpanne-30x40": { tempMinC: 160, tempMaxC: 170, timeMinMinutes: 35, timeMaxMinutes: 40 },
+};
+
+/**
+ * The chart's temperature and bake-time range for a pan, or null when the
+ * chart doesn't address that preset.
+ */
+export function bakeGuidanceFor(preset: PanPreset | null): BakeGuidance | null {
+  if (preset === null) return null;
+  return BAKE_GUIDANCE[preset.id] ?? null;
+}
+
 /**
  * Presets grouped by shape, in display order. Empty groups are omitted.
  *

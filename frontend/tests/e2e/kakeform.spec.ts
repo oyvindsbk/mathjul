@@ -175,13 +175,16 @@ test.describe('Konvertering til langpanne', () => {
       ]);
   });
 
-  test('the shape change is warned about, and the original stays marked', async ({ page }) => {
+  test('the shape change shows concrete bake guidance, and the original stays marked', async ({ page }) => {
     await openCake(page);
     await choosePan(page, 'Langpanne 30×40', 'langpanne-30x40');
 
-    await expect(velger(page).getByTestId('form-velger-warning')).toHaveText(
-      'Kaken blir tynnere enn originalen. Følg med på steketiden.'
+    // langpanne-30x40 has chart coverage (054), so its exact numbers replace
+    // the qualitative warning entirely rather than stacking with it.
+    await expect(velger(page).getByTestId('form-velger-bake-guidance')).toHaveText(
+      '160–170°C i 35–40 min'
     );
+    await expect(velger(page).getByTestId('form-velger-warning')).toHaveCount(0);
 
     // The source tin stays marked even though it is no longer selected — that
     // is the baker's way back to the amounts the recipe was written with.
@@ -203,6 +206,12 @@ test.describe('Konvertering til langpanne', () => {
       .poll(() => ingredientLines(page))
       .toEqual(['3 egg', '200 g sukker', '2 ts bakepulver', '2 dl melk', '1 ts vaniljesukker']);
     await expect(velger(page).getByTestId('form-velger-warning')).toHaveCount(0);
+    // Ø24 has chart coverage too — selecting the source pan shows its own
+    // guidance rather than nothing, since coverage doesn't depend on whether
+    // a conversion happened.
+    await expect(velger(page).getByTestId('form-velger-bake-guidance')).toHaveText(
+      '175–180°C i 30–35 min'
+    );
   });
 
   test('a modest size change scales without warning', async ({ page }) => {
@@ -210,9 +219,37 @@ test.describe('Konvertering til langpanne', () => {
     await choosePan(page, 'Rund Ø26', 'rund-26');
 
     // Same shape and the same standard depth, so nothing about the bake
-    // changes and a warning would be noise.
+    // changes and a warning would be noise. Rund-26 also has chart coverage,
+    // so its guidance shows in place of the (already-absent) warning.
     await expect(velger(page).getByTestId('form-velger-warning')).toHaveCount(0);
+    await expect(velger(page).getByTestId('form-velger-bake-guidance')).toHaveText(
+      '175–180°C i 35–40 min'
+    );
     await expect.poll(() => ingredientLines(page)).toContain('235 g sukker');
+  });
+});
+
+test.describe('Temperatur og steketid', () => {
+  test('an uncovered pan still falls back to the qualitative warning', async ({ page }) => {
+    // Stor langpanne 40x50 isn't in the reference chart (054's spec), so it
+    // must keep today's warning rather than showing nothing.
+    await openCake(page);
+    await choosePan(page, 'Stor langpanne 40×50', 'stor-langpanne-40x50');
+
+    await expect(velger(page).getByTestId('form-velger-bake-guidance')).toHaveCount(0);
+    await expect(velger(page).getByTestId('form-velger-warning')).toHaveText(
+      'Kaken blir tynnere enn originalen. Følg med på steketiden.'
+    );
+  });
+
+  test('guidance and the qualitative warning never both show', async ({ page }) => {
+    await openCake(page);
+    await choosePan(page, 'Liten langpanne 20×30', 'liten-langpanne-20x30');
+
+    await expect(velger(page).getByTestId('form-velger-bake-guidance')).toHaveText(
+      '175–180°C i 25–30 min'
+    );
+    await expect(velger(page).getByTestId('form-velger-warning')).toHaveCount(0);
   });
 });
 

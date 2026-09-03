@@ -5,6 +5,7 @@ import {
   PAN_PRESETS,
   volumeToPreset,
   conversionWarning,
+  bakeGuidanceFor,
   findPreset,
   groupedPresets,
   presetVolume,
@@ -101,7 +102,11 @@ export function FormVelger({
   // The selected tin is derived from the area rather than held in state, so the
   // picker cannot disagree with the amounts rendered beside it.
   const selected = volumeToPreset(value);
-  const warning = conversionWarning(source, selected);
+  const guidance = bakeGuidanceFor(selected);
+  // The published chart's exact numbers are strictly more useful than the
+  // qualitative warning, so they replace it rather than stack alongside it —
+  // whichever pan is selected, only one of the two ever renders.
+  const warning = guidance ? null : conversionWarning(source, selected);
 
   const select =
     size === "large"
@@ -150,6 +155,16 @@ export function FormVelger({
           </optgroup>
         ))}
       </select>
+
+      {guidance && (
+        <p
+          className="mt-3 text-sm text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2"
+          role="status"
+          data-testid="form-velger-bake-guidance"
+        >
+          {guidance.tempMinC}–{guidance.tempMaxC}°C i {guidance.timeMinMinutes}–{guidance.timeMaxMinutes} min
+        </p>
+      )}
 
       {warning && (
         <p
