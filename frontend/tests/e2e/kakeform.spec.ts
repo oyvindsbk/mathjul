@@ -367,4 +367,42 @@ test.describe('Forfatterstyrt formutvalg', () => {
     const options = await panSelect(page).locator('option').allTextContents();
     expect(options.length).toBe(PAN_PRESETS.length);
   });
+
+  test('editing a restricted recipe shows its stored subset and default, not a blank slate', async ({ page }) => {
+    // Regression guard: the edit form must populate availablePanPresetIds and
+    // defaultPanPresetId from the fetched recipe. Recipe 6 is stored with
+    // Ø24 (source) + liten langpanne + langpanne, defaulted to langpanne.
+    await openEditForm(page, RESTRICTED_CAKE_ID);
+    await expect(page.getByTestId('form-picker')).toBeVisible();
+
+    await page.getByText('Begrens tilgjengelige former').click();
+
+    await expect(page.getByRole('checkbox', { name: /Rund Ø24/ })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: 'Liten langpanne 20×30' })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: 'Langpanne 30×40' })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: 'Rund Ø26' })).not.toBeChecked();
+
+    await expect(page.getByLabel('Standardform')).toHaveValue('langpanne-30x40');
+  });
+
+  test('saving an untouched restricted recipe keeps its subset and default', async ({ page }) => {
+    // Without the fix, the edit form starts with an empty subset, and since
+    // the form posts every field on every save, an untouched edit would wipe
+    // out the author's configured restriction and default.
+    const sink: { body: Record<string, unknown> | null } = { body: null };
+    await capturePut(page, RESTRICTED_CAKE_ID, sink);
+
+    await openEditForm(page, RESTRICTED_CAKE_ID);
+    await expect(page.getByTestId('form-picker')).toBeVisible();
+    await page.getByRole('button', { name: 'Lagre endringer' }).click();
+
+    await expect.poll(() => sink.body).not.toBeNull();
+    const payload = sink.body!;
+    expect(payload.availablePanPresetIds).toEqual([
+      'rund-24',
+      'liten-langpanne-20x30',
+      'langpanne-30x40',
+    ]);
+    expect(payload.defaultPanPresetId).toBe('langpanne-30x40');
+  });
 });

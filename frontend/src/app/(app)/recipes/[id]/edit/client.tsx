@@ -65,6 +65,8 @@ export default function EditRecipeClient({ id: routeParam }: { id: string }) {
           panLength?: number | null;
           panWidth?: number | null;
           panHeight?: number | null;
+          availablePanPresetIds?: string[] | null;
+          defaultPanPresetId?: string | null;
           categories?: Category[];
           imageUrl?: string | null;
           visibility?: string;
@@ -96,6 +98,8 @@ export default function EditRecipeClient({ id: routeParam }: { id: string }) {
           panLength: detail.panLength ?? null,
           panWidth: detail.panWidth ?? null,
           panHeight: detail.panHeight ?? null,
+          availablePanPresetIds: detail.availablePanPresetIds ?? null,
+          defaultPanPresetId: detail.defaultPanPresetId ?? null,
           categoryIds: detail.categories?.map((c) => c.id) ?? [],
           // Load-bearing: the API replaces side dishes on every save, so omitting
           // this would silently drop them.

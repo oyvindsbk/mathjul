@@ -22,6 +22,15 @@ interface FormVelgerProps {
   sourceLength?: number | null;
   sourceWidth?: number | null;
   /**
+   * The recipe's own stored base volume (`recipe.servings`) — the exact
+   * number `formatIngredientParts` scales against. Selecting the source tin
+   * must reproduce this value exactly; recomputing it from `PAN_PRESETS`
+   * instead can disagree by a rounding error (the stored value may have been
+   * rounded on save), which would silently drift every ingredient amount on
+   * a round trip back to the original tin.
+   */
+  sourceVolume?: number | null;
+  /**
    * Author-curated subset of preset ids to offer. Empty/undefined means no
    * restriction — every preset is shown, today's behavior.
    */
@@ -73,6 +82,7 @@ export function FormVelger({
   sourceDiameter,
   sourceLength,
   sourceWidth,
+  sourceVolume,
   availablePanPresetIds,
   value,
   onChange,
@@ -112,7 +122,15 @@ export function FormVelger({
         value={selected?.id ?? ""}
         onChange={(e) => {
           const preset = PAN_PRESETS.find((p) => p.id === e.target.value);
-          if (preset) onChange(presetVolume(preset));
+          if (!preset) return;
+          // Re-selecting the source tin must reproduce the exact stored base,
+          // not a value recomputed from PAN_PRESETS math that can disagree
+          // with it by a rounding error — see `sourceVolume` above.
+          const volume =
+            source?.id === preset.id && typeof sourceVolume === "number" && sourceVolume > 0
+              ? sourceVolume
+              : presetVolume(preset);
+          onChange(volume);
         }}
         className={`${select} w-full rounded-lg border border-gray-300 bg-white font-medium text-gray-900`}
       >

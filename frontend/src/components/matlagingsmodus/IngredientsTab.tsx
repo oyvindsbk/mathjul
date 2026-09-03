@@ -58,6 +58,7 @@ export function IngredientsTab({
               sourceDiameter={panDiameter}
               sourceLength={panLength}
               sourceWidth={panWidth}
+              sourceVolume={servings}
               availablePanPresetIds={availablePanPresetIds}
               value={desiredServings}
               onChange={onServingsChange}
