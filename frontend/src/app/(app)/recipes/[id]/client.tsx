@@ -13,6 +13,7 @@ import type { Recipe } from "@/lib/mock-data";
 import { RecipeBody } from "@/components/RecipeBody";
 import { ShareRecipeModal } from "@/components/ShareRecipeModal";
 import { parseRecipeId, recipeHref } from "@/lib/recipe-url";
+import { PAN_PRESETS, presetVolume } from "@/lib/pan-size";
 import RecipeDetailLoading from "./loading";
 
 export default function RecipeDetailClient({ id: routeParam }: { id: string }) {
@@ -63,7 +64,10 @@ export default function RecipeDetailClient({ id: routeParam }: { id: string }) {
           setRecipe(null);
         } else {
           setRecipe(data);
-          setDesiredServings(data.servings ?? 0);
+          const defaultPreset = data.defaultPanPresetId
+            ? PAN_PRESETS.find((p) => p.id === data.defaultPanPresetId)
+            : null;
+          setDesiredServings(defaultPreset ? presetVolume(defaultPreset) : data.servings ?? 0);
           if (routeParam === String(data.id)) {
             router.replace(recipeHref(data.id, data.title));
           }

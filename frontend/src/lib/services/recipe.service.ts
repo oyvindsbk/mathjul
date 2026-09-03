@@ -35,6 +35,10 @@ export interface RecipeFormData {
   panLength?: number | null;
   panWidth?: number | null;
   panHeight?: number | null;
+  /** Author-curated subset of pan preset ids to offer. Empty/null means no restriction. */
+  availablePanPresetIds?: string[] | null;
+  /** Preset id preselected on load. Must be a member of `availablePanPresetIds` when set. */
+  defaultPanPresetId?: string | null;
   categoryIds?: number[];
   /** Ids of Tilbehør-marked recipes to attach. List order becomes the display order. */
   sideDishIds?: number[];

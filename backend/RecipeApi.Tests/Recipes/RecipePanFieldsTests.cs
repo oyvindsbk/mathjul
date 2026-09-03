@@ -18,7 +18,9 @@ public class RecipePanFieldsTests
         decimal? panLength = null,
         decimal? panWidth = null,
         decimal? panHeight = null,
-        double? servings = 452) => new()
+        double? servings = 452,
+        List<string>? availablePanPresetIds = null,
+        string? defaultPanPresetId = null) => new()
         {
             Title = "Sjokoladekake",
             QuantityType = quantityType,
@@ -27,7 +29,9 @@ public class RecipePanFieldsTests
             PanLength = panLength,
             PanWidth = panWidth,
             PanHeight = panHeight,
-            Servings = servings
+            Servings = servings,
+            AvailablePanPresetIds = availablePanPresetIds,
+            DefaultPanPresetId = defaultPanPresetId
         };
 
     // ── Validation ─────────────────────────────────────────────────────────
@@ -174,6 +178,96 @@ public class RecipePanFieldsTests
             quantityType: "porsjoner", panShape: null, panDiameter: null, servings: 4));
 
         Assert.IsType<OkObjectResult>(result.Result);
+    }
+
+    // ── Available preset subset + default ─────────────────────────────────
+
+    [Fact]
+    public async Task UpdateRecipe_UnknownPresetId_ReturnsBadRequest()
+    {
+        using var ctx = new RecipeTestContext();
+        var recipe = ctx.SeedRecipe("Sjokoladekake");
+        var controller = ctx.CreateController();
+
+        var result = await controller.UpdateRecipe(recipe.Id, UpdateRequest(
+            availablePanPresetIds: ["rund-24", "ikke-en-form"]));
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Contains("Ukjent formvariant", badRequest.Value!.ToString());
+    }
+
+    [Fact]
+    public async Task UpdateRecipe_DefaultNotInSubset_ReturnsBadRequest()
+    {
+        using var ctx = new RecipeTestContext();
+        var recipe = ctx.SeedRecipe("Sjokoladekake");
+        var controller = ctx.CreateController();
+
+        var result = await controller.UpdateRecipe(recipe.Id, UpdateRequest(
+            availablePanPresetIds: ["rund-24", "rund-26"],
+            defaultPanPresetId: "langpanne-30x40"));
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Contains("Standardformen", badRequest.Value!.ToString());
+    }
+
+    [Fact]
+    public async Task UpdateRecipe_EmptySubset_IsAccepted()
+    {
+        using var ctx = new RecipeTestContext();
+        var recipe = ctx.SeedRecipe("Sjokoladekake");
+        var controller = ctx.CreateController();
+
+        var result = await controller.UpdateRecipe(recipe.Id, UpdateRequest(
+            availablePanPresetIds: []));
+
+        Assert.IsType<OkObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task UpdateRecipe_ValidSubsetAndDefault_PersistsBoth()
+    {
+        using var ctx = new RecipeTestContext();
+        var recipe = ctx.SeedRecipe("Sjokoladekake");
+        var controller = ctx.CreateController();
+
+        var result = await controller.UpdateRecipe(recipe.Id, UpdateRequest(
+            availablePanPresetIds: ["rund-24", "rund-26", "langpanne-30x40"],
+            defaultPanPresetId: "rund-26"));
+
+        var detail = Assert.IsType<RecipeDetailDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
+        Assert.Equal(["rund-24", "rund-26", "langpanne-30x40"], detail.AvailablePanPresetIds);
+        Assert.Equal("rund-26", detail.DefaultPanPresetId);
+
+        var stored = ctx.Db.Recipes.Find(recipe.Id)!;
+        Assert.Equal(["rund-24", "rund-26", "langpanne-30x40"], stored.AvailablePanPresetIds);
+        Assert.Equal("rund-26", stored.DefaultPanPresetId);
+    }
+
+    [Fact]
+    public async Task UpdateRecipe_SwitchingAwayFromForm_ClearsAvailablePresetsAndDefault()
+    {
+        using var ctx = new RecipeTestContext();
+        var recipe = ctx.SeedRecipe("Var en kake");
+        recipe.QuantityType = "form";
+        recipe.PanShape = "rund";
+        recipe.PanDiameter = 24;
+        recipe.AvailablePanPresetIds = ["rund-24", "rund-26"];
+        recipe.DefaultPanPresetId = "rund-26";
+        ctx.Db.SaveChanges();
+
+        var controller = ctx.CreateController();
+
+        var result = await controller.UpdateRecipe(recipe.Id, UpdateRequest(
+            quantityType: "porsjoner", servings: 8));
+
+        var detail = Assert.IsType<RecipeDetailDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
+        Assert.Null(detail.AvailablePanPresetIds);
+        Assert.Null(detail.DefaultPanPresetId);
+
+        var stored = ctx.Db.Recipes.Find(recipe.Id)!;
+        Assert.Null(stored.AvailablePanPresetIds);
+        Assert.Null(stored.DefaultPanPresetId);
     }
 
     // ── Round-tripping ─────────────────────────────────────────────────────

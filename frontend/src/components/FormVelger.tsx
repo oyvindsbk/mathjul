@@ -22,6 +22,11 @@ interface FormVelgerProps {
   sourceLength?: number | null;
   sourceWidth?: number | null;
   /**
+   * Author-curated subset of preset ids to offer. Empty/undefined means no
+   * restriction — every preset is shown, today's behavior.
+   */
+  availablePanPresetIds?: readonly string[] | null;
+  /**
    * Currently selected volume in cm³ — the same `desiredServings` value the
    * servings stepper owns, so the recipe page needs no second piece of state.
    */
@@ -68,13 +73,20 @@ export function FormVelger({
   sourceDiameter,
   sourceLength,
   sourceWidth,
+  availablePanPresetIds,
   value,
   onChange,
   size = "default",
 }: FormVelgerProps) {
   const selectId = useId();
-  const groups = groupedPresets();
   const source = resolveSource(sourceShape, sourceDiameter, sourceLength, sourceWidth, value);
+  // The source tin is always offered, even if the author's subset excludes it —
+  // a recipe must always be convertible back to the tin it was written for.
+  const allowedIds =
+    availablePanPresetIds && availablePanPresetIds.length > 0 && source
+      ? Array.from(new Set([...availablePanPresetIds, source.id]))
+      : availablePanPresetIds;
+  const groups = groupedPresets(allowedIds);
 
   // The selected tin is derived from the area rather than held in state, so the
   // picker cannot disagree with the amounts rendered beside it.

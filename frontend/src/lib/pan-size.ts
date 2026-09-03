@@ -300,15 +300,26 @@ export function conversionWarning(from: PanPreset | null, to: PanPreset | null):
   return `Kaken blir ${thinner} enn originalen. Følg med på steketiden.`;
 }
 
-/** Presets grouped by shape, in display order. Empty groups are omitted. */
-export function groupedPresets(): ReadonlyArray<{
+/**
+ * Presets grouped by shape, in display order. Empty groups are omitted.
+ *
+ * @param allowedIds When given a non-empty list, only presets whose id is in
+ * it are included — the recipe author's curated subset. Omitted/empty means
+ * no restriction, today's behavior of listing every preset.
+ */
+export function groupedPresets(allowedIds?: readonly string[] | null): ReadonlyArray<{
   shape: PanShape;
   label: string;
   presets: PanPreset[];
 }> {
+  const filter =
+    allowedIds && allowedIds.length > 0
+      ? (preset: PanPreset) => allowedIds.includes(preset.id)
+      : () => true;
+
   return PAN_SHAPE_ORDER.map((shape) => ({
     shape,
     label: PAN_SHAPE_LABELS[shape],
-    presets: PAN_PRESETS.filter((preset) => preset.shape === shape),
+    presets: PAN_PRESETS.filter((preset) => preset.shape === shape && filter(preset)),
   })).filter((group) => group.presets.length > 0);
 }

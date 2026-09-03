@@ -220,6 +220,7 @@ export function RecipeBody({
                     sourceDiameter={recipe.panDiameter}
                     sourceLength={recipe.panLength}
                     sourceWidth={recipe.panWidth}
+                    availablePanPresetIds={recipe.availablePanPresetIds}
                     value={desiredServings}
                     onChange={onServingsChange ?? (() => {})}
                   />

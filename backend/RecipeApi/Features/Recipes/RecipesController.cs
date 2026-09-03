@@ -347,6 +347,8 @@ public class RecipesController : ControllerBase
             PanLength = recipe.PanLength,
             PanWidth = recipe.PanWidth,
             PanHeight = recipe.PanHeight,
+            AvailablePanPresetIds = recipe.AvailablePanPresetIds,
+            DefaultPanPresetId = recipe.DefaultPanPresetId,
             Visibility = recipe.Visibility,
             OwnerEmail = recipe.OwnerEmail,
             SourceUrl = recipe.SourceUrl,
@@ -739,7 +741,8 @@ public class RecipesController : ControllerBase
 
         var panError = ValidatePanFields(
             request.QuantityType, request.PanShape,
-            request.PanDiameter, request.PanLength, request.PanWidth, request.PanHeight);
+            request.PanDiameter, request.PanLength, request.PanWidth, request.PanHeight,
+            request.AvailablePanPresetIds, request.DefaultPanPresetId);
         if (panError != null)
             return BadRequest(new { message = panError });
 
@@ -776,6 +779,8 @@ public class RecipesController : ControllerBase
             PanLength = request.PanLength,
             PanWidth = request.PanWidth,
             PanHeight = request.PanHeight,
+            AvailablePanPresetIds = request.AvailablePanPresetIds,
+            DefaultPanPresetId = request.DefaultPanPresetId,
             ImageUrl = request.MainImageUrl,
             SourceUrl = request.SourceUrl,
             SourceImageUrl = request.SourceImageUrl,
@@ -843,6 +848,20 @@ public class RecipesController : ControllerBase
     private static readonly string[] PanShapes = ["rund", "springform", "rektangulaer", "muffins"];
 
     /// <summary>
+    /// Valid pan preset ids a recipe author may restrict <c>AvailablePanPresetIds</c> to.
+    /// Mirrors the frontend's <c>PAN_PRESETS</c> table (<c>frontend/src/lib/pan-size.ts</c>) —
+    /// the preset table itself is frontend-only (never a DB table), so this backend copy is
+    /// what validates ids, the same duplication trade-off <see cref="PanShapes"/> already makes.
+    /// </summary>
+    private static readonly string[] PanPresetIds =
+    [
+        "rund-18", "rund-20", "rund-22", "rund-24", "rund-26", "rund-28", "rund-30",
+        "springform-24", "springform-26",
+        "brodform-12x22", "liten-langpanne-20x30", "langpanne-30x40", "stor-langpanne-40x50",
+        "muffins-12"
+    ];
+
+    /// <summary>
     /// Upper bound for any pan measurement, in centimetres. Comfortably above the
     /// largest real tin, and well inside what the decimal(5,1) columns can store.
     /// </summary>
@@ -862,7 +881,9 @@ public class RecipesController : ControllerBase
         decimal? panDiameter,
         decimal? panLength,
         decimal? panWidth,
-        decimal? panHeight)
+        decimal? panHeight,
+        List<string>? availablePanPresetIds = null,
+        string? defaultPanPresetId = null)
     {
         if (quantityType != "form")
             return null;
@@ -903,6 +924,20 @@ public class RecipesController : ControllerBase
                 break;
         }
 
+        if (availablePanPresetIds is { Count: > 0 })
+        {
+            var unknown = availablePanPresetIds.FirstOrDefault(id => !PanPresetIds.Contains(id));
+            if (unknown != null)
+                return $"Ukjent formvariant: {unknown}.";
+
+            if (!string.IsNullOrWhiteSpace(defaultPanPresetId) && !availablePanPresetIds.Contains(defaultPanPresetId))
+                return "Standardformen må være en av de valgte formvariantene.";
+        }
+        else if (!string.IsNullOrWhiteSpace(defaultPanPresetId) && !PanPresetIds.Contains(defaultPanPresetId))
+        {
+            return $"Ukjent formvariant: {defaultPanPresetId}.";
+        }
+
         return null;
     }
 
@@ -920,6 +955,8 @@ public class RecipesController : ControllerBase
         recipe.PanLength = null;
         recipe.PanWidth = null;
         recipe.PanHeight = null;
+        recipe.AvailablePanPresetIds = null;
+        recipe.DefaultPanPresetId = null;
     }
 
     /// <summary>
@@ -981,7 +1018,8 @@ public class RecipesController : ControllerBase
         // the change tracker clean.
         var panError = ValidatePanFields(
             request.QuantityType, request.PanShape,
-            request.PanDiameter, request.PanLength, request.PanWidth, request.PanHeight);
+            request.PanDiameter, request.PanLength, request.PanWidth, request.PanHeight,
+            request.AvailablePanPresetIds, request.DefaultPanPresetId);
         if (panError != null)
             return BadRequest(new { message = panError });
 
@@ -1016,6 +1054,8 @@ public class RecipesController : ControllerBase
         recipe.PanLength = request.PanLength;
         recipe.PanWidth = request.PanWidth;
         recipe.PanHeight = request.PanHeight;
+        recipe.AvailablePanPresetIds = request.AvailablePanPresetIds;
+        recipe.DefaultPanPresetId = request.DefaultPanPresetId;
         ClearPanFieldsForNonForm(recipe);
         recipe.Tips = request.Tips ?? new List<string>();
         recipe.UpdatedAt = DateTime.UtcNow;
@@ -1096,6 +1136,8 @@ public class RecipesController : ControllerBase
             PanLength = recipe.PanLength,
             PanWidth = recipe.PanWidth,
             PanHeight = recipe.PanHeight,
+            AvailablePanPresetIds = recipe.AvailablePanPresetIds,
+            DefaultPanPresetId = recipe.DefaultPanPresetId,
             Visibility = recipe.Visibility,
             OwnerEmail = recipe.OwnerEmail,
             SourceUrl = recipe.SourceUrl,
@@ -1776,6 +1818,10 @@ public class RecipeDetailDto
     public decimal? PanWidth { get; set; }
     /// <summary>Tin height in cm. Carried through but not used in the scaling factor.</summary>
     public decimal? PanHeight { get; set; }
+    /// <summary>Author-curated subset of pan preset ids offered as conversion targets. Null/empty means no restriction.</summary>
+    public List<string>? AvailablePanPresetIds { get; set; }
+    /// <summary>Preset id preselected on load. Must be a member of <see cref="AvailablePanPresetIds"/> when set.</summary>
+    public string? DefaultPanPresetId { get; set; }
     public string Visibility { get; set; } = "Public";
     public string? OwnerEmail { get; set; }
     /// <summary>Owner shown by name rather than email. Null when the recipe has no owner.</summary>
@@ -1875,6 +1921,10 @@ public class SaveExtractedRecipeRequest
     public decimal? PanWidth { get; set; }
     /// <summary>Tin height in cm. Carried through but not used in the scaling factor.</summary>
     public decimal? PanHeight { get; set; }
+    /// <summary>Author-curated subset of pan preset ids offered as conversion targets. Null/empty means no restriction.</summary>
+    public List<string>? AvailablePanPresetIds { get; set; }
+    /// <summary>Preset id preselected on load. Must be a member of <see cref="AvailablePanPresetIds"/> when set.</summary>
+    public string? DefaultPanPresetId { get; set; }
     public List<int>? CategoryIds { get; set; }
     public List<string>? Tips { get; set; }
     /// <summary>Pre-uploaded blob URL from AI dish extraction (pending blob path will be renamed on save).</summary>
@@ -1912,6 +1962,10 @@ public class UpdateRecipeRequest
     public decimal? PanWidth { get; set; }
     /// <summary>Tin height in cm. Carried through but not used in the scaling factor.</summary>
     public decimal? PanHeight { get; set; }
+    /// <summary>Author-curated subset of pan preset ids offered as conversion targets. Null/empty means no restriction.</summary>
+    public List<string>? AvailablePanPresetIds { get; set; }
+    /// <summary>Preset id preselected on load. Must be a member of <see cref="AvailablePanPresetIds"/> when set.</summary>
+    public string? DefaultPanPresetId { get; set; }
     public List<int>? CategoryIds { get; set; }
     public List<string>? Tips { get; set; }
     public string? Visibility { get; set; }

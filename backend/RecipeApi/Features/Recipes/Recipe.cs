@@ -133,6 +133,21 @@ public class Recipe
     /// </summary>
     public decimal? PanHeight { get; set; }
 
+    /// <summary>
+    /// Author-curated subset of pan preset ids (see frontend <c>PAN_PRESETS</c>)
+    /// offered as conversion targets for this recipe. Null/empty means "no
+    /// restriction — offer every preset," today's behavior.
+    /// </summary>
+    public List<string>? AvailablePanPresetIds { get; set; }
+
+    /// <summary>
+    /// Preset id preselected by <c>FormVelger</c> on load. Must be a member of
+    /// <see cref="AvailablePanPresetIds"/> when that list is non-empty. Null
+    /// means "default to the recipe's own source tin," today's behavior.
+    /// </summary>
+    [StringLength(50)]
+    public string? DefaultPanPresetId { get; set; }
+
     public string? ImageUrl { get; set; }
 
     public string? SourceUrl { get; set; }

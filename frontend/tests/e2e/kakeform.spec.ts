@@ -21,6 +21,8 @@ import { test, expect, type Page } from '@playwright/test';
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5238';
 const CAKE_ID = 5;
+/** Mock recipe 6: author-restricted to Ø24 (source) + liten langpanne + langpanne, default langpanne. */
+const RESTRICTED_CAKE_ID = 6;
 
 /** Seed a token before any page script runs; both pages are behind ProtectedRoute. */
 async function seedAuth(page: Page) {
@@ -34,14 +36,14 @@ async function seedAuth(page: Page) {
   });
 }
 
-async function openCake(page: Page) {
+async function openCake(page: Page, id: number = CAKE_ID, expectedInitialPanId: string = 'rund-24') {
   await seedAuth(page);
-  await page.goto(`/recipes/${CAKE_ID}`);
+  await page.goto(`/recipes/${id}`);
   await expect(velger(page)).toBeVisible();
   // The page seeds `desiredServings` from the recipe after it loads, so the
-  // picker briefly renders before the tin is known. Waiting for the recipe's
-  // own tin to be selected means later steps act on a settled page.
-  await expect(panSelect(page)).toHaveValue('rund-24');
+  // picker briefly renders before the tin is known. Waiting for the initial
+  // tin to settle means later steps act on a settled page.
+  await expect(panSelect(page)).toHaveValue(expectedInitialPanId);
 }
 
 async function openEditForm(page: Page, id: number) {
@@ -331,5 +333,37 @@ test.describe('Kakeform i redigering', () => {
 
     expect(sink.body!.panHeight).toBe(7);
     expect(sink.body!.panDiameter).toBe(28);
+  });
+});
+
+test.describe('Forfatterstyrt formutvalg', () => {
+  test('a restricted recipe only offers its configured subset, plus the source tin', async ({ page }) => {
+    // Recipe 6 is restricted to Ø24 (its own tin) + liten langpanne + langpanne,
+    // with langpanne configured as the default — so the picker opens there
+    // rather than on the source tin.
+    await openCake(page, RESTRICTED_CAKE_ID, 'langpanne-30x40');
+
+    const options = await panSelect(page).locator('option').allTextContents();
+    expect(options.map((o) => o.trim())).toEqual([
+      'Rund Ø24 (original)',
+      'Liten langpanne 20×30',
+      'Langpanne 30×40',
+    ]);
+  });
+
+  test('the configured default is preselected on load', async ({ page }) => {
+    await openCake(page, RESTRICTED_CAKE_ID, 'langpanne-30x40');
+    // openCake already asserts the select's value; this test exists to name the
+    // behavior explicitly rather than leaving it implicit in the helper.
+    await expect(panSelect(page)).toHaveValue('langpanne-30x40');
+  });
+
+  test('a recipe with no configured subset still shows every preset', async ({ page }) => {
+    // Regression guard for 052: recipe 5 carries no availablePanPresetIds, so
+    // narrowing must never apply to it.
+    await openCake(page);
+
+    const options = await panSelect(page).locator('option').allTextContents();
+    expect(options.length).toBe(14);
   });
 });

@@ -18,6 +18,8 @@ interface IngredientsTabProps {
   panDiameter?: number | null;
   panLength?: number | null;
   panWidth?: number | null;
+  /** Author-curated subset of pan preset ids to offer. Empty/null means no restriction. */
+  availablePanPresetIds?: string[] | null;
   desiredServings: number;
   onServingsChange: (n: number) => void;
   checkedIngredients: Set<string>;
@@ -34,6 +36,7 @@ export function IngredientsTab({
   panDiameter,
   panLength,
   panWidth,
+  availablePanPresetIds,
   desiredServings,
   onServingsChange,
   checkedIngredients,
@@ -55,6 +58,7 @@ export function IngredientsTab({
               sourceDiameter={panDiameter}
               sourceLength={panLength}
               sourceWidth={panWidth}
+              availablePanPresetIds={availablePanPresetIds}
               value={desiredServings}
               onChange={onServingsChange}
               size="large"

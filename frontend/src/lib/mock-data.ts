@@ -94,6 +94,10 @@ export interface Recipe {
   panWidth?: number | null;
   /** cm. Part of the tin's volume, so it does affect scaling. */
   panHeight?: number | null;
+  /** Author-curated subset of pan preset ids to offer. Empty/null means no restriction. */
+  availablePanPresetIds?: string[] | null;
+  /** Preset id preselected on load. Must be a member of `availablePanPresetIds` when set. */
+  defaultPanPresetId?: string | null;
   imageUrl?: string | null;
   categories?: Category[];
   tips?: string[];
@@ -311,6 +315,41 @@ export const mockRecipes: Recipe[] = [
       { id: 4, name: 'Dessert', group: 'Måltidstype' },
       { id: 17, name: 'Kake', group: 'Måltidstype' },
       { id: 10, name: 'Middels', group: 'Vanskelighetsgrad' },
+      { id: 15, name: 'Over 1 time', group: 'Tilberedningstid' },
+    ],
+  },
+  {
+    // A second cake fixture, this one author-restricted to a small subset of
+    // presets plus a configured default — the 053 feature this file exists to
+    // cover. Recipe 5 stays unrestricted so it keeps guarding the regression:
+    // no configured subset must still show every preset.
+    id: 6,
+    title: 'Bringebærkake',
+    description: 'Enkel bringebærkake, best i langpanne',
+    ingredients: [
+      { quantity: 4, unit: null, name: 'egg' },
+      { quantity: 250, unit: 'g', name: 'sukker' },
+      { quantity: 3, unit: 'dl', name: 'bringebær' },
+    ],
+    instructionSteps: [
+      { text: 'Sett stekeovnen på 180°C.' },
+      { text: 'Visp egg og sukker luftig, vend inn bringebær.' },
+      { text: 'Stek i 30 minutter.' },
+    ],
+    prepTime: 15,
+    cookTimeMinutes: 30,
+    servings: 2941,
+    quantityType: 'form',
+    panShape: 'rund',
+    panDiameter: 24,
+    panHeight: 7,
+    availablePanPresetIds: ['rund-24', 'liten-langpanne-20x30', 'langpanne-30x40'],
+    defaultPanPresetId: 'langpanne-30x40',
+
+    categories: [
+      { id: 4, name: 'Dessert', group: 'Måltidstype' },
+      { id: 17, name: 'Kake', group: 'Måltidstype' },
+      { id: 9, name: 'Enkel', group: 'Vanskelighetsgrad' },
       { id: 15, name: 'Over 1 time', group: 'Tilberedningstid' },
     ],
   },
