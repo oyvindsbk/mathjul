@@ -18,11 +18,11 @@
  */
 
 /** Tin shapes. Matches `Recipe.PanShape` on the backend. */
-export type PanShape = "rund" | "springform" | "rektangulaer" | "muffins";
+export type PanShape = "rund" | "rektangulaer" | "muffins";
 
 /** The dimensions a tin can carry. Which ones are set depends on the shape. */
 export interface PanDimensions {
-  /** cm — round and springform tins. */
+  /** cm — round tins. */
   diameter?: number | null;
   /** cm — rectangular tins. */
   length?: number | null;
@@ -48,9 +48,9 @@ export interface PanPreset extends PanDimensions {
 }
 
 /**
- * Standard depth of a round tin or springform, in cm. The Norwegian scaling
- * charts this module reproduces are all quoted from a 6,5 cm round form, and
- * every published factor falls out of that assumption.
+ * Standard depth of a round tin, in cm. The Norwegian scaling charts this
+ * module reproduces are all quoted from a 6,5 cm round form, and every
+ * published factor falls out of that assumption.
  */
 export const ROUND_HEIGHT_CM = 6.5;
 
@@ -75,8 +75,6 @@ export const PAN_PRESETS: readonly PanPreset[] = [
   { id: "rund-26", label: "Rund Ø26", shape: "rund", diameter: 26, height: ROUND_HEIGHT_CM },
   { id: "rund-28", label: "Rund Ø28", shape: "rund", diameter: 28, height: ROUND_HEIGHT_CM },
   { id: "rund-30", label: "Rund Ø30", shape: "rund", diameter: 30, height: ROUND_HEIGHT_CM },
-  { id: "springform-24", label: "Springform Ø24", shape: "springform", diameter: 24, height: ROUND_HEIGHT_CM },
-  { id: "springform-26", label: "Springform Ø26", shape: "springform", diameter: 26, height: ROUND_HEIGHT_CM },
   {
     id: "brodform-12x22",
     label: "Brødform 12×22",
@@ -115,7 +113,6 @@ export const PAN_PRESETS: readonly PanPreset[] = [
 /** The shape groups, in picker display order. */
 export const PAN_SHAPE_ORDER: readonly PanShape[] = [
   "rund",
-  "springform",
   "rektangulaer",
   "muffins",
 ];
@@ -123,7 +120,6 @@ export const PAN_SHAPE_ORDER: readonly PanShape[] = [
 /** Norwegian heading for each shape group. */
 export const PAN_SHAPE_LABELS: Record<PanShape, string> = {
   rund: "Runde former",
-  springform: "Springformer",
   rektangulaer: "Langpanner og brødformer",
   muffins: "Muffins",
 };
@@ -148,8 +144,7 @@ export function panVolume(
     typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
 
   switch (shape) {
-    case "rund":
-    case "springform": {
+    case "rund": {
       const diameter = positive(dims.diameter);
       if (diameter === null) return null;
       const height = positive(dims.height) ?? ROUND_HEIGHT_CM;
@@ -214,9 +209,10 @@ export function volumeToPreset(
 /**
  * Find the preset matching a recipe's stored shape and dimensions.
  *
- * Preferred over {@link volumeToPreset} when the shape is known, because a round
- * Ø24 and a springform Ø24 have identical areas and only the shape separates
- * them. Falls back to null when the recipe describes a tin not in the list.
+ * Preferred over {@link volumeToPreset} when the shape is known, because two
+ * different tins can share a volume and only the shape (and dimensions)
+ * disambiguate them. Falls back to null when the recipe describes a tin not
+ * in the list.
  */
 export function findPreset(
   shape: PanShape | string | null | undefined,
@@ -232,7 +228,6 @@ export function findPreset(
       if (preset.shape !== shape) return false;
       switch (preset.shape) {
         case "rund":
-        case "springform":
           return sameNumber(preset.diameter, dims.diameter);
         case "rektangulaer":
           return sameNumber(preset.length, dims.length) && sameNumber(preset.width, dims.width);
@@ -257,9 +252,7 @@ const DEPTH_WARNING_THRESHOLD = 0.25;
 
 /** Shapes that behave alike in the oven, so switching between them is not a change. */
 function shapeFamily(shape: PanShape): "rund" | "rektangulaer" | "muffins" {
-  // A springform is a round tin with a removable side — same batter depth,
-  // same bake, so converting between the two warrants no warning.
-  if (shape === "rund" || shape === "springform") return "rund";
+  if (shape === "rund") return "rund";
   return shape === "muffins" ? "muffins" : "rektangulaer";
 }
 

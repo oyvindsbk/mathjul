@@ -27,8 +27,8 @@ export interface RecipeFormData {
   customUnit?: string | null;
   /**
    * The baking tin — cake recipes only. Kept alongside the volume in `servings`
-   * because volume alone is ambiguous: a round Ø24 and a springform Ø24 measure
-   * the same, and only the shape tells them apart.
+   * because volume alone is ambiguous: two different tins can measure the
+   * same, and only the shape tells them apart.
    */
   panShape?: string | null;
   panDiameter?: number | null;

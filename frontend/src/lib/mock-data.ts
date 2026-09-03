@@ -86,7 +86,7 @@ export interface Recipe {
   customUnit?: string | null;
   /** Baking tin shape — "form" recipes only. See PanShape in lib/pan-size.ts. */
   panShape?: string | null;
-  /** cm — round and springform tins. */
+  /** cm — round tins. */
   panDiameter?: number | null;
   /** cm — rectangular tins. */
   panLength?: number | null;

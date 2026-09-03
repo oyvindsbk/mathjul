@@ -845,7 +845,7 @@ public class RecipesController : ControllerBase
     /// Shapes a "form" recipe's pan is allowed to have. Values match
     /// <see cref="Recipe.PanShape"/> and the frontend's preset table.
     /// </summary>
-    private static readonly string[] PanShapes = ["rund", "springform", "rektangulaer", "muffins"];
+    private static readonly string[] PanShapes = ["rund", "rektangulaer", "muffins"];
 
     /// <summary>
     /// Valid pan preset ids a recipe author may restrict <c>AvailablePanPresetIds</c> to.
@@ -856,7 +856,6 @@ public class RecipesController : ControllerBase
     private static readonly string[] PanPresetIds =
     [
         "rund-18", "rund-20", "rund-22", "rund-24", "rund-26", "rund-28", "rund-30",
-        "springform-24", "springform-26",
         "brodform-12x22", "liten-langpanne-20x30", "langpanne-30x40", "stor-langpanne-40x50",
         "muffins-12"
     ];
@@ -908,7 +907,6 @@ public class RecipesController : ControllerBase
         switch (panShape)
         {
             case "rund":
-            case "springform":
                 if (panDiameter is null or <= 0)
                     return "Runde former må ha en diameter større enn 0.";
                 break;
@@ -1810,7 +1808,7 @@ public class RecipeDetailDto
     public string? CustomUnit { get; set; }
     /// <summary>Baking tin shape for <c>QuantityType == "form"</c>; null otherwise.</summary>
     public string? PanShape { get; set; }
-    /// <summary>Tin diameter in cm — round and springform tins.</summary>
+    /// <summary>Tin diameter in cm — round tins.</summary>
     public decimal? PanDiameter { get; set; }
     /// <summary>Tin length in cm — rectangular tins.</summary>
     public decimal? PanLength { get; set; }
@@ -1913,7 +1911,7 @@ public class SaveExtractedRecipeRequest
     public string? CustomUnit { get; set; }
     /// <summary>Baking tin shape for <c>QuantityType == "form"</c>; null otherwise.</summary>
     public string? PanShape { get; set; }
-    /// <summary>Tin diameter in cm — round and springform tins.</summary>
+    /// <summary>Tin diameter in cm — round tins.</summary>
     public decimal? PanDiameter { get; set; }
     /// <summary>Tin length in cm — rectangular tins.</summary>
     public decimal? PanLength { get; set; }
@@ -1954,7 +1952,7 @@ public class UpdateRecipeRequest
     public string? CustomUnit { get; set; }
     /// <summary>Baking tin shape for <c>QuantityType == "form"</c>; null otherwise.</summary>
     public string? PanShape { get; set; }
-    /// <summary>Tin diameter in cm — round and springform tins.</summary>
+    /// <summary>Tin diameter in cm — round tins.</summary>
     public decimal? PanDiameter { get; set; }
     /// <summary>Tin length in cm — rectangular tins.</summary>
     public decimal? PanLength { get; set; }

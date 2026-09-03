@@ -693,9 +693,9 @@ export default function RecipeForm({
   /**
    * Record the tin the recipe is authored for.
    *
-   * Stores the preset's own dimensions alongside the volume, because the volume
-   * is ambiguous on its own — a round Ø24 and a springform Ø24 are the same number
-   * — and the detail page needs the shape to mark the original tin.
+   * Stores the preset's own dimensions alongside the volume, because two
+   * different tins can share a volume — the detail page needs the shape to
+   * mark the original tin unambiguously.
    */
   const handlePanPreset = (preset: PanPreset) => {
     setFormData((prev) => ({

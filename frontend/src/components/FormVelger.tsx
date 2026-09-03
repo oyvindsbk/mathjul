@@ -40,10 +40,10 @@ interface FormVelgerProps {
 /**
  * Resolve the recipe's source tin.
  *
- * Prefers the stored shape and dimensions, because a round Ø24 and a springform
- * Ø24 have identical volumes and only the shape separates them. Falls back to
- * matching on the stored volume alone for recipes saved before the pan columns
- * existed, or for a tin whose dimensions were entered by hand.
+ * Prefers the stored shape and dimensions over the stored volume, since two
+ * different tins can share a volume. Falls back to matching on the stored
+ * volume alone for recipes saved before the pan columns existed, or for a tin
+ * whose dimensions were entered by hand.
  */
 function resolveSource(
   shape: PanShape | string | null | undefined,

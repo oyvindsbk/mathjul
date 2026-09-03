@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { PAN_PRESETS } from '../../src/lib/pan-size';
 
 /**
  * Kaker: skalering etter formstørrelse.
@@ -277,8 +278,8 @@ test.describe('Kakeform i redigering', () => {
 
     expect(payload.quantityType).toBe('form');
     expect(payload.servings).toBe(4200);
-    // The volume alone is ambiguous — a round Ø24 and a springform Ø24 are
-    // both 2941 cm³ — so the shape and its dimensions have to be stored too.
+    // The volume alone is ambiguous — different tins can share a volume —
+    // so the shape and its dimensions have to be stored too.
     expect(payload.panShape).toBe('rektangulaer');
     expect(payload.panLength).toBe(40);
     expect(payload.panWidth).toBe(30);
@@ -364,6 +365,6 @@ test.describe('Forfatterstyrt formutvalg', () => {
     await openCake(page);
 
     const options = await panSelect(page).locator('option').allTextContents();
-    expect(options.length).toBe(14);
+    expect(options.length).toBe(PAN_PRESETS.length);
   });
 });

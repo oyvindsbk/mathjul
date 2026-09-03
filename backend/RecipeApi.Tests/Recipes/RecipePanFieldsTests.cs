@@ -64,17 +64,15 @@ public class RecipePanFieldsTests
         Assert.Contains("Ukjent formtype", badRequest.Value!.ToString());
     }
 
-    [Theory]
-    [InlineData("rund")]
-    [InlineData("springform")]
-    public async Task UpdateRecipe_RoundPanWithoutDiameter_ReturnsBadRequest(string shape)
+    [Fact]
+    public async Task UpdateRecipe_RoundPanWithoutDiameter_ReturnsBadRequest()
     {
         using var ctx = new RecipeTestContext();
         var recipe = ctx.SeedRecipe("Sjokoladekake");
         var controller = ctx.CreateController();
 
         var result = await controller.UpdateRecipe(
-            recipe.Id, UpdateRequest(panShape: shape, panDiameter: null));
+            recipe.Id, UpdateRequest(panShape: "rund", panDiameter: null));
 
         var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
         Assert.Contains("diameter", badRequest.Value!.ToString());
@@ -330,7 +328,7 @@ public class RecipePanFieldsTests
         {
             Title = "Formkake",
             QuantityType = "form",
-            PanShape = "springform",
+            PanShape = "rund",
             PanDiameter = 26,
             Servings = 531
         });
@@ -338,7 +336,7 @@ public class RecipePanFieldsTests
         Assert.IsNotType<BadRequestObjectResult>(result.Result);
 
         var stored = ctx.Db.Recipes.Single(r => r.Title == "Formkake");
-        Assert.Equal("springform", stored.PanShape);
+        Assert.Equal("rund", stored.PanShape);
         Assert.Equal(26m, stored.PanDiameter);
     }
 

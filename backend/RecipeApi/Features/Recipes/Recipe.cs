@@ -110,13 +110,12 @@ public class Recipe
 
     /// <summary>
     /// Baking tin shape for <c>QuantityType == "form"</c> recipes:
-    /// "rund" | "rektangulaer" | "springform" | "muffins". Null for every other
-    /// quantity type.
+    /// "rund" | "rektangulaer" | "muffins". Null for every other quantity type.
     /// </summary>
     [StringLength(20)]
     public string? PanShape { get; set; }
 
-    /// <summary>Tin diameter in cm — round and springform tins.</summary>
+    /// <summary>Tin diameter in cm — round tins.</summary>
     public decimal? PanDiameter { get; set; }
 
     /// <summary>Tin length in cm — rectangular tins.</summary>
