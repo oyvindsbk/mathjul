@@ -102,11 +102,15 @@ export function FormVelger({
   // The selected tin is derived from the area rather than held in state, so the
   // picker cannot disagree with the amounts rendered beside it.
   const selected = volumeToPreset(value);
-  const guidance = bakeGuidanceFor(selected);
+  // Both messages are about a *conversion* — neither means anything until the
+  // reader has actually picked something other than the default, including
+  // on first load, where `selected` starts out equal to `source`.
+  const hasConverted = Boolean(selected) && selected?.id !== source?.id;
+  const guidance = hasConverted ? bakeGuidanceFor(selected) : null;
   // The published chart's exact numbers are strictly more useful than the
   // qualitative warning, so they replace it rather than stack alongside it —
   // whichever pan is selected, only one of the two ever renders.
-  const warning = guidance ? null : conversionWarning(source, selected);
+  const warning = hasConverted && !guidance ? conversionWarning(source, selected) : null;
 
   const select =
     size === "large"
@@ -148,8 +152,8 @@ export function FormVelger({
               <option key={preset.id} value={preset.id}>
                 {preset.label}
                 {/* The source tin stays marked even while another is selected,
-                    so the baker can always find their way back to the original. */}
-                {source?.id === preset.id ? " (original)" : ""}
+                    so the baker can always find their way back to the default. */}
+                {source?.id === preset.id ? " (standard)" : ""}
               </option>
             ))}
           </optgroup>

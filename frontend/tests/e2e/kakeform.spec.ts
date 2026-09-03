@@ -134,13 +134,13 @@ test.describe('Kakeoppskrift - visning', () => {
     await expect(page.getByRole('spinbutton', { name: 'Antall' })).toHaveCount(0);
   });
 
-  test('the recipe opens on its own tin, marked as the original', async ({ page }) => {
+  test('the recipe opens on its own tin, marked as the standard', async ({ page }) => {
     await openCake(page);
 
-    // The recipe's own tin is both the selection and the one marked original.
+    // The recipe's own tin is both the selection and the one marked standard.
     await expect(panSelect(page)).toHaveValue('rund-24');
     await expect(panSelect(page).locator('option[value="rund-24"]')).toHaveText(
-      'Rund Ø24 (original)'
+      'Rund Ø24 (standard)'
     );
 
     // Unscaled: the authored amounts, exactly as entered.
@@ -149,9 +149,12 @@ test.describe('Kakeoppskrift - visning', () => {
       .toEqual(['3 egg', '200 g sukker', '2 ts bakepulver', '2 dl melk', '1 ts vaniljesukker']);
   });
 
-  test('no warning is shown before anything is converted', async ({ page }) => {
+  test('no warning or guidance is shown before anything is converted', async ({ page }) => {
+    // Selecting the default itself — including on first load — is not a
+    // conversion, so neither message shows.
     await openCake(page);
     await expect(velger(page).getByTestId('form-velger-warning')).toHaveCount(0);
+    await expect(velger(page).getByTestId('form-velger-bake-guidance')).toHaveCount(0);
   });
 });
 
@@ -175,7 +178,7 @@ test.describe('Konvertering til langpanne', () => {
       ]);
   });
 
-  test('the shape change shows concrete bake guidance, and the original stays marked', async ({ page }) => {
+  test('the shape change shows concrete bake guidance, and the standard stays marked', async ({ page }) => {
     await openCake(page);
     await choosePan(page, 'Langpanne 30×40', 'langpanne-30x40');
 
@@ -189,29 +192,26 @@ test.describe('Konvertering til langpanne', () => {
     // The source tin stays marked even though it is no longer selected — that
     // is the baker's way back to the amounts the recipe was written with.
     await expect(panSelect(page).locator('option[value="rund-24"]')).toHaveText(
-      'Rund Ø24 (original)'
+      'Rund Ø24 (standard)'
     );
   });
 
-  test('converting back to the original restores the authored amounts', async ({ page }) => {
+  test('converting back to the standard restores the authored amounts and hides both messages', async ({ page }) => {
     await openCake(page);
     await choosePan(page, 'Langpanne 30×40', 'langpanne-30x40');
     await expect.poll(() => ingredientLines(page)).toContain('4 egg');
 
-    await choosePan(page, 'Rund Ø24 (original)', 'rund-24');
+    await choosePan(page, 'Rund Ø24 (standard)', 'rund-24');
 
     // Rounding is applied to each conversion independently rather than
     // accumulated, so a round trip lands back on the original numbers.
     await expect
       .poll(() => ingredientLines(page))
       .toEqual(['3 egg', '200 g sukker', '2 ts bakepulver', '2 dl melk', '1 ts vaniljesukker']);
+    // Ø24 has chart coverage, but it's the standard pan again — no message,
+    // covered or not, shows for the pan the reader isn't converting away from.
     await expect(velger(page).getByTestId('form-velger-warning')).toHaveCount(0);
-    // Ø24 has chart coverage too — selecting the source pan shows its own
-    // guidance rather than nothing, since coverage doesn't depend on whether
-    // a conversion happened.
-    await expect(velger(page).getByTestId('form-velger-bake-guidance')).toHaveText(
-      '175–180°C i 30–35 min'
-    );
+    await expect(velger(page).getByTestId('form-velger-bake-guidance')).toHaveCount(0);
   });
 
   test('a modest size change scales without warning', async ({ page }) => {
@@ -238,7 +238,7 @@ test.describe('Temperatur og steketid', () => {
 
     await expect(velger(page).getByTestId('form-velger-bake-guidance')).toHaveCount(0);
     await expect(velger(page).getByTestId('form-velger-warning')).toHaveText(
-      'Kaken blir tynnere enn originalen. Følg med på steketiden.'
+      'Kaken blir tynnere enn standardstørrelsen. Følg med på steketiden.'
     );
   });
 
@@ -383,7 +383,7 @@ test.describe('Forfatterstyrt formutvalg', () => {
 
     const options = await panSelect(page).locator('option').allTextContents();
     expect(options.map((o) => o.trim())).toEqual([
-      'Rund Ø24 (original)',
+      'Rund Ø24 (standard)',
       'Liten langpanne 20×30',
       'Langpanne 30×40',
     ]);

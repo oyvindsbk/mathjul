@@ -290,7 +290,7 @@ export function conversionWarning(from: PanPreset | null, to: PanPreset | null):
   // Shallower batter bakes faster, deeper batter slower — say which, since that
   // is the only thing the baker has to act on.
   const thinner = toHeight < fromHeight ? "tynnere" : "tykkere";
-  return `Kaken blir ${thinner} enn originalen. Følg med på steketiden.`;
+  return `Kaken blir ${thinner} enn standardstørrelsen. Følg med på steketiden.`;
 }
 
 /** A concrete oven temperature and bake-time range for one pan preset. */
