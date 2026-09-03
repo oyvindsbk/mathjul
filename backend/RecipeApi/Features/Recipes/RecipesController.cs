@@ -348,7 +348,6 @@ public class RecipesController : ControllerBase
             PanWidth = recipe.PanWidth,
             PanHeight = recipe.PanHeight,
             AvailablePanPresetIds = recipe.AvailablePanPresetIds,
-            DefaultPanPresetId = recipe.DefaultPanPresetId,
             Visibility = recipe.Visibility,
             OwnerEmail = recipe.OwnerEmail,
             SourceUrl = recipe.SourceUrl,
@@ -742,7 +741,7 @@ public class RecipesController : ControllerBase
         var panError = ValidatePanFields(
             request.QuantityType, request.PanShape,
             request.PanDiameter, request.PanLength, request.PanWidth, request.PanHeight,
-            request.AvailablePanPresetIds, request.DefaultPanPresetId);
+            request.AvailablePanPresetIds);
         if (panError != null)
             return BadRequest(new { message = panError });
 
@@ -780,7 +779,6 @@ public class RecipesController : ControllerBase
             PanWidth = request.PanWidth,
             PanHeight = request.PanHeight,
             AvailablePanPresetIds = request.AvailablePanPresetIds,
-            DefaultPanPresetId = request.DefaultPanPresetId,
             ImageUrl = request.MainImageUrl,
             SourceUrl = request.SourceUrl,
             SourceImageUrl = request.SourceImageUrl,
@@ -881,8 +879,7 @@ public class RecipesController : ControllerBase
         decimal? panLength,
         decimal? panWidth,
         decimal? panHeight,
-        List<string>? availablePanPresetIds = null,
-        string? defaultPanPresetId = null)
+        List<string>? availablePanPresetIds = null)
     {
         if (quantityType != "form")
             return null;
@@ -927,13 +924,6 @@ public class RecipesController : ControllerBase
             var unknown = availablePanPresetIds.FirstOrDefault(id => !PanPresetIds.Contains(id));
             if (unknown != null)
                 return $"Ukjent formvariant: {unknown}.";
-
-            if (!string.IsNullOrWhiteSpace(defaultPanPresetId) && !availablePanPresetIds.Contains(defaultPanPresetId))
-                return "Standardformen må være en av de valgte formvariantene.";
-        }
-        else if (!string.IsNullOrWhiteSpace(defaultPanPresetId) && !PanPresetIds.Contains(defaultPanPresetId))
-        {
-            return $"Ukjent formvariant: {defaultPanPresetId}.";
         }
 
         return null;
@@ -954,7 +944,6 @@ public class RecipesController : ControllerBase
         recipe.PanWidth = null;
         recipe.PanHeight = null;
         recipe.AvailablePanPresetIds = null;
-        recipe.DefaultPanPresetId = null;
     }
 
     /// <summary>
@@ -1017,7 +1006,7 @@ public class RecipesController : ControllerBase
         var panError = ValidatePanFields(
             request.QuantityType, request.PanShape,
             request.PanDiameter, request.PanLength, request.PanWidth, request.PanHeight,
-            request.AvailablePanPresetIds, request.DefaultPanPresetId);
+            request.AvailablePanPresetIds);
         if (panError != null)
             return BadRequest(new { message = panError });
 
@@ -1053,7 +1042,6 @@ public class RecipesController : ControllerBase
         recipe.PanWidth = request.PanWidth;
         recipe.PanHeight = request.PanHeight;
         recipe.AvailablePanPresetIds = request.AvailablePanPresetIds;
-        recipe.DefaultPanPresetId = request.DefaultPanPresetId;
         ClearPanFieldsForNonForm(recipe);
         recipe.Tips = request.Tips ?? new List<string>();
         recipe.UpdatedAt = DateTime.UtcNow;
@@ -1135,7 +1123,6 @@ public class RecipesController : ControllerBase
             PanWidth = recipe.PanWidth,
             PanHeight = recipe.PanHeight,
             AvailablePanPresetIds = recipe.AvailablePanPresetIds,
-            DefaultPanPresetId = recipe.DefaultPanPresetId,
             Visibility = recipe.Visibility,
             OwnerEmail = recipe.OwnerEmail,
             SourceUrl = recipe.SourceUrl,
@@ -1818,8 +1805,6 @@ public class RecipeDetailDto
     public decimal? PanHeight { get; set; }
     /// <summary>Author-curated subset of pan preset ids offered as conversion targets. Null/empty means no restriction.</summary>
     public List<string>? AvailablePanPresetIds { get; set; }
-    /// <summary>Preset id preselected on load. Must be a member of <see cref="AvailablePanPresetIds"/> when set.</summary>
-    public string? DefaultPanPresetId { get; set; }
     public string Visibility { get; set; } = "Public";
     public string? OwnerEmail { get; set; }
     /// <summary>Owner shown by name rather than email. Null when the recipe has no owner.</summary>
@@ -1921,8 +1906,6 @@ public class SaveExtractedRecipeRequest
     public decimal? PanHeight { get; set; }
     /// <summary>Author-curated subset of pan preset ids offered as conversion targets. Null/empty means no restriction.</summary>
     public List<string>? AvailablePanPresetIds { get; set; }
-    /// <summary>Preset id preselected on load. Must be a member of <see cref="AvailablePanPresetIds"/> when set.</summary>
-    public string? DefaultPanPresetId { get; set; }
     public List<int>? CategoryIds { get; set; }
     public List<string>? Tips { get; set; }
     /// <summary>Pre-uploaded blob URL from AI dish extraction (pending blob path will be renamed on save).</summary>
@@ -1962,8 +1945,6 @@ public class UpdateRecipeRequest
     public decimal? PanHeight { get; set; }
     /// <summary>Author-curated subset of pan preset ids offered as conversion targets. Null/empty means no restriction.</summary>
     public List<string>? AvailablePanPresetIds { get; set; }
-    /// <summary>Preset id preselected on load. Must be a member of <see cref="AvailablePanPresetIds"/> when set.</summary>
-    public string? DefaultPanPresetId { get; set; }
     public List<int>? CategoryIds { get; set; }
     public List<string>? Tips { get; set; }
     public string? Visibility { get; set; }

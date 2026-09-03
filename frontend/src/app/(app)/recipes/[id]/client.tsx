@@ -13,7 +13,6 @@ import type { Recipe } from "@/lib/mock-data";
 import { RecipeBody } from "@/components/RecipeBody";
 import { ShareRecipeModal } from "@/components/ShareRecipeModal";
 import { parseRecipeId, recipeHref } from "@/lib/recipe-url";
-import { PAN_PRESETS, findPreset, presetVolume } from "@/lib/pan-size";
 import RecipeDetailLoading from "./loading";
 
 export default function RecipeDetailClient({ id: routeParam }: { id: string }) {
@@ -64,26 +63,11 @@ export default function RecipeDetailClient({ id: routeParam }: { id: string }) {
           setRecipe(null);
         } else {
           setRecipe(data);
-          const defaultPreset = data.defaultPanPresetId
-            ? PAN_PRESETS.find((p) => p.id === data.defaultPanPresetId)
-            : null;
-          // Preselecting the source tin must reproduce the exact stored base
-          // rather than a value recomputed from PAN_PRESETS math, which can
-          // disagree with it by a rounding error and drift every ingredient
-          // amount on the very first render.
-          const sourcePreset = findPreset(data.panShape, {
-            diameter: data.panDiameter,
-            length: data.panLength,
-            width: data.panWidth,
-          });
-          const defaultIsSource = defaultPreset && sourcePreset?.id === defaultPreset.id;
-          setDesiredServings(
-            defaultPreset
-              ? defaultIsSource
-                ? data.servings ?? presetVolume(defaultPreset)
-                : presetVolume(defaultPreset)
-              : data.servings ?? 0
-          );
+          // A cake opens on the tin it was authored for, which is the one and
+          // only default. Seeded from the stored volume rather than recomputed
+          // from PAN_PRESETS, since the two can disagree by a rounding error
+          // and drift every ingredient amount on the very first render.
+          setDesiredServings(data.servings ?? 0);
           if (routeParam === String(data.id)) {
             router.replace(recipeHref(data.id, data.title));
           }

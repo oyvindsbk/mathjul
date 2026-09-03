@@ -19,8 +19,7 @@ public class RecipePanFieldsTests
         decimal? panWidth = null,
         decimal? panHeight = null,
         double? servings = 452,
-        List<string>? availablePanPresetIds = null,
-        string? defaultPanPresetId = null) => new()
+        List<string>? availablePanPresetIds = null) => new()
         {
             Title = "Sjokoladekake",
             QuantityType = quantityType,
@@ -30,8 +29,7 @@ public class RecipePanFieldsTests
             PanWidth = panWidth,
             PanHeight = panHeight,
             Servings = servings,
-            AvailablePanPresetIds = availablePanPresetIds,
-            DefaultPanPresetId = defaultPanPresetId
+            AvailablePanPresetIds = availablePanPresetIds
         };
 
     // ── Validation ─────────────────────────────────────────────────────────
@@ -178,7 +176,7 @@ public class RecipePanFieldsTests
         Assert.IsType<OkObjectResult>(result.Result);
     }
 
-    // ── Available preset subset + default ─────────────────────────────────
+    // ── Available preset subset ────────────────────────────────────────────
 
     [Fact]
     public async Task UpdateRecipe_UnknownPresetId_ReturnsBadRequest()
@@ -195,21 +193,6 @@ public class RecipePanFieldsTests
     }
 
     [Fact]
-    public async Task UpdateRecipe_DefaultNotInSubset_ReturnsBadRequest()
-    {
-        using var ctx = new RecipeTestContext();
-        var recipe = ctx.SeedRecipe("Sjokoladekake");
-        var controller = ctx.CreateController();
-
-        var result = await controller.UpdateRecipe(recipe.Id, UpdateRequest(
-            availablePanPresetIds: ["rund-24", "rund-26"],
-            defaultPanPresetId: "langpanne-30x40"));
-
-        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
-        Assert.Contains("Standardformen", badRequest.Value!.ToString());
-    }
-
-    [Fact]
     public async Task UpdateRecipe_EmptySubset_IsAccepted()
     {
         using var ctx = new RecipeTestContext();
@@ -223,27 +206,24 @@ public class RecipePanFieldsTests
     }
 
     [Fact]
-    public async Task UpdateRecipe_ValidSubsetAndDefault_PersistsBoth()
+    public async Task UpdateRecipe_ValidSubset_Persists()
     {
         using var ctx = new RecipeTestContext();
         var recipe = ctx.SeedRecipe("Sjokoladekake");
         var controller = ctx.CreateController();
 
         var result = await controller.UpdateRecipe(recipe.Id, UpdateRequest(
-            availablePanPresetIds: ["rund-24", "rund-26", "langpanne-30x40"],
-            defaultPanPresetId: "rund-26"));
+            availablePanPresetIds: ["rund-24", "rund-26", "langpanne-30x40"]));
 
         var detail = Assert.IsType<RecipeDetailDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
         Assert.Equal(["rund-24", "rund-26", "langpanne-30x40"], detail.AvailablePanPresetIds);
-        Assert.Equal("rund-26", detail.DefaultPanPresetId);
 
         var stored = ctx.Db.Recipes.Find(recipe.Id)!;
         Assert.Equal(["rund-24", "rund-26", "langpanne-30x40"], stored.AvailablePanPresetIds);
-        Assert.Equal("rund-26", stored.DefaultPanPresetId);
     }
 
     [Fact]
-    public async Task UpdateRecipe_SwitchingAwayFromForm_ClearsAvailablePresetsAndDefault()
+    public async Task UpdateRecipe_SwitchingAwayFromForm_ClearsAvailablePresets()
     {
         using var ctx = new RecipeTestContext();
         var recipe = ctx.SeedRecipe("Var en kake");
@@ -251,7 +231,6 @@ public class RecipePanFieldsTests
         recipe.PanShape = "rund";
         recipe.PanDiameter = 24;
         recipe.AvailablePanPresetIds = ["rund-24", "rund-26"];
-        recipe.DefaultPanPresetId = "rund-26";
         ctx.Db.SaveChanges();
 
         var controller = ctx.CreateController();
@@ -261,11 +240,9 @@ public class RecipePanFieldsTests
 
         var detail = Assert.IsType<RecipeDetailDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
         Assert.Null(detail.AvailablePanPresetIds);
-        Assert.Null(detail.DefaultPanPresetId);
 
         var stored = ctx.Db.Recipes.Find(recipe.Id)!;
         Assert.Null(stored.AvailablePanPresetIds);
-        Assert.Null(stored.DefaultPanPresetId);
     }
 
     // ── Round-tripping ─────────────────────────────────────────────────────

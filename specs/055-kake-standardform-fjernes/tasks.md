@@ -16,7 +16,7 @@
       how guidance is triggered — guidance now only appears after switching
       to a *different* covered preset and back.
 
-- [ ] Task 2: Remove the "Standardform" `<select>` block and its supporting
+- [x] Task 2: Remove the "Standardform" `<select>` block and its supporting
       code from `RecipeForm.tsx` — `handleTogglePanPreset`'s
       `defaultPanPresetId` bookkeeping, the `(formData.availablePanPresetIds
       ?? []).length > 0` conditional block that rendered the select, and the

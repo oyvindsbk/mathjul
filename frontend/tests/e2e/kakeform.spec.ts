@@ -22,7 +22,7 @@ import { PAN_PRESETS } from '../../src/lib/pan-size';
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5238';
 const CAKE_ID = 5;
-/** Mock recipe 6: author-restricted to Ø24 (source) + liten langpanne + langpanne, default langpanne. */
+/** Mock recipe 6: author-restricted to Ø24 (its own tin) + liten langpanne + langpanne. */
 const RESTRICTED_CAKE_ID = 6;
 
 /** Seed a token before any page script runs; both pages are behind ProtectedRoute. */
@@ -375,11 +375,11 @@ test.describe('Kakeform i redigering', () => {
 });
 
 test.describe('Forfatterstyrt formutvalg', () => {
-  test('a restricted recipe only offers its configured subset, plus the source tin', async ({ page }) => {
-    // Recipe 6 is restricted to Ø24 (its own tin) + liten langpanne + langpanne,
-    // with langpanne configured as the default — so the picker opens there
-    // rather than on the source tin.
-    await openCake(page, RESTRICTED_CAKE_ID, 'langpanne-30x40');
+  test('a restricted recipe only offers its configured subset, plus its own tin', async ({ page }) => {
+    // Recipe 6 is restricted to Ø24 (its own tin) + liten langpanne +
+    // langpanne. There is no separate default any more (055): the picker
+    // opens on the recipe's own tin, which is the only default there is.
+    await openCake(page, RESTRICTED_CAKE_ID, 'rund-24');
 
     const options = await panSelect(page).locator('option').allTextContents();
     expect(options.map((o) => o.trim())).toEqual([
@@ -387,13 +387,6 @@ test.describe('Forfatterstyrt formutvalg', () => {
       'Liten langpanne 20×30',
       'Langpanne 30×40',
     ]);
-  });
-
-  test('the configured default is preselected on load', async ({ page }) => {
-    await openCake(page, RESTRICTED_CAKE_ID, 'langpanne-30x40');
-    // openCake already asserts the select's value; this test exists to name the
-    // behavior explicitly rather than leaving it implicit in the helper.
-    await expect(panSelect(page)).toHaveValue('langpanne-30x40');
   });
 
   test('a recipe with no configured subset still shows every preset', async ({ page }) => {
@@ -405,10 +398,10 @@ test.describe('Forfatterstyrt formutvalg', () => {
     expect(options.length).toBe(PAN_PRESETS.length);
   });
 
-  test('editing a restricted recipe shows its stored subset and default, not a blank slate', async ({ page }) => {
-    // Regression guard: the edit form must populate availablePanPresetIds and
-    // defaultPanPresetId from the fetched recipe. Recipe 6 is stored with
-    // Ø24 (source) + liten langpanne + langpanne, defaulted to langpanne.
+  test('editing a restricted recipe shows its stored subset, not a blank slate', async ({ page }) => {
+    // Regression guard: the edit form must populate availablePanPresetIds
+    // from the fetched recipe. Recipe 6 is stored with Ø24 (its own tin) +
+    // liten langpanne + langpanne.
     await openEditForm(page, RESTRICTED_CAKE_ID);
     await expect(page.getByTestId('form-picker')).toBeVisible();
 
@@ -419,13 +412,15 @@ test.describe('Forfatterstyrt formutvalg', () => {
     await expect(page.getByRole('checkbox', { name: 'Langpanne 30×40' })).toBeChecked();
     await expect(page.getByRole('checkbox', { name: 'Rund Ø26' })).not.toBeChecked();
 
-    await expect(page.getByLabel('Standardform')).toHaveValue('langpanne-30x40');
+    // 055 removed the separate "Standardform" selector — the recipe's own tin
+    // is the only default, so there is nothing left to choose here.
+    await expect(page.getByLabel('Standardform')).toHaveCount(0);
   });
 
-  test('saving an untouched restricted recipe keeps its subset and default', async ({ page }) => {
+  test('saving an untouched restricted recipe keeps its subset', async ({ page }) => {
     // Without the fix, the edit form starts with an empty subset, and since
     // the form posts every field on every save, an untouched edit would wipe
-    // out the author's configured restriction and default.
+    // out the author's configured restriction.
     const sink: { body: Record<string, unknown> | null } = { body: null };
     await capturePut(page, RESTRICTED_CAKE_ID, sink);
 
@@ -440,6 +435,6 @@ test.describe('Forfatterstyrt formutvalg', () => {
       'liten-langpanne-20x30',
       'langpanne-30x40',
     ]);
-    expect(payload.defaultPanPresetId).toBe('langpanne-30x40');
+    expect(payload.defaultPanPresetId).toBeUndefined();
   });
 });

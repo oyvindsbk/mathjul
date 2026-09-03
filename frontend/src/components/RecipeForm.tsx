@@ -685,7 +685,7 @@ export default function RecipeForm({
         ? {}
         : {
             panShape: null, panDiameter: null, panLength: null, panWidth: null, panHeight: null,
-            availablePanPresetIds: null, defaultPanPresetId: null,
+            availablePanPresetIds: null,
           }),
     }));
   };
@@ -715,22 +715,15 @@ export default function RecipeForm({
    * Toggle one preset in/out of the author-curated subset. The recipe's own
    * source preset can't be unchecked here — the checkbox rendering it disabled
    * is what enforces that, not this handler.
-   *
-   * Unchecking the current default clears it (falls back to the source tin);
-   * checking the first-ever preset makes it the default automatically, since a
-   * one-item subset has an obvious default.
    */
   const handleTogglePanPreset = (presetId: string, checked: boolean) => {
     setFormData((prev) => {
       const current = prev.availablePanPresetIds ?? [];
-      const next = checked ? [...current, presetId] : current.filter((id) => id !== presetId);
-      const defaultStillValid = next.length === 0 || (prev.defaultPanPresetId && next.includes(prev.defaultPanPresetId));
       return {
         ...prev,
-        availablePanPresetIds: next,
-        defaultPanPresetId: defaultStillValid
-          ? prev.defaultPanPresetId
-          : (next.length === 1 ? next[0] : null),
+        availablePanPresetIds: checked
+          ? [...current, presetId]
+          : current.filter((id) => id !== presetId),
       };
     });
   };
@@ -1219,9 +1212,9 @@ export default function RecipeForm({
               <p className="mt-2 text-sm text-amber-700">Velg en bakeform for kakeoppskriften.</p>
             )}
 
-            {/* Collapsed by default: most authors never touch this, and fourteen
-                checkboxes plus a default-selector is a lot of vertical space to
-                show unconditionally on an already long form. */}
+            {/* Collapsed by default: most authors never touch this, and a
+                checkbox per preset is a lot of vertical space to show
+                unconditionally on an already long form. */}
             <details className="mt-4 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
               <summary className="text-sm font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
                 Begrens tilgjengelige former
@@ -1246,7 +1239,7 @@ export default function RecipeForm({
                               onChange={(e) => handleTogglePanPreset(preset.id, e.target.checked)}
                             />
                             {preset.label}
-                            {isSource && <span className="text-xs text-gray-400">(original)</span>}
+                            {isSource && <span className="text-xs text-gray-400">(standard)</span>}
                           </label>
                         );
                       })}
@@ -1255,26 +1248,6 @@ export default function RecipeForm({
                 ))}
               </div>
 
-              {(formData.availablePanPresetIds ?? []).length > 0 && (
-                <div className="mt-3">
-                  <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1" htmlFor="default-pan-preset">
-                    Standardform
-                  </label>
-                  <select
-                    id="default-pan-preset"
-                    value={formData.defaultPanPresetId ?? ''}
-                    onChange={(e) => handleField('defaultPanPresetId', e.target.value === '' ? null : e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-                  >
-                    <option value="">Ingen (bruk originalformen)</option>
-                    {PAN_PRESETS
-                      .filter((preset) => (formData.availablePanPresetIds ?? []).includes(preset.id))
-                      .map((preset) => (
-                        <option key={preset.id} value={preset.id}>{preset.label}</option>
-                      ))}
-                  </select>
-                </div>
-              )}
             </details>
           </div>
         ) : (

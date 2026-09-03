@@ -96,8 +96,6 @@ export interface Recipe {
   panHeight?: number | null;
   /** Author-curated subset of pan preset ids to offer. Empty/null means no restriction. */
   availablePanPresetIds?: string[] | null;
-  /** Preset id preselected on load. Must be a member of `availablePanPresetIds` when set. */
-  defaultPanPresetId?: string | null;
   imageUrl?: string | null;
   categories?: Category[];
   tips?: string[];
@@ -320,9 +318,9 @@ export const mockRecipes: Recipe[] = [
   },
   {
     // A second cake fixture, this one author-restricted to a small subset of
-    // presets plus a configured default — the 053 feature this file exists to
-    // cover. Recipe 5 stays unrestricted so it keeps guarding the regression:
-    // no configured subset must still show every preset.
+    // presets — the 053 feature this file exists to cover. Recipe 5 stays
+    // unrestricted so it keeps guarding the regression: no configured subset
+    // must still show every preset.
     id: 6,
     title: 'Bringebærkake',
     description: 'Enkel bringebærkake, best i langpanne',
@@ -344,7 +342,6 @@ export const mockRecipes: Recipe[] = [
     panDiameter: 24,
     panHeight: 7,
     availablePanPresetIds: ['rund-24', 'liten-langpanne-20x30', 'langpanne-30x40'],
-    defaultPanPresetId: 'langpanne-30x40',
 
     categories: [
       { id: 4, name: 'Dessert', group: 'Måltidstype' },
