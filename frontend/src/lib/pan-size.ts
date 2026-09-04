@@ -10,8 +10,13 @@
  * Volume rather than footprint, because depth is not constant across shapes: a
  * langpanne is roughly half the depth of a round tin, and scaling by area alone
  * overstates the batter by ~75% on a round→langpanne conversion. The published
- * Norwegian scaling charts all assume a 6,5 cm round form and are reproduced by
- * this module to one decimal.
+ * Norwegian scaling charts all assume a 6,5 cm round form. Round→round and
+ * square→square conversions fall out of the volume model exactly, matching
+ * every row of the published scaling charts to their stated decimal. The
+ * langpanne conversions do not: Idun's own figures there are mutually
+ * inconsistent (their liten-langpanne table implies a Ø24 of 3000 cm³, their
+ * stor-langpanne table implies 2800), so those factors are taken from the
+ * charts directly rather than computed — see {@link CHART_FACTORS}.
  *
  * Presets live here rather than in the database because they are display
  * constants, never referenced by foreign key.
@@ -40,7 +45,7 @@ export interface PanDimensions {
 export interface PanPreset extends PanDimensions {
   /** Stable identifier, safe to use as a React key or a select value. */
   id: string;
-  /** Norwegian display name, e.g. "Rund Ø24" or "Langpanne 30×40". */
+  /** Norwegian display name, e.g. "Rund Ø24" or "Stor langpanne 30×40". */
   label: string;
   shape: PanShape;
   /** Number of muffins — muffin tins only. */
@@ -67,22 +72,22 @@ export const MUFFIN_VOLUME_CM3 = 100;
  * shape group. Areas are computed, never hardcoded, so a preset cannot drift
  * out of sync with its own dimensions.
  */
+/**
+ * The tins offered by the picker, in the order they are shown within each
+ * shape group.
+ *
+ * Limited to the tins the published Idun charts actually cover. A tin absent
+ * from the charts has no verified multiplier, and inventing one from raw
+ * geometry is what produced visibly wrong amounts before — better to offer
+ * fewer tins than to scale a recipe by a factor nobody has checked.
+ */
 export const PAN_PRESETS: readonly PanPreset[] = [
-  { id: "rund-18", label: "Rund Ø18", shape: "rund", diameter: 18, height: ROUND_HEIGHT_CM },
   { id: "rund-20", label: "Rund Ø20", shape: "rund", diameter: 20, height: ROUND_HEIGHT_CM },
-  { id: "rund-22", label: "Rund Ø22", shape: "rund", diameter: 22, height: ROUND_HEIGHT_CM },
+  { id: "rund-23", label: "Rund Ø23", shape: "rund", diameter: 23, height: ROUND_HEIGHT_CM },
   { id: "rund-24", label: "Rund Ø24", shape: "rund", diameter: 24, height: ROUND_HEIGHT_CM },
   { id: "rund-26", label: "Rund Ø26", shape: "rund", diameter: 26, height: ROUND_HEIGHT_CM },
   { id: "rund-28", label: "Rund Ø28", shape: "rund", diameter: 28, height: ROUND_HEIGHT_CM },
   { id: "rund-30", label: "Rund Ø30", shape: "rund", diameter: 30, height: ROUND_HEIGHT_CM },
-  {
-    id: "brodform-12x22",
-    label: "Brødform 12×22",
-    shape: "rektangulaer",
-    length: 22,
-    width: 12,
-    height: 7,
-  },
   {
     id: "liten-langpanne-20x30",
     label: "Liten langpanne 20×30",
@@ -92,23 +97,64 @@ export const PAN_PRESETS: readonly PanPreset[] = [
     height: 5,
   },
   {
-    id: "langpanne-30x40",
-    label: "Langpanne 30×40",
+    id: "stor-langpanne-30x40",
+    label: "Stor langpanne 30×40",
     shape: "rektangulaer",
     length: 40,
     width: 30,
     height: 3.5,
   },
-  {
-    id: "stor-langpanne-40x50",
-    label: "Stor langpanne 40×50",
-    shape: "rektangulaer",
-    length: 50,
-    width: 40,
-    height: 3.5,
-  },
-  { id: "muffins-12", label: "Muffins 12 stk", shape: "muffins", count: 12 },
 ] as const;
+
+/**
+ * Ingredient multipliers taken verbatim from the Idun conversion charts,
+ * keyed `${fromPresetId}->${toPresetId}`.
+ *
+ * A lookup rather than arithmetic, because the charts and the volume model
+ * disagree on the langpanne rows and the charts are internally inconsistent
+ * with each other: the liten-langpanne table treats a 6,5 cm Ø24 round as
+ * 3 litres (Ø24 → ×1), while the stor-langpanne table implies 2,8 litres for
+ * the same tin (Ø24 → ×1,5 against 4,2 l). No single volume reproduces both,
+ * so where a chart states a factor, the chart wins — it is what bakers follow.
+ *
+ * Round→round and square→square conversions are absent here on purpose: those
+ * charts agree with {@link panVolume} at every row, so the volume model
+ * already reproduces them.
+ */
+const CHART_FACTORS: Readonly<Record<string, number>> = {
+  "rund-20->liten-langpanne-20x30": 1.5,
+  "rund-23->liten-langpanne-20x30": 1.1,
+  "rund-24->liten-langpanne-20x30": 1,
+  "rund-26->liten-langpanne-20x30": 0.9,
+  "rund-28->liten-langpanne-20x30": 0.8,
+  "rund-30->liten-langpanne-20x30": 0.7,
+  "rund-20->stor-langpanne-30x40": 2.1,
+  "rund-23->stor-langpanne-30x40": 1.6,
+  "rund-24->stor-langpanne-30x40": 1.5,
+  "rund-26->stor-langpanne-30x40": 1.2,
+  "rund-28->stor-langpanne-30x40": 1,
+  "rund-30->stor-langpanne-30x40": 0.9,
+};
+
+/**
+ * The published multiplier for converting between two tins, or null when the
+ * charts don't cover that pair (in which case the volume ratio applies).
+ *
+ * Reversible: a chart row read backwards is the reciprocal, which is how the
+ * langpanne→round direction is served without a second table.
+ */
+export function chartFactor(from: PanPreset | null, to: PanPreset | null): number | null {
+  if (from === null || to === null) return null;
+  if (from.id === to.id) return 1;
+
+  const forward = CHART_FACTORS[`${from.id}->${to.id}`];
+  if (typeof forward === "number") return forward;
+
+  const reverse = CHART_FACTORS[`${to.id}->${from.id}`];
+  if (typeof reverse === "number" && reverse > 0) return 1 / reverse;
+
+  return null;
+}
 
 /** The shape groups, in picker display order. */
 export const PAN_SHAPE_ORDER: readonly PanShape[] = [
@@ -131,7 +177,8 @@ export const PAN_SHAPE_LABELS: Record<PanShape, string> = {
  * Volume, not footprint: a langpanne is roughly half the depth of a round tin,
  * so scaling by area alone overstates the batter by ~75% on exactly the
  * conversion this feature exists for. The published Norwegian charts are all
- * reproduced to one decimal by this function — see the tests.
+ * reproduced by this function for round and square tins; the langpanne rows
+ * come from {@link CHART_FACTORS} instead — see the module docstring.
  *
  * A missing height falls back to the standard depth for the shape, so a recipe
  * saved before heights existed still scales sensibly.
@@ -310,10 +357,8 @@ export interface BakeGuidance {
  * both a lower temperature and a longer time. No volume-ratio model
  * reproduces that, so only the chart's actual entries are encoded here.
  *
- * Deliberately partial. The chart's Ø23 and Ø33 rows have no matching entry
- * in {@link PAN_PRESETS} and are omitted; brødform, stor langpanne and
- * muffins aren't addressed by the chart at all. A preset missing here falls
- * back to {@link conversionWarning}'s qualitative guidance — see callers.
+ * Deliberately partial: the chart has no row for Ø20 or Ø23, so those presets
+ * fall back to {@link conversionWarning}'s qualitative guidance — see callers.
  */
 const BAKE_GUIDANCE: Partial<Record<string, BakeGuidance>> = {
   "rund-24": { tempMinC: 175, tempMaxC: 180, timeMinMinutes: 30, timeMaxMinutes: 35 },
@@ -321,7 +366,7 @@ const BAKE_GUIDANCE: Partial<Record<string, BakeGuidance>> = {
   "rund-28": { tempMinC: 175, tempMaxC: 180, timeMinMinutes: 35, timeMaxMinutes: 40 },
   "rund-30": { tempMinC: 175, tempMaxC: 180, timeMinMinutes: 35, timeMaxMinutes: 40 },
   "liten-langpanne-20x30": { tempMinC: 175, tempMaxC: 180, timeMinMinutes: 25, timeMaxMinutes: 30 },
-  "langpanne-30x40": { tempMinC: 160, tempMaxC: 170, timeMinMinutes: 35, timeMaxMinutes: 40 },
+  "stor-langpanne-30x40": { tempMinC: 160, tempMaxC: 170, timeMinMinutes: 35, timeMaxMinutes: 40 },
 };
 
 /**

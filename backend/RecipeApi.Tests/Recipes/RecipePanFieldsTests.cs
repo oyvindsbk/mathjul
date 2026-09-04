@@ -213,13 +213,13 @@ public class RecipePanFieldsTests
         var controller = ctx.CreateController();
 
         var result = await controller.UpdateRecipe(recipe.Id, UpdateRequest(
-            availablePanPresetIds: ["rund-24", "rund-26", "langpanne-30x40"]));
+            availablePanPresetIds: ["rund-24", "rund-26", "stor-langpanne-30x40"]));
 
         var detail = Assert.IsType<RecipeDetailDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
-        Assert.Equal(["rund-24", "rund-26", "langpanne-30x40"], detail.AvailablePanPresetIds);
+        Assert.Equal(["rund-24", "rund-26", "stor-langpanne-30x40"], detail.AvailablePanPresetIds);
 
         var stored = ctx.Db.Recipes.Find(recipe.Id)!;
-        Assert.Equal(["rund-24", "rund-26", "langpanne-30x40"], stored.AvailablePanPresetIds);
+        Assert.Equal(["rund-24", "rund-26", "stor-langpanne-30x40"], stored.AvailablePanPresetIds);
     }
 
     [Fact]

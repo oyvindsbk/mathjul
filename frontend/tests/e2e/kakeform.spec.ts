@@ -13,11 +13,12 @@ import { PAN_PRESETS } from '../../src/lib/pan-size';
  * standard 6,5 cm depth (2941 cm³) whose five ingredients cover one rounding
  * class each — countable, gram, spoon and decilitre.
  *
- * Converting Ø24 to langpanne 30×40 gives 4200/2941 ≈ 1.428 — the published
- * Norwegian charts quote 1,5 for this conversion, rounded up from their own
- * stated 4,2-litre pan. Every expected amount below is the unit-aware rounding
- * of the true factor, never a hand-rounded one, so errors cannot compound down
- * the list.
+ * Converting Ø24 to stor langpanne 30×40 uses the published Idun factor of
+ * exactly 1,5. The raw volume ratio (4200/2941 ≈ 1.428) disagrees, and the
+ * charts win: they are what bakers follow, and the charts' own langpanne rows
+ * are mutually inconsistent with any single volume. Every expected amount
+ * below is the unit-aware rounding of that factor, so errors cannot compound
+ * down the list.
  */
 
 const API = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:5238';
@@ -161,28 +162,28 @@ test.describe('Kakeoppskrift - visning', () => {
 test.describe('Konvertering til langpanne', () => {
   test('every amount is scaled and rounded to something measurable', async ({ page }) => {
     await openCake(page);
-    await choosePan(page, 'Langpanne 30×40', 'langpanne-30x40');
+    await choosePan(page, 'Stor langpanne 30×40', 'stor-langpanne-30x40');
 
-    // 4200/2941 = 1.4281. Each amount is rounded against its own unit:
-    // 3 egg -> 4.28 -> 4 (countable, whole); 200 g -> 285.6 -> 285 (nearest
-    // 5); 2 ts -> 2.86 -> 2 3/4 and 2 dl -> 2.86 -> 2 3/4 (nearest spoon
-    // step); 1 ts -> 1.43 -> 1 1/2 (likewise).
+    // The chart's factor is exactly 1,5. Each amount is rounded against its
+    // own unit: 3 egg -> 4.5 -> 5 (countable, whole); 200 g -> 300 (nearest
+    // 5); 2 ts -> 3 and 2 dl -> 3 (whole, no fractional part); 1 ts -> 1.5 ->
+    // 1 1/2 (nearest spoon step).
     await expect
       .poll(() => ingredientLines(page))
       .toEqual([
-        '4 egg',
-        '285 g sukker',
-        '2 3/4 ts bakepulver',
-        '2 3/4 dl melk',
+        '5 egg',
+        '300 g sukker',
+        '3 ts bakepulver',
+        '3 dl melk',
         '1 1/2 ts vaniljesukker',
       ]);
   });
 
   test('the shape change shows concrete bake guidance, and the standard stays marked', async ({ page }) => {
     await openCake(page);
-    await choosePan(page, 'Langpanne 30×40', 'langpanne-30x40');
+    await choosePan(page, 'Stor langpanne 30×40', 'stor-langpanne-30x40');
 
-    // langpanne-30x40 has chart coverage (054), so its exact numbers replace
+    // stor-langpanne-30x40 has chart coverage (054), so its exact numbers replace
     // the qualitative warning entirely rather than stacking with it.
     await expect(velger(page).getByTestId('form-velger-bake-guidance')).toHaveText(
       '160–170°C i 35–40 min'
@@ -198,8 +199,8 @@ test.describe('Konvertering til langpanne', () => {
 
   test('converting back to the standard restores the authored amounts and hides both messages', async ({ page }) => {
     await openCake(page);
-    await choosePan(page, 'Langpanne 30×40', 'langpanne-30x40');
-    await expect.poll(() => ingredientLines(page)).toContain('4 egg');
+    await choosePan(page, 'Stor langpanne 30×40', 'stor-langpanne-30x40');
+    await expect.poll(() => ingredientLines(page)).toContain('5 egg');
 
     await choosePan(page, 'Rund Ø24 (standard)', 'rund-24');
 
@@ -231,14 +232,30 @@ test.describe('Konvertering til langpanne', () => {
 
 test.describe('Temperatur og steketid', () => {
   test('an uncovered pan still falls back to the qualitative warning', async ({ page }) => {
-    // Stor langpanne 40x50 isn't in the reference chart (054's spec), so it
-    // must keep today's warning rather than showing nothing.
+    // Ø20 has a conversion multiplier but no row in the temperature chart, so
+    // it must keep the qualitative warning rather than showing nothing.
     await openCake(page);
-    await choosePan(page, 'Stor langpanne 40×50', 'stor-langpanne-40x50');
+    await choosePan(page, 'Rund Ø20', 'rund-20');
 
     await expect(velger(page).getByTestId('form-velger-bake-guidance')).toHaveCount(0);
-    await expect(velger(page).getByTestId('form-velger-warning')).toHaveText(
-      'Kaken blir tynnere enn standardstørrelsen. Følg med på steketiden.'
+  });
+
+  test('an equivalent tin stays selected and leaves the amounts alone', async ({ page }) => {
+    // Idun converts Ø24 to a liten langpanne at exactly ×1, so both tins scale
+    // to the same volume. The picker used to derive its selection from that
+    // volume and would snap straight back to Ø24, leaving the reader unable to
+    // choose the langpanne at all.
+    await openCake(page);
+    await choosePan(page, 'Liten langpanne 20×30', 'liten-langpanne-20x30');
+
+    await expect(panSelect(page)).toHaveValue('liten-langpanne-20x30');
+    // ×1 means every amount is the authored one — unchanged, but not because
+    // nothing happened: the tin really did change, and the guidance says so.
+    await expect
+      .poll(() => ingredientLines(page))
+      .toEqual(['3 egg', '200 g sukker', '2 ts bakepulver', '2 dl melk', '1 ts vaniljesukker']);
+    await expect(velger(page).getByTestId('form-velger-bake-guidance')).toHaveText(
+      '175–180°C i 25–30 min'
     );
   });
 
@@ -256,20 +273,20 @@ test.describe('Temperatur og steketid', () => {
 test.describe('Skalerte mengder i trinn', () => {
   test('the spoken label carries the same rounded amount as the visible text', async ({ page }) => {
     await openCake(page);
-    await choosePan(page, 'Langpanne 30×40', 'langpanne-30x40');
+    await choosePan(page, 'Stor langpanne 30×40', 'stor-langpanne-30x40');
 
     // The visible step text and the checkbox's aria-label are produced by two
     // different helpers — resolveStepSegments and stepPlainText — and only the
-    // first used to round. A screen reader announcing "4.2842 egg" beside a
-    // visible "4 egg" is the bug this guards.
-    const expected = 'Trinn 2: Visp 4 egg og sukker til eggedosis.';
+    // first used to round. A screen reader announcing "4.5 egg" beside a
+    // visible "5 egg" is the bug this guards.
+    const expected = 'Trinn 2: Visp 5 egg og sukker til eggedosis.';
     await expect(
       page.locator(`input[type="checkbox"][aria-label="${expected}"]`)
     ).toHaveCount(1);
 
     // And the text beside it agrees, so the two helpers cannot drift apart
     // without one of these failing.
-    await expect(page.getByRole('main').getByText('Visp 4 egg og sukker til eggedosis.')).toBeVisible();
+    await expect(page.getByRole('main').getByText('Visp 5 egg og sukker til eggedosis.')).toBeVisible();
   });
 });
 
@@ -307,7 +324,7 @@ test.describe('Kakeform i redigering', () => {
     await openEditForm(page, CAKE_ID);
     await expect(page.getByTestId('form-picker')).toBeVisible();
 
-    await formPanSelect(page).selectOption({ label: 'Langpanne 30×40' });
+    await formPanSelect(page).selectOption({ label: 'Stor langpanne 30×40' });
     await page.getByRole('button', { name: 'Lagre endringer' }).click();
 
     await expect.poll(() => sink.body).not.toBeNull();
@@ -385,7 +402,7 @@ test.describe('Forfatterstyrt formutvalg', () => {
     expect(options.map((o) => o.trim())).toEqual([
       'Rund Ø24 (standard)',
       'Liten langpanne 20×30',
-      'Langpanne 30×40',
+      'Stor langpanne 30×40',
     ]);
   });
 
@@ -409,7 +426,7 @@ test.describe('Forfatterstyrt formutvalg', () => {
 
     await expect(page.getByRole('checkbox', { name: /Rund Ø24/ })).toBeChecked();
     await expect(page.getByRole('checkbox', { name: 'Liten langpanne 20×30' })).toBeChecked();
-    await expect(page.getByRole('checkbox', { name: 'Langpanne 30×40' })).toBeChecked();
+    await expect(page.getByRole('checkbox', { name: 'Stor langpanne 30×40' })).toBeChecked();
     await expect(page.getByRole('checkbox', { name: 'Rund Ø26' })).not.toBeChecked();
 
     // 055 removed the separate "Standardform" selector — the recipe's own tin
@@ -433,7 +450,7 @@ test.describe('Forfatterstyrt formutvalg', () => {
     expect(payload.availablePanPresetIds).toEqual([
       'rund-24',
       'liten-langpanne-20x30',
-      'langpanne-30x40',
+      'stor-langpanne-30x40',
     ]);
     expect(payload.defaultPanPresetId).toBeUndefined();
   });

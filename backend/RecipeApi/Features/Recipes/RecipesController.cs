@@ -847,15 +847,16 @@ public class RecipesController : ControllerBase
 
     /// <summary>
     /// Valid pan preset ids a recipe author may restrict <c>AvailablePanPresetIds</c> to.
+    /// Limited to the tins the published Idun conversion charts cover — a tin with no
+    /// charted multiplier has no verified scaling factor, so it is not offered at all.
     /// Mirrors the frontend's <c>PAN_PRESETS</c> table (<c>frontend/src/lib/pan-size.ts</c>) —
     /// the preset table itself is frontend-only (never a DB table), so this backend copy is
     /// what validates ids, the same duplication trade-off <see cref="PanShapes"/> already makes.
     /// </summary>
     private static readonly string[] PanPresetIds =
     [
-        "rund-18", "rund-20", "rund-22", "rund-24", "rund-26", "rund-28", "rund-30",
-        "brodform-12x22", "liten-langpanne-20x30", "langpanne-30x40", "stor-langpanne-40x50",
-        "muffins-12"
+        "rund-20", "rund-23", "rund-24", "rund-26", "rund-28", "rund-30",
+        "liten-langpanne-20x30", "stor-langpanne-30x40"
     ];
 
     /// <summary>

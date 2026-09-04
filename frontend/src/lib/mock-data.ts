@@ -341,7 +341,7 @@ export const mockRecipes: Recipe[] = [
     panShape: 'rund',
     panDiameter: 24,
     panHeight: 7,
-    availablePanPresetIds: ['rund-24', 'liten-langpanne-20x30', 'langpanne-30x40'],
+    availablePanPresetIds: ['rund-24', 'liten-langpanne-20x30', 'stor-langpanne-30x40'],
 
     categories: [
       { id: 4, name: 'Dessert', group: 'Måltidstype' },

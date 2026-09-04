@@ -28,15 +28,22 @@ export function formatQuantity(quantity: number): string {
  */
 const COUNTABLE_UNITS: ReadonlySet<string> = new Set(["", "stk", "plate", "plater", "egg"]);
 
-/** Units measured in grams, where 5 g is finer than any kitchen scale needs. */
-const GRAM_UNITS: ReadonlySet<string> = new Set(["g", "gram"]);
+/**
+ * Units measured in grams, where 5 g is finer than any kitchen scale needs.
+ *
+ * Several spellings, because the unit field is free text from AI extraction:
+ * the same recipe can carry "g" on one ingredient and "gr" on the next, and a
+ * spelling missing here falls through to the unrounded fallback and renders
+ * amounts like "306.02 gr".
+ */
+const GRAM_UNITS: ReadonlySet<string> = new Set(["g", "gr", "gram", "grams", "grammer"]);
 
 /**
  * Bulk units where the number is already small, so two decimals is precise
  * enough and rounding harder would distort the recipe (0.5 kg must not
  * become 1 kg).
  */
-const BULK_UNITS: ReadonlySet<string> = new Set(["kg", "l", "liter"]);
+const BULK_UNITS: ReadonlySet<string> = new Set(["kg", "kilo", "l", "liter", "litre"]);
 
 /**
  * Units a cook measures with a spoon or a decilitre cup. These have no
@@ -103,7 +110,10 @@ export function roundForUnit(quantity: number, unit: string | null | undefined):
     return rounded > 0 ? rounded : SPOON_STEPS[0];
   }
 
-  return quantity;
+  // Unknown unit: the field is free text, so we cannot pick a sensible kitchen
+  // step. Still round to one decimal — the raw ratio of two pan volumes is
+  // never round, and "306.02" reads as a bug even when the arithmetic is right.
+  return parseFloat(quantity.toFixed(1));
 }
 
 /**

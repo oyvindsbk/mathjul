@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import {
   PAN_PRESETS,
   volumeToPreset,
@@ -9,6 +9,7 @@ import {
   findPreset,
   groupedPresets,
   presetVolume,
+  chartFactor,
   type PanPreset,
   type PanShape,
 } from "@/lib/pan-size";
@@ -91,6 +92,28 @@ export function FormVelger({
 }: FormVelgerProps) {
   const selectId = useId();
   const source = resolveSource(sourceShape, sourceDiameter, sourceLength, sourceWidth, value);
+  // The recipe's own base volume — the number every conversion scales from.
+  const base =
+    typeof sourceVolume === "number" && sourceVolume > 0
+      ? sourceVolume
+      : source
+        ? presetVolume(source)
+        : null;
+
+  /**
+   * The volume to scale by when this tin is selected.
+   *
+   * Where Idun publishes a multiplier for the conversion, it is `base ×
+   * factor`, so the pipeline's division yields exactly the chart's figure.
+   * The volume model disagrees with the charts on the langpanne rows, and the
+   * charts are what bakers follow — see `chartFactor`. Everything else falls
+   * back to the tin's own volume.
+   */
+  const volumeFor = (preset: PanPreset): number => {
+    if (source?.id === preset.id && base !== null) return base;
+    const factor = chartFactor(source, preset);
+    return factor !== null && base !== null ? base * factor : presetVolume(preset);
+  };
   // The source tin is always offered, even if the author's subset excludes it —
   // a recipe must always be convertible back to the tin it was written for.
   const allowedIds =
@@ -99,9 +122,28 @@ export function FormVelger({
       : availablePanPresetIds;
   const groups = groupedPresets(allowedIds);
 
-  // The selected tin is derived from the area rather than held in state, so the
-  // picker cannot disagree with the amounts rendered beside it.
-  const selected = volumeToPreset(value);
+  // The picked tin is remembered rather than inferred from the volume.
+  //
+  // Deriving it worked while every tin had a distinct volume, but the charts
+  // make tins deliberately equivalent — Idun converts Ø24 to a liten langpanne
+  // at ×1, so both land on the same number and the volume can no longer say
+  // which one the reader chose. Picking the langpanne would silently snap the
+  // dropdown back to Ø24.
+  //
+  // `value` stays the single source of truth for the amounts; this only
+  // records which of the tins sharing that volume is on screen.
+  const [pickedId, setPickedId] = useState<string | null>(null);
+
+  // A `value` that no longer matches the remembered tin means it changed
+  // elsewhere (the cooking overlay and the recipe page share this state), so
+  // the pick is stale and the volume decides again.
+  const pickedPreset = pickedId
+    ? (PAN_PRESETS.find((preset) => preset.id === pickedId) ?? null)
+    : null;
+  const selected =
+    pickedPreset !== null && Math.abs(volumeFor(pickedPreset) - value) < 0.5
+      ? pickedPreset
+      : volumeToPreset(value);
   // Both messages are about a *conversion* — neither means anything until the
   // reader has actually picked something other than the default, including
   // on first load, where `selected` starts out equal to `source`.
@@ -135,11 +177,8 @@ export function FormVelger({
           // Re-selecting the source tin must reproduce the exact stored base,
           // not a value recomputed from PAN_PRESETS math that can disagree
           // with it by a rounding error — see `sourceVolume` above.
-          const volume =
-            source?.id === preset.id && typeof sourceVolume === "number" && sourceVolume > 0
-              ? sourceVolume
-              : presetVolume(preset);
-          onChange(volume);
+          setPickedId(preset.id);
+          onChange(volumeFor(preset));
         }}
         className={`${select} w-full rounded-lg border border-gray-300 bg-white font-medium text-gray-900`}
       >
