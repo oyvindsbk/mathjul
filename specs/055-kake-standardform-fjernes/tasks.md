@@ -38,7 +38,7 @@
       recipe keeps its subset and default'` drops its
       `defaultPanPresetId` expectation).
 
-- [ ] Task 3: Retire `DefaultPanPresetId` on the backend. Remove the property
+- [x] Task 3: Retire `DefaultPanPresetId` on the backend. Remove the property
       from `Recipe.cs`. Remove it from `RecipeDetailDto`,
       `SaveExtractedRecipeRequest`, `UpdateRecipeRequest`, and every
       assignment/read site in `RecipesController.cs` (create, update, both
