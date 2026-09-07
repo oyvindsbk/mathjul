@@ -8,6 +8,7 @@ import type { Recipe, Category } from '@/lib/mock-data';
 import { recipeHref } from '@/lib/recipe-url';
 import SnurrLoading from './loading';
 import FilterPanel from './FilterPanel';
+import OptionList, { type OptionCandidate } from './OptionList';
 
 const MAX_SEGMENTS = 20;
 
@@ -31,6 +32,7 @@ export default function SnurrClient() {
   const [ingredientNamesByRecipe, setIngredientNamesByRecipe] = useState<Record<number, string[]>>({});
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
   const [selectedIngredients, setSelectedIngredients] = useState<string[]>([]);
+  const [excludedRecipeIds, setExcludedRecipeIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [spinning, setSpinning] = useState(false);
@@ -83,6 +85,18 @@ export default function SnurrClient() {
     setSelectedRecipe(null);
   }
 
+  function toggleRecipeExclusion(id: number) {
+    setExcludedRecipeIds(prev =>
+      prev.includes(id) ? prev.filter(r => r !== id) : [...prev, id]
+    );
+    setSelectedRecipe(null);
+  }
+
+  function includeAllRecipes() {
+    setExcludedRecipeIds([]);
+    setSelectedRecipe(null);
+  }
+
   const allIngredientNames = useMemo(() => {
     const names = new Set<string>();
     for (const recipeNames of Object.values(ingredientNamesByRecipe)) {
@@ -104,9 +118,14 @@ export default function SnurrClient() {
     return categoryOk && ingredientsOk;
   });
 
-  const recipes = filteredRecipes.slice(0, MAX_SEGMENTS);
+  const wheelCandidates = filteredRecipes.slice(0, MAX_SEGMENTS);
 
-  const segments = recipes;
+  const candidatesWithColor: OptionCandidate[] = wheelCandidates.map((recipe, i) => ({
+    recipe,
+    color: SEGMENT_COLORS[i % SEGMENT_COLORS.length],
+  }));
+
+  const segments = candidatesWithColor.filter(c => !excludedRecipeIds.includes(c.recipe.id));
   const segmentAngle = segments.length > 0 ? 360 / segments.length : 0;
 
   const hasActiveFilters = selectedCategoryIds.length > 0 || selectedIngredients.length > 0;
@@ -140,7 +159,7 @@ export default function SnurrClient() {
 
     setTimeout(() => {
       setSpinning(false);
-      setSelectedRecipe(segments[winnerIndex]);
+      setSelectedRecipe(segments[winnerIndex].recipe);
     }, SPIN_DURATION + 50);
   }
 
@@ -159,7 +178,7 @@ export default function SnurrClient() {
     );
   }
 
-  if (segments.length < 2) {
+  if (wheelCandidates.length < 2) {
     const reason = hasActiveFilters
       ? 'Ingen oppskrifter matcher filtrene dine. Prøv å fjerne noen filtre.'
       : 'Du trenger minst 2 oppskrifter som matcher filtrene dine for å snurre mathjulet.';
@@ -195,10 +214,50 @@ export default function SnurrClient() {
     );
   }
 
+  if (segments.length < 2) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-12 px-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="mb-6">
+            <Link href="/" className="text-blue-600 hover:underline text-sm">
+              ← Tilbake til oppskrifter
+            </Link>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 text-center mb-2">
+            Snurr mathjulet 🎡
+          </h1>
+          <p className="text-gray-600 text-center mb-6">
+            Usikker på hva det skal bli i kveld? Snurr mathjulet og la tilfeldighetene bestemme middagen — eller bruk filtrene for å styre litt selv.
+          </p>
+          <FilterPanel
+            categories={categories}
+            selectedCategoryIds={selectedCategoryIds}
+            onToggleCategory={toggleCategory}
+            allIngredientNames={allIngredientNames}
+            selectedIngredients={selectedIngredients}
+            onToggleIngredient={toggleIngredient}
+            onClearAll={clearAllFilters}
+          />
+          <div className="text-center mb-6">
+            <p className="text-2xl mb-2">🍽️</p>
+            <p className="text-gray-700 mb-4">
+              Du har valgt bort for mange alternativer. Du trenger minst 2 inkluderte oppskrifter for å snurre mathjulet.
+            </p>
+          </div>
+          <OptionList
+            candidates={candidatesWithColor}
+            excludedRecipeIds={excludedRecipeIds}
+            onToggleRecipe={toggleRecipeExclusion}
+            onIncludeAll={includeAllRecipes}
+          />
+        </div>
+      </div>
+    );
+  }
+
   // Build conic-gradient stops
   const gradientStops = segments
-    .map((_, i) => {
-      const color = SEGMENT_COLORS[i % SEGMENT_COLORS.length];
+    .map(({ color }, i) => {
       const start = i * segmentAngle;
       const end = (i + 1) * segmentAngle;
       return `${color} ${start}deg ${end}deg`;
@@ -282,22 +341,13 @@ export default function SnurrClient() {
             </div>
           </div>
 
-          {/* Legend */}
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5">
-            {segments.map((recipe, i) => (
-              <div key={recipe.id} className="flex items-center gap-2 min-w-0">
-                <span
-                  className="shrink-0 rounded-full"
-                  style={{
-                    width: 10,
-                    height: 10,
-                    background: SEGMENT_COLORS[i % SEGMENT_COLORS.length],
-                  }}
-                />
-                <span className="text-sm text-gray-700 truncate">{recipe.title}</span>
-              </div>
-            ))}
-          </div>
+          {/* Options */}
+          <OptionList
+            candidates={candidatesWithColor}
+            excludedRecipeIds={excludedRecipeIds}
+            onToggleRecipe={toggleRecipeExclusion}
+            onIncludeAll={includeAllRecipes}
+          />
 
           {/* Spin button */}
           {!selectedRecipe && (
