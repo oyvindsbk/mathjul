@@ -186,7 +186,7 @@ export function RecipeBody({
             <span className="text-lg font-semibold">{recipe.prepTime} min</span>
           </div>
         )}
-        {recipe.cookTimeMinutes && (
+        {!recipe.noCookTime && recipe.cookTimeMinutes && (
           <div
             className="flex items-center gap-1.5 text-gray-900"
             title="Steketid"
@@ -222,6 +222,7 @@ export function RecipeBody({
                     sourceWidth={recipe.panWidth}
                     sourceVolume={recipe.servings}
                     availablePanPresetIds={recipe.availablePanPresetIds}
+                    noCookTime={recipe.noCookTime}
                     value={desiredServings}
                     onChange={onServingsChange ?? (() => {})}
                   />

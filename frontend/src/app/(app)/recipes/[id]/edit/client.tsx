@@ -66,6 +66,7 @@ export default function EditRecipeClient({ id: routeParam }: { id: string }) {
           panWidth?: number | null;
           panHeight?: number | null;
           availablePanPresetIds?: string[] | null;
+          noCookTime?: boolean;
           categories?: Category[];
           imageUrl?: string | null;
           visibility?: string;
@@ -98,6 +99,9 @@ export default function EditRecipeClient({ id: routeParam }: { id: string }) {
           panWidth: detail.panWidth ?? null,
           panHeight: detail.panHeight ?? null,
           availablePanPresetIds: detail.availablePanPresetIds ?? null,
+          // Load-bearing for the same reason as panShape above: the save posts
+          // every field, so omitting this would silently clear the flag.
+          noCookTime: detail.noCookTime ?? false,
           categoryIds: detail.categories?.map((c) => c.id) ?? [],
           // Load-bearing: the API replaces side dishes on every save, so omitting
           // this would silently drop them.

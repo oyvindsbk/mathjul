@@ -254,6 +254,7 @@ export function MatlagingsmodusOverlay({
                 panLength={recipe.panLength}
                 panWidth={recipe.panWidth}
                 availablePanPresetIds={recipe.availablePanPresetIds}
+                noCookTime={recipe.noCookTime}
                 desiredServings={desiredServings}
                 onServingsChange={onServingsChange}
                 checkedIngredients={checkedIngredients}

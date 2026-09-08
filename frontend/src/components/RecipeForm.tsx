@@ -685,7 +685,7 @@ export default function RecipeForm({
         ? {}
         : {
             panShape: null, panDiameter: null, panLength: null, panWidth: null, panHeight: null,
-            availablePanPresetIds: null,
+            availablePanPresetIds: null, noCookTime: false,
           }),
     }));
   };
@@ -1249,6 +1249,15 @@ export default function RecipeForm({
               </div>
 
             </details>
+
+            <label className="mt-4 flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <input
+                type="checkbox"
+                checked={formData.noCookTime ?? false}
+                onChange={(e) => handleField('noCookTime', e.target.checked)}
+              />
+              Ingen steketid (f.eks. iskake)
+            </label>
           </div>
         ) : (
           <div className="flex gap-2">
@@ -1275,7 +1284,7 @@ export default function RecipeForm({
       </div>
 
       {/* Prep Time, Cook Time */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className={formData.quantityType === 'form' && formData.noCookTime ? 'grid grid-cols-1 gap-4' : 'grid grid-cols-2 gap-4'}>
         <div>
           <label className="block text-sm font-medium mb-2">Forberedelsestid (min)</label>
           <input
@@ -1285,15 +1294,17 @@ export default function RecipeForm({
             className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
           />
         </div>
-        <div>
-          <label className="block text-sm font-medium mb-2">Steketid (min)</label>
-          <input
-            type="number"
-            value={formData.cookTime ?? ''}
-            onChange={(e) => handleField('cookTime', parseInt(e.target.value) || null)}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
-          />
-        </div>
+        {!(formData.quantityType === 'form' && formData.noCookTime) && (
+          <div>
+            <label className="block text-sm font-medium mb-2">Steketid (min)</label>
+            <input
+              type="number"
+              value={formData.cookTime ?? ''}
+              onChange={(e) => handleField('cookTime', parseInt(e.target.value) || null)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800"
+            />
+          </div>
+        )}
       </div>
 
       {/* Ingredients */}

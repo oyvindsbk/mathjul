@@ -37,6 +37,8 @@ export interface RecipeFormData {
   panHeight?: number | null;
   /** Author-curated subset of pan preset ids to offer. Empty/null means no restriction. */
   availablePanPresetIds?: string[] | null;
+  /** True when this "form" recipe has no meaningful cooking time (e.g. an iskake). */
+  noCookTime?: boolean;
   categoryIds?: number[];
   /** Ids of Tilbehør-marked recipes to attach. List order becomes the display order. */
   sideDishIds?: number[];
@@ -67,6 +69,7 @@ interface SharedRecipeDto {
   panLength?: number | null;
   panWidth?: number | null;
   panHeight?: number | null;
+  noCookTime?: boolean;
   ingredients: StructuredIngredient[];
   instructionSteps: InstructionStep[];
   ingredientSections: IngredientSection[];
@@ -447,6 +450,7 @@ class RecipeService {
         panLength: dto.panLength,
         panWidth: dto.panWidth,
         panHeight: dto.panHeight,
+        noCookTime: dto.noCookTime,
         imageUrl: dto.imageUrl,
         tips: dto.tips,
         sideDishes: dto.sideDishes.map((title, index) => ({ id: index, title })),

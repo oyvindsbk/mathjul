@@ -20,6 +20,8 @@ interface IngredientsTabProps {
   panWidth?: number | null;
   /** Author-curated subset of pan preset ids to offer. Empty/null means no restriction. */
   availablePanPresetIds?: string[] | null;
+  /** True when the recipe has no meaningful cooking time (e.g. an iskake). */
+  noCookTime?: boolean;
   desiredServings: number;
   onServingsChange: (n: number) => void;
   checkedIngredients: Set<string>;
@@ -37,6 +39,7 @@ export function IngredientsTab({
   panLength,
   panWidth,
   availablePanPresetIds,
+  noCookTime,
   desiredServings,
   onServingsChange,
   checkedIngredients,
@@ -60,6 +63,7 @@ export function IngredientsTab({
               sourceWidth={panWidth}
               sourceVolume={servings}
               availablePanPresetIds={availablePanPresetIds}
+              noCookTime={noCookTime}
               value={desiredServings}
               onChange={onServingsChange}
               size="large"

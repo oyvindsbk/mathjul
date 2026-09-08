@@ -38,6 +38,12 @@ interface FormVelgerProps {
    */
   availablePanPresetIds?: readonly string[] | null;
   /**
+   * True when the recipe has no meaningful cooking time (e.g. an iskake).
+   * Suppresses both the bake-guidance and conversion-warning messages, since
+   * both are about baking time/temperature.
+   */
+  noCookTime?: boolean;
+  /**
    * Currently selected volume in cm³ — the same `desiredServings` value the
    * servings stepper owns, so the recipe page needs no second piece of state.
    */
@@ -86,6 +92,7 @@ export function FormVelger({
   sourceWidth,
   sourceVolume,
   availablePanPresetIds,
+  noCookTime = false,
   value,
   onChange,
   size = "default",
@@ -148,11 +155,14 @@ export function FormVelger({
   // reader has actually picked something other than the default, including
   // on first load, where `selected` starts out equal to `source`.
   const hasConverted = Boolean(selected) && selected?.id !== source?.id;
-  const guidance = hasConverted ? bakeGuidanceFor(selected) : null;
+  // Both messages are about baking time/temperature, which is meaningless for
+  // a recipe with no cooking time — an iskake converted to a bigger tin still
+  // just needs freezing, not a longer bake.
+  const guidance = hasConverted && !noCookTime ? bakeGuidanceFor(selected) : null;
   // The published chart's exact numbers are strictly more useful than the
   // qualitative warning, so they replace it rather than stack alongside it —
   // whichever pan is selected, only one of the two ever renders.
-  const warning = hasConverted && !guidance ? conversionWarning(source, selected) : null;
+  const warning = hasConverted && !noCookTime && !guidance ? conversionWarning(source, selected) : null;
 
   const select =
     size === "large"

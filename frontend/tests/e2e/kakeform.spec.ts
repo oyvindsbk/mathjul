@@ -455,3 +455,74 @@ test.describe('Forfatterstyrt formutvalg', () => {
     expect(payload.defaultPanPresetId).toBeUndefined();
   });
 });
+
+/**
+ * The editor's "Steketid (min)" number input.
+ *
+ * The label has no `htmlFor`, so `getByLabel` cannot find it — locate the
+ * input as the label's sibling instead.
+ */
+const cookTimeInput = (page: Page) =>
+  page.getByText('Steketid (min)', { exact: true }).locator('xpath=following-sibling::input');
+
+test.describe('Kake uten steketid', () => {
+  /** Mock recipe 7: "Iskake", a "form" recipe with noCookTime: true. */
+  const ICE_CAKE_ID = 7;
+
+  test('the detail page shows no Steketid badge and no bake guidance or warning', async ({ page }) => {
+    await openCake(page, ICE_CAKE_ID, 'rund-24');
+
+    await expect(page.getByTitle('Steketid')).toHaveCount(0);
+
+    await choosePan(page, 'Stor langpanne 30×40', 'stor-langpanne-30x40');
+    await expect(velger(page).getByTestId('form-velger-bake-guidance')).toHaveCount(0);
+    await expect(velger(page).getByTestId('form-velger-warning')).toHaveCount(0);
+  });
+
+  test('the editor hides the Steketid input when the checkbox is on, and shows it again when off', async ({ page }) => {
+    await openEditForm(page, ICE_CAKE_ID);
+    await expect(page.getByTestId('form-picker')).toBeVisible();
+
+    const noCookTimeCheckbox = page.getByRole('checkbox', { name: 'Ingen steketid (f.eks. iskake)' });
+    await expect(noCookTimeCheckbox).toBeChecked();
+    await expect(cookTimeInput(page)).toHaveCount(0);
+
+    await noCookTimeCheckbox.uncheck();
+    await expect(cookTimeInput(page)).toBeVisible();
+
+    await noCookTimeCheckbox.check();
+    await expect(cookTimeInput(page)).toHaveCount(0);
+  });
+
+  test('the saved payload carries noCookTime', async ({ page }) => {
+    const sink: { body: Record<string, unknown> | null } = { body: null };
+    await capturePut(page, ICE_CAKE_ID, sink);
+
+    await openEditForm(page, ICE_CAKE_ID);
+    await expect(page.getByTestId('form-picker')).toBeVisible();
+    await page.getByRole('button', { name: 'Lagre endringer' }).click();
+
+    await expect.poll(() => sink.body).not.toBeNull();
+    expect(sink.body!.noCookTime).toBe(true);
+  });
+
+  test('turning the checkbox off restores the Steketid input and posts noCookTime: false', async ({ page }) => {
+    const sink: { body: Record<string, unknown> | null } = { body: null };
+    await capturePut(page, ICE_CAKE_ID, sink);
+
+    await openEditForm(page, ICE_CAKE_ID);
+    await page.getByRole('checkbox', { name: 'Ingen steketid (f.eks. iskake)' }).uncheck();
+    await cookTimeInput(page).fill('45');
+    await page.getByRole('button', { name: 'Lagre endringer' }).click();
+
+    await expect.poll(() => sink.body).not.toBeNull();
+    expect(sink.body!.noCookTime).toBe(false);
+    expect(sink.body!.cookTime).toBe(45);
+  });
+
+  test('a regular cake keeps showing the Steketid badge', async ({ page }) => {
+    // Regression guard: recipe 5 has no noCookTime set, so nothing about it changes.
+    await openCake(page);
+    await expect(page.getByTitle('Steketid')).toBeVisible();
+  });
+});

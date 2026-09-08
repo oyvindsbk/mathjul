@@ -348,6 +348,7 @@ public class RecipesController : ControllerBase
             PanWidth = recipe.PanWidth,
             PanHeight = recipe.PanHeight,
             AvailablePanPresetIds = recipe.AvailablePanPresetIds,
+            NoCookTime = recipe.NoCookTime,
             Visibility = recipe.Visibility,
             OwnerEmail = recipe.OwnerEmail,
             SourceUrl = recipe.SourceUrl,
@@ -779,6 +780,7 @@ public class RecipesController : ControllerBase
             PanWidth = request.PanWidth,
             PanHeight = request.PanHeight,
             AvailablePanPresetIds = request.AvailablePanPresetIds,
+            NoCookTime = request.NoCookTime,
             ImageUrl = request.MainImageUrl,
             SourceUrl = request.SourceUrl,
             SourceImageUrl = request.SourceImageUrl,
@@ -945,6 +947,7 @@ public class RecipesController : ControllerBase
         recipe.PanWidth = null;
         recipe.PanHeight = null;
         recipe.AvailablePanPresetIds = null;
+        recipe.NoCookTime = false;
     }
 
     /// <summary>
@@ -1043,6 +1046,7 @@ public class RecipesController : ControllerBase
         recipe.PanWidth = request.PanWidth;
         recipe.PanHeight = request.PanHeight;
         recipe.AvailablePanPresetIds = request.AvailablePanPresetIds;
+        recipe.NoCookTime = request.NoCookTime;
         ClearPanFieldsForNonForm(recipe);
         recipe.Tips = request.Tips ?? new List<string>();
         recipe.UpdatedAt = DateTime.UtcNow;
@@ -1124,6 +1128,7 @@ public class RecipesController : ControllerBase
             PanWidth = recipe.PanWidth,
             PanHeight = recipe.PanHeight,
             AvailablePanPresetIds = recipe.AvailablePanPresetIds,
+            NoCookTime = recipe.NoCookTime,
             Visibility = recipe.Visibility,
             OwnerEmail = recipe.OwnerEmail,
             SourceUrl = recipe.SourceUrl,
@@ -1806,6 +1811,8 @@ public class RecipeDetailDto
     public decimal? PanHeight { get; set; }
     /// <summary>Author-curated subset of pan preset ids offered as conversion targets. Null/empty means no restriction.</summary>
     public List<string>? AvailablePanPresetIds { get; set; }
+    /// <summary>True when this "form" recipe has no meaningful cooking time (e.g. an iskake).</summary>
+    public bool NoCookTime { get; set; }
     public string Visibility { get; set; } = "Public";
     public string? OwnerEmail { get; set; }
     /// <summary>Owner shown by name rather than email. Null when the recipe has no owner.</summary>
@@ -1907,6 +1914,8 @@ public class SaveExtractedRecipeRequest
     public decimal? PanHeight { get; set; }
     /// <summary>Author-curated subset of pan preset ids offered as conversion targets. Null/empty means no restriction.</summary>
     public List<string>? AvailablePanPresetIds { get; set; }
+    /// <summary>True when this "form" recipe has no meaningful cooking time (e.g. an iskake).</summary>
+    public bool NoCookTime { get; set; }
     public List<int>? CategoryIds { get; set; }
     public List<string>? Tips { get; set; }
     /// <summary>Pre-uploaded blob URL from AI dish extraction (pending blob path will be renamed on save).</summary>
@@ -1946,6 +1955,8 @@ public class UpdateRecipeRequest
     public decimal? PanHeight { get; set; }
     /// <summary>Author-curated subset of pan preset ids offered as conversion targets. Null/empty means no restriction.</summary>
     public List<string>? AvailablePanPresetIds { get; set; }
+    /// <summary>True when this "form" recipe has no meaningful cooking time (e.g. an iskake).</summary>
+    public bool NoCookTime { get; set; }
     public List<int>? CategoryIds { get; set; }
     public List<string>? Tips { get; set; }
     public string? Visibility { get; set; }

@@ -96,6 +96,8 @@ export interface Recipe {
   panHeight?: number | null;
   /** Author-curated subset of pan preset ids to offer. Empty/null means no restriction. */
   availablePanPresetIds?: string[] | null;
+  /** True when this "form" recipe has no meaningful cooking time (e.g. an iskake). */
+  noCookTime?: boolean;
   imageUrl?: string | null;
   categories?: Category[];
   tips?: string[];
@@ -348,6 +350,37 @@ export const mockRecipes: Recipe[] = [
       { id: 17, name: 'Kake', group: 'Måltidstype' },
       { id: 9, name: 'Enkel', group: 'Vanskelighetsgrad' },
       { id: 15, name: 'Over 1 time', group: 'Tilberedningstid' },
+    ],
+  },
+  {
+    // A "form" recipe with no meaningful cooking time — it is frozen, not
+    // baked. Exercises the 057 feature: no Steketid badge, no bake guidance.
+    id: 7,
+    title: 'Iskake',
+    description: 'Fryst iskake, ingen steking',
+    ingredients: [
+      { quantity: 3, unit: 'dl', name: 'kremfløte' },
+      { quantity: 100, unit: 'g', name: 'sukker' },
+      { quantity: 200, unit: 'g', name: 'kjeks' },
+    ],
+    instructionSteps: [
+      { text: 'Knus kjeksene og press i bunnen av formen.' },
+      { text: 'Visp kremfløte og sukker luftig, ha over kjeksbunnen.' },
+      { text: 'Frys i minst 6 timer.' },
+    ],
+    prepTime: 20,
+    cookTimeMinutes: null,
+    servings: 2941,
+    quantityType: 'form',
+    panShape: 'rund',
+    panDiameter: 24,
+    panHeight: 7,
+    noCookTime: true,
+
+    categories: [
+      { id: 4, name: 'Dessert', group: 'Måltidstype' },
+      { id: 17, name: 'Kake', group: 'Måltidstype' },
+      { id: 9, name: 'Enkel', group: 'Vanskelighetsgrad' },
     ],
   },
 ];

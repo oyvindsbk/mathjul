@@ -139,6 +139,16 @@ public class Recipe
     /// </summary>
     public List<string>? AvailablePanPresetIds { get; set; }
 
+    /// <summary>
+    /// True when this <c>QuantityType == "form"</c> recipe has no meaningful
+    /// cooking/baking time (e.g. an iskake that is frozen, not baked). Hides
+    /// cook-time display and pan-derived bake guidance without clearing
+    /// <see cref="CookTime"/>/<see cref="CookTimeMinutes"/>. Cleared alongside
+    /// the other pan-only fields when <see cref="QuantityType"/> changes away
+    /// from "form".
+    /// </summary>
+    public bool NoCookTime { get; set; }
+
     public string? ImageUrl { get; set; }
 
     public string? SourceUrl { get; set; }
