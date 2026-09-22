@@ -141,6 +141,37 @@ public static class JevClassificationInput
             : text[..MaxRecipeTextLength];
     }
 
+    /// <summary>
+    /// Applies classifier suggestions to an extracted recipe.
+    /// </summary>
+    /// <remarks>
+    /// Kept here rather than inline in the processor so the rule is reachable from tests:
+    /// <see cref="RecipeUrlProcessor"/> needs live Azure configuration to construct, and the
+    /// guarantee that both the JSON-LD and AI branches get classified is worth asserting.
+    /// Existing suggestions survive an empty result, so an unreachable classifier does not
+    /// erase what the text model already proposed.
+    /// </remarks>
+    public static async Task ApplySuggestionsAsync(
+        ExtractedRecipeDto extractedDto,
+        string? categoryListJson,
+        IJevClassifier classifier,
+        Func<string, Task>? reportStage = null,
+        CancellationToken cancellationToken = default)
+    {
+        var categories = ParseCategoryList(categoryListJson);
+        if (categories.Count == 0) return;
+
+        if (reportStage != null) await reportStage("classifying");
+
+        var recipeText = BuildRecipeText(extractedDto);
+        var suggestedIds = await classifier.SuggestCategoryIdsAsync(recipeText, categories, cancellationToken);
+
+        if (suggestedIds.Count > 0)
+        {
+            extractedDto.SuggestedCategoryIds = suggestedIds.ToList();
+        }
+    }
+
     /// <summary>Shape of a row in the controller's category list JSON.</summary>
     private sealed class CategoryListRow
     {

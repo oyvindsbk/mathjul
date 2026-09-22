@@ -147,4 +147,101 @@ public class JevClassificationInputTests
 
         Assert.Equal("Bare tittel", JevClassificationInput.BuildRecipeText(recipe));
     }
+
+    // ── Applying suggestions ───────────────────────────────────────────────
+
+    private const string CategoryJson = """
+    [
+      { "Id": 3, "Name": "Frokost", "Group": "Måltidstype" },
+      { "Id": 4, "Name": "Middag", "Group": "Måltidstype" }
+    ]
+    """;
+
+    /// <summary>Classifier stub returning a fixed result, recording whether it was consulted.</summary>
+    private sealed class StubClassifier : IJevClassifier
+    {
+        private readonly int[] _ids;
+
+        public StubClassifier(params int[] ids) => _ids = ids;
+
+        public bool IsEnabled => true;
+
+        public bool WasCalled { get; private set; }
+
+        public Task<IReadOnlyList<int>> SuggestCategoryIdsAsync(
+            string recipeText,
+            IReadOnlyList<CategoryOption> categories,
+            CancellationToken cancellationToken = default)
+        {
+            WasCalled = true;
+            return Task.FromResult<IReadOnlyList<int>>(_ids);
+        }
+    }
+
+    /// <summary>
+    /// The JSON-LD branch produces a recipe with no suggestions at all -- the gap this feature
+    /// exists to close -- so classification must fill them in.
+    /// </summary>
+    [Fact]
+    public async Task ApplySuggestionsAsync_FillsSuggestionsOnARecipeThatHadNone()
+    {
+        var recipe = new ExtractedRecipeDto { Title = "Pannekaker" };
+        var classifier = new StubClassifier(4);
+
+        await JevClassificationInput.ApplySuggestionsAsync(recipe, CategoryJson, classifier);
+
+        Assert.True(classifier.WasCalled);
+        Assert.Equal([4], recipe.SuggestedCategoryIds);
+    }
+
+    [Fact]
+    public async Task ApplySuggestionsAsync_ReportsTheClassifyingStage()
+    {
+        var stages = new List<string>();
+        var recipe = new ExtractedRecipeDto { Title = "Pannekaker" };
+
+        await JevClassificationInput.ApplySuggestionsAsync(
+            recipe,
+            CategoryJson,
+            new StubClassifier(4),
+            stage => { stages.Add(stage); return Task.CompletedTask; });
+
+        Assert.Contains("classifying", stages);
+    }
+
+    /// <summary>
+    /// An unreachable classifier returns nothing. On the AI branch the text model may already
+    /// have proposed categories, and those must survive.
+    /// </summary>
+    [Fact]
+    public async Task ApplySuggestionsAsync_KeepsExistingSuggestionsWhenClassifierReturnsNothing()
+    {
+        var recipe = new ExtractedRecipeDto { Title = "Pannekaker", SuggestedCategoryIds = [3] };
+
+        await JevClassificationInput.ApplySuggestionsAsync(recipe, CategoryJson, new StubClassifier());
+
+        Assert.Equal([3], recipe.SuggestedCategoryIds);
+    }
+
+    [Fact]
+    public async Task ApplySuggestionsAsync_ReplacesExistingSuggestionsWhenClassifierAnswers()
+    {
+        var recipe = new ExtractedRecipeDto { Title = "Pannekaker", SuggestedCategoryIds = [3] };
+
+        await JevClassificationInput.ApplySuggestionsAsync(recipe, CategoryJson, new StubClassifier(4));
+
+        Assert.Equal([4], recipe.SuggestedCategoryIds);
+    }
+
+    [Fact]
+    public async Task ApplySuggestionsAsync_WithNoCategoryList_SkipsTheClassifier()
+    {
+        var recipe = new ExtractedRecipeDto { Title = "Pannekaker" };
+        var classifier = new StubClassifier(4);
+
+        await JevClassificationInput.ApplySuggestionsAsync(recipe, null, classifier);
+
+        Assert.False(classifier.WasCalled);
+        Assert.Empty(recipe.SuggestedCategoryIds);
+    }
 }

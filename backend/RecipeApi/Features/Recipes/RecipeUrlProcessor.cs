@@ -157,23 +157,13 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
     /// Existing suggestions are kept when Jev returns nothing: on the AI branch the text model
     /// may already have proposed categories, and an unreachable classifier should not erase them.
     /// </remarks>
-    private async Task ApplyCategorySuggestionsAsync(
+    private Task ApplyCategorySuggestionsAsync(
         ExtractedRecipeDto extractedDto,
         string? categoryListJson,
         Func<string, Task>? reportStage,
-        CancellationToken cancellationToken)
-    {
-        var categories = JevClassificationInput.ParseCategoryList(categoryListJson);
-        if (categories.Count == 0) return;
-
-        if (reportStage != null) await reportStage("classifying");
-
-        var recipeText = JevClassificationInput.BuildRecipeText(extractedDto);
-        var suggestedIds = await _jevClassifier.SuggestCategoryIdsAsync(recipeText, categories, cancellationToken);
-
-        if (suggestedIds.Count > 0)
-            extractedDto.SuggestedCategoryIds = suggestedIds.ToList();
-    }
+        CancellationToken cancellationToken) =>
+        JevClassificationInput.ApplySuggestionsAsync(
+            extractedDto, categoryListJson, _jevClassifier, reportStage, cancellationToken);
 
     private static bool IsPrivateOrReservedHost(Uri uri)
     {
