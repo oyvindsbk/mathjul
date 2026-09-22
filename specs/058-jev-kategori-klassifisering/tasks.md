@@ -35,7 +35,7 @@
       kategoriliste (den har allerede en gren for det).
       Verifisering: `dotnet build` + `dotnet test`.
 
-- [ ] Task 7: Dokumentasjon og hemmeligheter. Dokumentér `Jev:*`-nøklene, legg inn
+- [x] Task 7: Dokumentasjon og hemmeligheter. Dokumentér `Jev:*`-nøklene, legg inn
       user-secrets-oppsett lokalt og Key Vault-referanse for prod. Ingen nøkler i kode
       eller i appsettings som sjekkes inn.
       Verifisering: `dotnet build`, og `az bicep build` hvis infra endres.

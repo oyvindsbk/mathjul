@@ -115,8 +115,8 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
               value: 'http://+:8080'
             }
             // Key Vault URI — used to bootstrap AddAzureKeyVault at startup.
-            // All other secrets (Jwt:SecretKey, AiFoundry:Key, ConnectionStrings:RecipeDb)
-            // are loaded from Key Vault automatically at startup.
+            // All other secrets (Jwt:SecretKey, AiFoundry:Key, ConnectionStrings:RecipeDb,
+            // Jev:ApiKey) are loaded from Key Vault automatically at startup.
             {
               name: 'KeyVault__VaultUri'
               value: keyVault.properties.vaultUri
