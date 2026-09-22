@@ -13,7 +13,7 @@
       Enhetstester på gruppering, nøkkelsanering (norske tegn) og tom liste.
       Verifisering: `dotnet build` + `dotnet test`.
 
-- [ ] Task 3: `JevClassifier` — response-parsing. Dekod `answers`, map `choice`
+- [x] Task 3: `JevClassifier` — response-parsing. Dekod `answers`, map `choice`
       tilbake til id, filtrer på `ConfidenceThreshold`. Defensiv parsing: ukjent nøkkel,
       manglende felt og ugyldig JSON gir tom liste, ikke exception.
       Enhetstester inkludert terskel akkurat over/under og misformet respons.
