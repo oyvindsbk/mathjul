@@ -102,7 +102,12 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
                 _logger.LogInformation("No JSON-LD found, sending {Length} chars of text to AI model {Model}", pageText.Length, _modelName);
 
                 if (reportStage != null) await reportStage("ai_processing");
-                var systemPrompt = RecipeExtractionPrompt.BuildSystemPrompt(categoryListJson);
+
+                // Jev classifies below, so asking the text model for categories too would pay
+                // for the same answer twice. When Jev is off, the prompt keeps the list and the
+                // text model stays the only source of suggestions.
+                var promptCategoryListJson = _jevClassifier.IsEnabled ? null : categoryListJson;
+                var systemPrompt = RecipeExtractionPrompt.BuildSystemPrompt(promptCategoryListJson);
                 var messages = new List<ChatMessage>
                 {
                     new SystemChatMessage(systemPrompt),

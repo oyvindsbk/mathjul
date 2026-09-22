@@ -21,6 +21,17 @@ public sealed record CategoryOption(int Id, string Name, string Group);
 public interface IJevClassifier
 {
     /// <summary>
+    /// Whether classification is actually configured.
+    /// </summary>
+    /// <remarks>
+    /// Lets callers skip work that only pays off when Jev runs -- notably dropping the category
+    /// list from the text model's prompt, which would otherwise mean paying for the same
+    /// classification twice. The knowledge stays with the implementation rather than having
+    /// callers re-inspect configuration.
+    /// </remarks>
+    bool IsEnabled { get; }
+
+    /// <summary>
     /// Returns the ids of categories that fit <paramref name="recipeText"/>, at most one
     /// per category group, excluding any whose confidence falls below the configured
     /// threshold.

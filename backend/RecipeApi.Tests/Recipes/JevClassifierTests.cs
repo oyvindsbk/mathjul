@@ -224,6 +224,27 @@ public class JevClassifierTests
             () => classifier.SuggestCategoryIdsAsync(RecipeText, Categories, cts.Token));
     }
 
+    // ── Enabled flag ───────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Drives whether the text model is still asked to classify. If this ever reported true
+    /// without a usable key, the category list would be dropped from the prompt and nothing
+    /// would fill the gap.
+    /// </summary>
+    [Theory]
+    [InlineData("a-key", true)]
+    [InlineData(null, false)]
+    [InlineData("", false)]
+    [InlineData("   ", false)]
+    public void IsEnabled_ReflectsWhetherAnApiKeyIsConfigured(string? apiKey, bool expected)
+    {
+        var (classifier, _, _) = CreateClassifier(
+            _ => throw new InvalidOperationException("should not be called"),
+            new JevOptions { ApiKey = apiKey });
+
+        Assert.Equal(expected, classifier.IsEnabled);
+    }
+
     // ── Threshold plumbing ─────────────────────────────────────────────────
 
     [Fact]

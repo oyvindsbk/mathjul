@@ -32,6 +32,12 @@ public class JevClassifier : IJevClassifier
         _logger = logger;
     }
 
+    /// <summary>
+    /// True when an API key is configured. This type is only registered when one is, but the
+    /// check keeps the promise honest if that registration ever loosens.
+    /// </summary>
+    public bool IsEnabled => !string.IsNullOrWhiteSpace(_options.ApiKey);
+
     public async Task<IReadOnlyList<int>> SuggestCategoryIdsAsync(
         string recipeText,
         IReadOnlyList<CategoryOption> categories,

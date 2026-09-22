@@ -30,7 +30,7 @@
       beskrivelse, ingredienser og instruksjoner, avkortet. Rapporter stegnavn via
       `reportStage`. Verifisering: `dotnet build` + `dotnet test`.
 
-- [ ] Task 6: Fjern kategorilisten fra LLM-prompten når Jev er aktiv, så klassifisering
+- [x] Task 6: Fjern kategorilisten fra LLM-prompten når Jev er aktiv, så klassifisering
       ikke betales for to ganger. `BuildSystemPrompt` må fortsatt fungere uten
       kategoriliste (den har allerede en gren for det).
       Verifisering: `dotnet build` + `dotnet test`.

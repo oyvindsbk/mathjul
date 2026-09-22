@@ -13,6 +13,9 @@ public class DisabledJevClassifier : IJevClassifier
         _logger = logger;
     }
 
+    /// <summary>Always false, so callers keep the text model's own classification.</summary>
+    public bool IsEnabled => false;
+
     public Task<IReadOnlyList<int>> SuggestCategoryIdsAsync(
         string recipeText,
         IReadOnlyList<CategoryOption> categories,
