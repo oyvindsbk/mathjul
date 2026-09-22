@@ -7,7 +7,7 @@
       `DisabledJevClassifier` som returnerer tom liste. Ingen HTTP ennå.
       Verifisering: `dotnet build`.
 
-- [ ] Task 2: `JevClassifier` — request-bygging. Bygg `questions`-objektet fra
+- [x] Task 2: `JevClassifier` — request-bygging. Bygg `questions`-objektet fra
       kategorilisten: gruppér på `Group`, én Choice per gruppe, `criteria` som
       `cat_<id>` → navn, sanerte spørsmålsnøkler. Ren funksjon, ingen nettverk.
       Enhetstester på gruppering, nøkkelsanering (norske tegn) og tom liste.
