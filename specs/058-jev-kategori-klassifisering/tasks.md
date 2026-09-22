@@ -19,7 +19,7 @@
       Enhetstester inkludert terskel akkurat over/under og misformet respons.
       Verifisering: `dotnet build` + `dotnet test`.
 
-- [ ] Task 4: HTTP-kall og DI. Koble request/response sammen med `IHttpClientFactory`,
+- [x] Task 4: HTTP-kall og DI. Koble request/response sammen med `IHttpClientFactory`,
       bearer-auth, timeout. `try/catch` rundt hele kallet — feil logges og gir tom liste.
       Registrer i `Program.cs` med samme betingede mønster som `IRecipeUrlProcessor`.
       Verifisering: `dotnet build` + `dotnet test`.
