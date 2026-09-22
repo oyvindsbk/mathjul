@@ -37,6 +37,109 @@ public interface IJevClassifier
 }
 
 /// <summary>
+/// Adapts the extraction pipeline's data to what <see cref="IJevClassifier"/> needs.
+/// </summary>
+public static class JevClassificationInput
+{
+    /// <summary>Caps the text sent to Jev. Generous enough for a long recipe, bounded for cost.</summary>
+    private const int MaxRecipeTextLength = 4000;
+
+    /// <summary>
+    /// Reads the category list the controller already builds for the extraction prompt.
+    /// </summary>
+    /// <remarks>
+    /// Parsing the same JSON rather than taking a second parameter keeps the
+    /// <see cref="IRecipeUrlProcessor"/> signature and its four call sites untouched. A
+    /// malformed list yields no options, which degrades to no suggestions.
+    /// </remarks>
+    public static IReadOnlyList<CategoryOption> ParseCategoryList(string? categoryListJson)
+    {
+        if (string.IsNullOrWhiteSpace(categoryListJson))
+        {
+            return Array.Empty<CategoryOption>();
+        }
+
+        try
+        {
+            var rows = System.Text.Json.JsonSerializer.Deserialize<List<CategoryListRow>>(
+                categoryListJson,
+                new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            if (rows is null)
+            {
+                return Array.Empty<CategoryOption>();
+            }
+
+            return rows
+                .Where(r => r.Name is not null && r.Group is not null)
+                .Select(r => new CategoryOption(r.Id, r.Name!, r.Group!))
+                .ToList();
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return Array.Empty<CategoryOption>();
+        }
+    }
+
+    /// <summary>
+    /// Flattens an extracted recipe into the text Jev evaluates.
+    /// </summary>
+    /// <remarks>
+    /// Ingredients and instructions carry most of the classification signal -- a cake and a stew
+    /// differ in their contents far more than in their titles -- so both are included, sectioned
+    /// or not, and the whole thing is truncated rather than sampled.
+    /// </remarks>
+    public static string BuildRecipeText(ExtractedRecipeDto recipe)
+    {
+        var builder = new System.Text.StringBuilder();
+
+        builder.AppendLine(recipe.Title);
+
+        if (!string.IsNullOrWhiteSpace(recipe.Description))
+        {
+            builder.AppendLine(recipe.Description);
+        }
+
+        var ingredients = recipe.Ingredients
+            .Concat(recipe.IngredientSections.SelectMany(s => s.Ingredients))
+            .Select(i => i.Name)
+            .Where(n => !string.IsNullOrWhiteSpace(n));
+
+        var ingredientLine = string.Join(", ", ingredients);
+        if (ingredientLine.Length > 0)
+        {
+            builder.AppendLine();
+            builder.AppendLine("Ingredienser: " + ingredientLine);
+        }
+
+        var steps = recipe.Instructions
+            .Concat(recipe.InstructionSections.SelectMany(s => s.Steps))
+            .Where(s => !string.IsNullOrWhiteSpace(s));
+
+        var stepText = string.Join(" ", steps);
+        if (stepText.Length > 0)
+        {
+            builder.AppendLine();
+            builder.AppendLine("Fremgangsmåte: " + stepText);
+        }
+
+        var text = builder.ToString().Trim();
+
+        return text.Length <= MaxRecipeTextLength
+            ? text
+            : text[..MaxRecipeTextLength];
+    }
+
+    /// <summary>Shape of a row in the controller's category list JSON.</summary>
+    private sealed class CategoryListRow
+    {
+        public int Id { get; set; }
+        public string? Name { get; set; }
+        public string? Group { get; set; }
+    }
+}
+
+/// <summary>
 /// Configuration for <see cref="IJevClassifier"/>, bound from the "Jev" section.
 /// </summary>
 public sealed class JevOptions

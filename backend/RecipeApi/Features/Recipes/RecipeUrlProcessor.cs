@@ -19,12 +19,14 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
     private readonly ChatClient _chatClient;
     private readonly ILogger<RecipeUrlProcessor> _logger;
     private readonly IBlobStorageService _blobStorage;
+    private readonly IJevClassifier _jevClassifier;
     private readonly string _modelName;
     private const int MaxTextLength = 8000;
 
     public RecipeUrlProcessor(
         IConfiguration configuration,
         IBlobStorageService blobStorage,
+        IJevClassifier jevClassifier,
         ILogger<RecipeUrlProcessor> logger)
     {
         var endpoint = configuration["AiFoundry:Endpoint"]
@@ -36,6 +38,7 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
         _chatClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey))
             .GetChatClient(_modelName);
         _blobStorage = blobStorage;
+        _jevClassifier = jevClassifier;
         _logger = logger;
     }
 
@@ -117,6 +120,10 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
                     extractedDto.ImageUrl = htmlImageUrl;
             }
 
+            // Classify after both branches converge, so JSON-LD pages get suggestions too --
+            // today they skip the AI entirely and arrive here with nothing ticked.
+            await ApplyCategorySuggestionsAsync(extractedDto, categoryListJson, reportStage, cancellationToken);
+
             if (reportStage != null) await reportStage("downloading_image");
             var mainImageUrl = await TryDownloadImageAsync(extractedDto.ImageUrl, cancellationToken);
             return RecipeExtractionResult.Success(extractedDto, mainImageUrl);
@@ -136,6 +143,31 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
             _logger.LogError(ex, "Error extracting recipe from URL: {Url}", url);
             return RecipeExtractionResult.Failure($"Error processing URL: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Fills in <see cref="ExtractedRecipeDto.SuggestedCategoryIds"/> from the Jev classifier.
+    /// </summary>
+    /// <remarks>
+    /// Existing suggestions are kept when Jev returns nothing: on the AI branch the text model
+    /// may already have proposed categories, and an unreachable classifier should not erase them.
+    /// </remarks>
+    private async Task ApplyCategorySuggestionsAsync(
+        ExtractedRecipeDto extractedDto,
+        string? categoryListJson,
+        Func<string, Task>? reportStage,
+        CancellationToken cancellationToken)
+    {
+        var categories = JevClassificationInput.ParseCategoryList(categoryListJson);
+        if (categories.Count == 0) return;
+
+        if (reportStage != null) await reportStage("classifying");
+
+        var recipeText = JevClassificationInput.BuildRecipeText(extractedDto);
+        var suggestedIds = await _jevClassifier.SuggestCategoryIdsAsync(recipeText, categories, cancellationToken);
+
+        if (suggestedIds.Count > 0)
+            extractedDto.SuggestedCategoryIds = suggestedIds.ToList();
     }
 
     private static bool IsPrivateOrReservedHost(Uri uri)

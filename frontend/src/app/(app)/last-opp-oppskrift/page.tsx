@@ -156,6 +156,7 @@ export default function UploadRecipe() {
     ai_processing: 'Analyserer med AI...',
     uploading_images: 'Laster opp bilder...',
     fetching_url: 'Henter nettsiden...',
+    classifying: 'Foreslår kategorier...',
     downloading_image: 'Laster ned bilde...',
   };
 

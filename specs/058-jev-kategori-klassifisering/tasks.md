@@ -24,7 +24,7 @@
       Registrer i `Program.cs` med samme betingede mønster som `IRecipeUrlProcessor`.
       Verifisering: `dotnet build` + `dotnet test`.
 
-- [ ] Task 5: Koble inn i uttrekksflyten. Kall klassifisereren i
+- [x] Task 5: Koble inn i uttrekksflyten. Kall klassifisereren i
       `RecipeUrlProcessor.ExtractRecipeFromUrlAsync` etter at `extractedDto` er satt, slik
       at både JSON-LD- og AI-grenen dekkes. Bygg klassifiseringstekst fra tittel,
       beskrivelse, ingredienser og instruksjoner, avkortet. Rapporter stegnavn via
