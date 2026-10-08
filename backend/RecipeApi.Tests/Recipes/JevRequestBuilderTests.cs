@@ -47,6 +47,22 @@ public class JevRequestBuilderTests
     }
 
     [Fact]
+    public void BuildQuestions_DescribesTilbehorInsteadOfSendingBareName()
+    {
+        var questions = JevRequestBuilder.BuildQuestions(
+        [
+            Option(3, "Middag", "Måltidstype"),
+            Option(RecipeCategories.TilbehorId, RecipeCategories.TilbehorName, "Måltidstype")
+        ]);
+
+        var criteria = questions["gruppe_maaltidstype"].Criteria;
+        Assert.Equal("Middag", criteria[JevRequestBuilder.CriterionKey(3)]);
+        Assert.Equal(
+            RecipeCategories.TilbehorClassifierDescription,
+            criteria[JevRequestBuilder.CriterionKey(RecipeCategories.TilbehorId)]);
+    }
+
+    [Fact]
     public void BuildQuestions_MarksEveryQuestionAsChoice()
     {
         var questions = JevRequestBuilder.BuildQuestions(

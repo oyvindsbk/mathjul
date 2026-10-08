@@ -1635,10 +1635,9 @@ public class RecipesController : ControllerBase
 
     private async Task<string> BuildCategoryListJsonAsync()
     {
-        // Tilbehør is withheld from the AI: marking a recipe as a side dish is a
-        // deliberate user choice, not something to infer from the recipe text.
+        // Tilbehør is included: sauces and sides otherwise get forced into the nearest meal
+        // type (bearnaise -> Middag). It is only a suggestion the user can untick.
         var categories = await _context.Categories
-            .Where(c => c.Id != RecipeCategories.TilbehorId)
             .OrderBy(c => c.Group).ThenBy(c => c.Name)
             .Select(c => new { c.Id, c.Name, c.Group })
             .ToListAsync();
@@ -1706,8 +1705,7 @@ public class RecipesController : ControllerBase
         Servings = dto.Servings,
         QuantityType = dto.QuantityType,
         CustomUnit = dto.CustomUnit,
-        // Defence in depth: the id is absent from the prompt's list, but the model could still emit it.
-        SuggestedCategoryIds = dto.SuggestedCategoryIds.Where(id => id != RecipeCategories.TilbehorId).ToList(),
+        SuggestedCategoryIds = dto.SuggestedCategoryIds,
         Tips = dto.Tips
     };
 }

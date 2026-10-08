@@ -344,7 +344,7 @@ public class RecipeSideDishTests
     }
 
     [Fact]
-    public async Task ExtractFromUrl_CategoryListSentToAi_ExcludesTilbehor()
+    public async Task ExtractFromUrl_CategoryListSentToAi_IncludesTilbehor()
     {
         using var ctx = new RecipeTestContext();
         ctx.SeedTilbehorCategory();
@@ -363,12 +363,16 @@ public class RecipeSideDishTests
         await controller.ExtractRecipeFromUrl(new ExtractFromUrlRequest { Url = "https://example.com/oppskrift" });
 
         Assert.NotNull(capturedJson);
-        Assert.Contains("Middag", capturedJson);
-        Assert.DoesNotContain(RecipeCategories.TilbehorName, capturedJson);
+        // Parsed rather than substring-matched: the serializer escapes "ø", so a raw search for
+        // "Tilbehør" never matches. Without it, sauces and sides get forced into the nearest meal
+        // type (bearnaise -> Middag).
+        var categories = JevClassificationInput.ParseCategoryList(capturedJson);
+        Assert.Contains(categories, c => c.Name == "Middag");
+        Assert.Contains(categories, c => c.Id == RecipeCategories.TilbehorId);
     }
 
     [Fact]
-    public async Task ExtractFromUrl_HallucinatedTilbehorId_IsStrippedFromSuggestions()
+    public async Task ExtractFromUrl_SuggestedTilbehorId_IsKept()
     {
         using var ctx = new RecipeTestContext();
         ctx.SeedTilbehorCategory();
@@ -379,8 +383,8 @@ public class RecipeSideDishTests
                 It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<Func<string, Task>?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(RecipeExtractionResult.Success(new ExtractedRecipeDto
             {
-                Title = "Tikka masala",
-                SuggestedCategoryIds = [3, RecipeCategories.TilbehorId]
+                Title = "Bearnaisesaus",
+                SuggestedCategoryIds = [RecipeCategories.TilbehorId]
             }));
 
         var controller = ctx.CreateController();
@@ -389,6 +393,6 @@ public class RecipeSideDishTests
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var response = Assert.IsType<RecipeExtractionResponse>(ok.Value);
-        Assert.Equal([3], response.ExtractedRecipe!.SuggestedCategoryIds);
+        Assert.Equal([RecipeCategories.TilbehorId], response.ExtractedRecipe!.SuggestedCategoryIds);
     }
 }
