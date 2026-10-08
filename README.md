@@ -68,6 +68,25 @@ A full-stack recipe management application with AI-powered recipe extraction fro
    dotnet user-secrets set "AzureOpenAI:DeploymentName" "gpt-4.1-nano"
    ```
 
+   **Optional — Jev category classification** (TypeSafe AI). Without a key,
+   recipe extraction still works; the text model keeps suggesting categories.
+
+   ```bash
+   dotnet user-secrets set "Jev:ApiKey" "your-typesafe-key"
+   ```
+
+   | Key | Default | Description |
+   |---|---|---|
+   | `Jev:ApiKey` | — | API key. Absent means classification is disabled. |
+   | `Jev:Endpoint` | `https://api.typesafe.ai/v1/systemone` | API endpoint |
+   | `Jev:ModelName` | `jev-latest` | Model id |
+   | `Jev:ConfidenceThreshold` | `0.6` | Suggestions below this are discarded |
+   | `Jev:TimeoutSeconds` | `10` | Per-request timeout |
+
+   In production the key comes from Key Vault as the secret `Jev--ApiKey`;
+   `AddAzureKeyVault` maps the double dash to the `Jev:ApiKey` config key at
+   startup, so no code or Bicep change is needed to roll it out.
+
 3. **Update approved emails** (for local testing)
    
    Edit `backend/RecipeApi/appsettings.Development.json`:

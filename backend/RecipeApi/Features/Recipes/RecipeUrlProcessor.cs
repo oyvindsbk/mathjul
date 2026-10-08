@@ -19,12 +19,14 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
     private readonly ChatClient _chatClient;
     private readonly ILogger<RecipeUrlProcessor> _logger;
     private readonly IBlobStorageService _blobStorage;
+    private readonly IJevClassifier _jevClassifier;
     private readonly string _modelName;
     private const int MaxTextLength = 8000;
 
     public RecipeUrlProcessor(
         IConfiguration configuration,
         IBlobStorageService blobStorage,
+        IJevClassifier jevClassifier,
         ILogger<RecipeUrlProcessor> logger)
     {
         var endpoint = configuration["AiFoundry:Endpoint"]
@@ -36,6 +38,7 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
         _chatClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey))
             .GetChatClient(_modelName);
         _blobStorage = blobStorage;
+        _jevClassifier = jevClassifier;
         _logger = logger;
     }
 
@@ -99,7 +102,12 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
                 _logger.LogInformation("No JSON-LD found, sending {Length} chars of text to AI model {Model}", pageText.Length, _modelName);
 
                 if (reportStage != null) await reportStage("ai_processing");
-                var systemPrompt = RecipeExtractionPrompt.BuildSystemPrompt(categoryListJson);
+
+                // Jev classifies below, so asking the text model for categories too would pay
+                // for the same answer twice. When Jev is off, the prompt keeps the list and the
+                // text model stays the only source of suggestions.
+                var promptCategoryListJson = _jevClassifier.IsEnabled ? null : categoryListJson;
+                var systemPrompt = RecipeExtractionPrompt.BuildSystemPrompt(promptCategoryListJson);
                 var messages = new List<ChatMessage>
                 {
                     new SystemChatMessage(systemPrompt),
@@ -116,6 +124,10 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
                 if (string.IsNullOrWhiteSpace(extractedDto.ImageUrl) && htmlImageUrl != null)
                     extractedDto.ImageUrl = htmlImageUrl;
             }
+
+            // Classify after both branches converge, so JSON-LD pages get suggestions too --
+            // today they skip the AI entirely and arrive here with nothing ticked.
+            await ApplyCategorySuggestionsAsync(extractedDto, categoryListJson, reportStage, cancellationToken);
 
             if (reportStage != null) await reportStage("downloading_image");
             var mainImageUrl = await TryDownloadImageAsync(extractedDto.ImageUrl, cancellationToken);
@@ -137,6 +149,21 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
             return RecipeExtractionResult.Failure($"Error processing URL: {ex.Message}");
         }
     }
+
+    /// <summary>
+    /// Fills in <see cref="ExtractedRecipeDto.SuggestedCategoryIds"/> from the Jev classifier.
+    /// </summary>
+    /// <remarks>
+    /// Existing suggestions are kept when Jev returns nothing: on the AI branch the text model
+    /// may already have proposed categories, and an unreachable classifier should not erase them.
+    /// </remarks>
+    private Task ApplyCategorySuggestionsAsync(
+        ExtractedRecipeDto extractedDto,
+        string? categoryListJson,
+        Func<string, Task>? reportStage,
+        CancellationToken cancellationToken) =>
+        JevClassificationInput.ApplySuggestionsAsync(
+            extractedDto, categoryListJson, _jevClassifier, reportStage, cancellationToken);
 
     private static bool IsPrivateOrReservedHost(Uri uri)
     {

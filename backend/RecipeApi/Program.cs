@@ -116,6 +116,19 @@ if (!string.IsNullOrEmpty(aiEndpoint) && !string.IsNullOrEmpty(aiApiKey))
 else
     builder.Services.AddScoped<IRecipeUrlProcessor, DisabledRecipeUrlProcessor>();
 
+// Jev category classification: enabled when an API key is present, disabled otherwise.
+// Without a key the extraction still succeeds -- the user just picks categories by hand.
+builder.Services.Configure<JevOptions>(builder.Configuration.GetSection(JevOptions.SectionName));
+if (!string.IsNullOrEmpty(builder.Configuration[$"{JevOptions.SectionName}:ApiKey"]))
+{
+    builder.Services.AddHttpClient(JevClassifier.HttpClientName);
+    builder.Services.AddScoped<IJevClassifier, JevClassifier>();
+}
+else
+{
+    builder.Services.AddScoped<IJevClassifier, DisabledJevClassifier>();
+}
+
 var prdEndpoint = builder.Configuration["AiFoundry:ImageEndpoint"] ?? aiEndpoint;
 var prdApiKey = builder.Configuration["AiFoundry:ImageApiKey"] ?? aiApiKey;
 if (!string.IsNullOrEmpty(prdEndpoint) && !string.IsNullOrEmpty(prdApiKey))
