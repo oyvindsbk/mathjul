@@ -19,6 +19,14 @@ public static class RecipeCategories
     public const string TilbehorName = "Tilbehør";
 
     /// <summary>
+    /// What Tilbehør means, for classifiers. The bare name loses to "Middag" for sauces, since a
+    /// sauce is eaten at dinner: Jev picked Middag for béarnaise at 0.67, and Tilbehør at 0.97
+    /// with this description, while a real main course (taco) stayed Middag.
+    /// </summary>
+    public const string TilbehorClassifierDescription =
+        "Tilbehør: saus, dressing, salat, potet, ris eller annet som serveres til en hovedrett og ikke er et helt måltid alene";
+
+    /// <summary>
     /// "Kake" — groups recipes that scale by pan size rather than portion count.
     /// Referenced by id for the same reason as <see cref="TilbehorId"/>.
     /// </summary>

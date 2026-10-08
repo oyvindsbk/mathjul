@@ -44,7 +44,10 @@ Både kategori- og vanskelighetsforslag går altså gjennom samme mekanisme:
 - Én Jev **Choice**-spørring per kategorigruppe, med gruppens rader som alternativer.
 - Alternativlisten bygges per request fra databasen, slik `BuildCategoryListJsonAsync`
   gjør i dag. Kategorier er databaserader, ikke en enum.
-- `Tilbehør` (id 16) holdes fortsatt utenfor AI-en — det er et bevisst brukervalg.
+- `Tilbehør` (id 16) er med blant alternativene. Ellers tvinges sauser og tilbehør inn i
+  nærmeste måltidstype (bearnaise ble Middag). Det er bare et forslag brukeren kan fjerne.
+  Jev får en beskrivelse i stedet for bare navnet (`RecipeCategories.TilbehorClassifierDescription`):
+  med bare «Tilbehør» valgte Jev fortsatt Middag for bearnaise (0.67); med beskrivelsen Tilbehør (0.97).
 - Jev kjører på **begge** uttrekksveier, også JSON-LD-veien.
 - Forslag under en konfigurerbar konfidensterskel forkastes (start: 0.6).
 - Ved feil eller timeout mot Jev: uttrekket lykkes uten kategoriforslag. Logg, ikke kast.

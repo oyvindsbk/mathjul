@@ -101,13 +101,22 @@ public static class JevRequestBuilder
                 Instructions = BuildInstructions(group.Key),
                 Criteria = options.ToDictionary(
                     o => CriterionKey(o.Id),
-                    o => o.Name,
+                    CriterionDescription,
                     StringComparer.Ordinal)
             };
         }
 
         return questions;
     }
+
+    /// <summary>
+    /// The text Jev weighs a criterion by. Usually the category name, which is self-explanatory;
+    /// Tilbehør needs spelling out or sauces get classified as the meal they are served with.
+    /// </summary>
+    private static string CriterionDescription(CategoryOption option) =>
+        option.Id == RecipeCategories.TilbehorId
+            ? RecipeCategories.TilbehorClassifierDescription
+            : option.Name;
 
     /// <summary>Encodes a category id as a criterion key. Inverse of <see cref="TryParseCategoryId"/>.</summary>
     public static string CriterionKey(int id) => CategoryKeyPrefix + id.ToString(System.Globalization.CultureInfo.InvariantCulture);
