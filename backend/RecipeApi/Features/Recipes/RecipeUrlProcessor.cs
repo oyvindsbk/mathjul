@@ -440,7 +440,7 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
     /// <summary>
     /// Parses a raw ingredient string like "100 gram mel" into a StructuredIngredient.
     /// </summary>
-    private static StructuredIngredient ParseIngredientString(string raw)
+    public static StructuredIngredient ParseIngredientString(string raw)
     {
         raw = raw.Trim();
         var parts = raw.Split(' ', 3, StringSplitOptions.RemoveEmptyEntries);
@@ -464,7 +464,9 @@ public class RecipeUrlProcessor : IRecipeUrlProcessor
 
     private static decimal? TryParseQuantity(string s)
     {
-        if (decimal.TryParse(s, System.Globalization.NumberStyles.Any,
+        // Norwegian sites use comma as decimal separator ("0,5"). NumberStyles.Any would treat
+        // the comma as a thousands separator under InvariantCulture and turn "0,5" into 5.
+        if (decimal.TryParse(s.Replace(',', '.'), System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out var d))
             return d;
 
