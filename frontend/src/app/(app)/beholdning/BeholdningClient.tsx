@@ -105,7 +105,7 @@ export function BeholdningClient() {
           )}
         </div>
 
-        <div role="tablist" className="flex gap-1 border-b border-gray-200 mb-4 overflow-x-auto">
+        <div role="tablist" className="flex gap-1 border-b border-gray-200 mb-4 overflow-x-auto overflow-y-hidden">
           {TABS.map((tab) => (
             <button
               key={tab.id}

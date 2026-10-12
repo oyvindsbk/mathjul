@@ -76,5 +76,5 @@
       «Legg på handlelisten». Playwright-test.
       Verifisering: lint + tsc + build + playwright.
 
-- [ ] Task 12: Sluttverifisering. Full indre løkke for frontend og backend, review-agenter,
+- [x] Task 12: Sluttverifisering. Full indre løkke for frontend og backend, review-agenter,
       gjennomgang av hele flyten med Playwright MCP, start appen for manuell test.
