@@ -6,11 +6,15 @@ import { LEVERANDOR_COLORS, LEVERANDOR_LABELS, type Leverandor } from "@/lib/ser
 import type { MealPlan } from "@/lib/services/mealplan.service";
 import { formatDate, formatDateLabel, parseDateKey, resolveEntryDisplay } from "./entryDisplay";
 import { recipeHref } from "@/lib/recipe-url";
+import type { EntryCoverage } from "@/lib/services/stock.service";
+import { IngredientCoverageList } from "./IngredientCoverageList";
 
 interface Props {
   date: Date;
   /** Entries for this date only. */
   plans: MealPlan[];
+  /** What the household has of each planned recipe's ingredients; absent while loading or unavailable. */
+  coverage?: EntryCoverage[];
   onClose: () => void;
   onAddRecipe: () => void;
   onAddCustomCard: () => void;
@@ -25,6 +29,7 @@ const ACTION_BUTTON = "min-h-[44px] px-3 rounded-lg text-sm font-medium transiti
 export function DayDetailModal({
   date,
   plans,
+  coverage,
   onClose,
   onAddRecipe,
   onAddCustomCard,
@@ -172,6 +177,12 @@ export function DayDetailModal({
                         {plan.customNote && (
                           <p className="text-xs text-gray-600 mt-1 break-words">{plan.customNote}</p>
                         )}
+                        {(() => {
+                          const entryCoverage = coverage?.find((c) => c.mealPlanId === plan.id);
+                          return entryCoverage && !isCustom && !isMatkasse ? (
+                            <IngredientCoverageList coverage={entryCoverage} />
+                          ) : null;
+                        })()}
                       </div>
                     </div>
 

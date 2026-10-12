@@ -14,7 +14,9 @@ import { RecipePickerPanel, RecipePickerSidebar } from "@/components/ukesplanleg
 import { MatkassePanelSidebar } from "@/components/matkasse/MatkassePanelSidebar";
 import type { MatkasseRecipe } from "@/lib/services/matkasse.service";
 import type { Recipe } from "@/lib/mock-data";
-import { formatDate, parseDateKey } from "@/components/ukesplanlegger/entryDisplay";
+import { formatDate, mondayOf, parseDateKey } from "@/components/ukesplanlegger/entryDisplay";
+import { WeekMissingPanel } from "@/components/ukesplanlegger/WeekMissingPanel";
+import { stockService, type EntryCoverage } from "@/lib/services/stock.service";
 
 function computeHighlightedDays(monday: Date | null): Set<string> {
   if (!monday) return new Set();
@@ -61,6 +63,8 @@ export function UkesplanleggerClient() {
   // The day a tap opened. Distinct from activeDayDate, which is the target the
   // picker and sidebar write to and outlives the modal.
   const [dayModalDate, setDayModalDate] = useState<Date | null>(null);
+  const [missingPanelOpen, setMissingPanelOpen] = useState(false);
+  const [dayCoverage, setDayCoverage] = useState<EntryCoverage[] | undefined>(undefined);
 
   // URL param: mealType
   const mealTypeParam = (searchParams.get("mealType") as MealType) ?? "Middag";
@@ -135,6 +139,27 @@ export function UkesplanleggerClient() {
   useEffect(() => {
     fetchPlans();
   }, [fetchPlans]);
+
+  // Ingredient status for the open day. Best effort: the modal works without it.
+  const dayModalWeekKey = dayModalDate ? formatDate(mondayOf(dayModalDate)) : null;
+  useEffect(() => {
+    if (!token || !selectedGroupId || !dayModalWeekKey) {
+      setDayCoverage(undefined);
+      return;
+    }
+    let cancelled = false;
+    stockService
+      .getWeekCoverage(selectedGroupId, dayModalWeekKey, token)
+      .then((data) => {
+        if (!cancelled) setDayCoverage(data.entries);
+      })
+      .catch(() => {
+        if (!cancelled) setDayCoverage(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, selectedGroupId, dayModalWeekKey, plans]);
 
   async function handleRecipePicked(recipe: Recipe) {
     if (!activeDayDate || !token || !selectedGroupId) return;
@@ -348,6 +373,14 @@ export function UkesplanleggerClient() {
             )}
           </div>
 
+          <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => setMissingPanelOpen(true)}
+            data-testid="week-missing-button"
+            className="min-h-[44px] px-4 rounded-lg border border-blue-600 text-sm font-medium text-blue-700 hover:bg-blue-50"
+          >
+            Hva mangler denne uka?
+          </button>
           {groups.length > 1 && (
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600 font-medium">Gruppe:</label>
@@ -362,6 +395,7 @@ export function UkesplanleggerClient() {
               </select>
             </div>
           )}
+          </div>
         </div>
 
         {error && (
@@ -480,12 +514,22 @@ export function UkesplanleggerClient() {
         <DayDetailModal
           date={dayModalDate}
           plans={plansForDate(plans, dayModalDate)}
+          coverage={dayCoverage}
           onClose={() => setDayModalDate(null)}
           onAddRecipe={handleAddRecipeFromDayModal}
           onAddCustomCard={() => handleAddCustomCardFromDayModal(dayModalDate)}
           onDeleteEntry={handleDeleteEntry}
           onMoveEntry={handleMoveEntry}
           onUpdateNote={handleUpdateNote}
+        />
+      )}
+
+      {missingPanelOpen && token && selectedGroupId && (
+        <WeekMissingPanel
+          groupId={selectedGroupId}
+          token={token}
+          weekStart={mondayOf(activeDayDate ?? today)}
+          onClose={() => setMissingPanelOpen(false)}
         />
       )}
 

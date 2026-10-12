@@ -70,7 +70,7 @@
       minnet. Playwright-test med mocket skann- og korreksjonssvar.
       Verifisering: lint + tsc + build + playwright.
 
-- [ ] Task 11: Frontend — ukeplan-integrasjon. `DayDetailModal` viser ingrediensstatus for
+- [x] Task 11: Frontend — ukeplan-integrasjon. `DayDetailModal` viser ingrediensstatus for
       oppskriften (har / kanskje / mangler). Knapp «Hva mangler denne uka?» i
       ukesplanleggeren åpner panel med samlet liste, «mangler» forhåndsavkrysset,
       «Legg på handlelisten». Playwright-test.
