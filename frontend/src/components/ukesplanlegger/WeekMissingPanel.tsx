@@ -170,7 +170,7 @@ export function WeekMissingPanel({ groupId, token, weekStart, onClose }: Props) 
           {added !== null && (
             <p role="status" className="text-sm text-green-800 py-2">
               {added} {added === 1 ? "vare" : "varer"} lagt på handlelisten.{" "}
-              <Link href={`/beholdning?tab=handleliste&groupId=${groupId}`} className="text-blue-600 hover:underline">
+              <Link href={`/ukesplanlegger?view=beholdning&tab=handleliste&groupId=${groupId}`} className="text-blue-600 hover:underline">
                 Åpne handlelisten
               </Link>
             </p>

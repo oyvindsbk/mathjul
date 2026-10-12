@@ -126,7 +126,7 @@ test.describe('Ukesplanlegger med beholdning', () => {
     await panel.getByRole('button', { name: 'Legg på handlelisten' }).click();
 
     await expect(panel.getByRole('status')).toContainText('2 varer lagt på handlelisten');
-    await expect(panel.getByRole('link', { name: 'Åpne handlelisten' })).toHaveAttribute('href', /tab=handleliste/);
+    await expect(panel.getByRole('link', { name: 'Åpne handlelisten' })).toHaveAttribute('href', /view=beholdning.*tab=handleliste/);
 
     // Fløte is needed in two units, so it becomes two entries rather than a wrong sum.
     expect(shopping.items.map((i) => [i.name, i.quantity, i.unit, i.source])).toEqual([

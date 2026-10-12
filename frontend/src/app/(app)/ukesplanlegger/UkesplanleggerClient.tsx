@@ -17,6 +17,7 @@ import type { Recipe } from "@/lib/mock-data";
 import { formatDate, mondayOf, parseDateKey } from "@/components/ukesplanlegger/entryDisplay";
 import { WeekMissingPanel } from "@/components/ukesplanlegger/WeekMissingPanel";
 import { stockService, type EntryCoverage } from "@/lib/services/stock.service";
+import { BeholdningPanel } from "@/components/beholdning/BeholdningPanel";
 
 function computeHighlightedDays(monday: Date | null): Set<string> {
   if (!monday) return new Set();
@@ -36,6 +37,7 @@ export function UkesplanleggerClient() {
 
   const [groups, setGroups] = useState<GroupOption[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null);
+  const view: "plan" | "beholdning" = searchParams.get("view") === "beholdning" ? "beholdning" : "plan";
   const [mealPlanEnabled, setMealPlanEnabled] = useState(true);
   const [plans, setPlans] = useState<MealPlan[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(true);
@@ -113,6 +115,17 @@ export function UkesplanleggerClient() {
     router.replace(`?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
 
+  const handleViewChange = useCallback((next: "plan" | "beholdning") => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (next === "plan") {
+      params.delete("view");
+      params.delete("tab");
+    } else {
+      params.set("view", next);
+    }
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
+
   // Sync mealType to URL
   const handleMealTypeChange = useCallback((type: MealType) => {
     setActiveMealType(type);
@@ -137,8 +150,9 @@ export function UkesplanleggerClient() {
   }, [token, selectedGroupId, viewYear, viewMonth]);
 
   useEffect(() => {
-    fetchPlans();
-  }, [fetchPlans]);
+    // The stock view does not show the calendar, so there is nothing to load for it.
+    if (view === "plan") fetchPlans();
+  }, [fetchPlans, view]);
 
   // Ingredient status for the open day. Best effort: the modal works without it.
   const dayModalWeekKey = dayModalDate ? formatDate(mondayOf(dayModalDate)) : null;
@@ -386,13 +400,37 @@ export function UkesplanleggerClient() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-          <button
-            onClick={() => setMissingPanelOpen(true)}
-            data-testid="week-missing-button"
-            className="min-h-[44px] px-4 rounded-lg border border-blue-600 text-sm font-medium text-blue-700 hover:bg-blue-50"
+          <div
+            role="group"
+            aria-label="Visning"
+            className="inline-flex rounded-lg border border-gray-300 bg-white p-0.5 self-start"
           >
-            Hva mangler denne uka?
-          </button>
+            {([
+              { id: "plan", label: "Ukeplan" },
+              { id: "beholdning", label: "Beholdning" },
+            ] as const).map((option) => (
+              <button
+                key={option.id}
+                data-testid={`view-${option.id}`}
+                aria-pressed={view === option.id}
+                onClick={() => handleViewChange(option.id)}
+                className={`min-h-[40px] px-4 rounded-md text-sm font-medium ${
+                  view === option.id ? "bg-blue-600 text-white" : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+          {view === "plan" && (
+            <button
+              onClick={() => setMissingPanelOpen(true)}
+              data-testid="week-missing-button"
+              className="min-h-[44px] px-4 rounded-lg border border-blue-600 text-sm font-medium text-blue-700 hover:bg-blue-50"
+            >
+              Hva mangler denne uka?
+            </button>
+          )}
           {groups.length > 1 && (
             <div className="flex items-center gap-2">
               <label className="text-sm text-gray-600 font-medium">Gruppe:</label>
@@ -427,7 +465,9 @@ export function UkesplanleggerClient() {
           </div>
         )}
 
-        {!mealPlanEnabled ? (
+        {view === "beholdning" ? (
+          token && selectedGroupId ? <BeholdningPanel groupId={selectedGroupId} token={token} /> : null
+        ) : !mealPlanEnabled ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
             <p className="text-gray-500 text-lg mb-2">Ukesplanleggeren er deaktivert for denne gruppen.</p>
             <p className="text-gray-400 text-sm">Gå til gruppeinnstillingene for å aktivere den.</p>

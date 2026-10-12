@@ -20,7 +20,7 @@ test.describe('Handleliste', () => {
 
   test('adds an item and shows where it came from', async ({ page }) => {
     const state = await mockShoppingList(page, [butter]);
-    await page.goto('/beholdning?tab=handleliste');
+    await page.goto('/ukesplanlegger?view=beholdning&tab=handleliste');
 
     await expect(page.getByTestId('shopping-item').filter({ hasText: 'Smør' })).toContainText('Fra ukeplanen');
 
@@ -36,7 +36,7 @@ test.describe('Handleliste', () => {
 
   test('ticking moves an item to bought and unticking brings it back', async ({ page }) => {
     await mockShoppingList(page, [bread]);
-    await page.goto('/beholdning?tab=handleliste');
+    await page.goto('/ukesplanlegger?view=beholdning&tab=handleliste');
 
     await page.getByLabel('Kjøpt: Brød').click();
     await expect(page.getByTestId('shopping-bought')).toContainText('Brød');
@@ -48,7 +48,7 @@ test.describe('Handleliste', () => {
 
   test('deletes an item', async ({ page }) => {
     const state = await mockShoppingList(page, [bread, butter]);
-    await page.goto('/beholdning?tab=handleliste');
+    await page.goto('/ukesplanlegger?view=beholdning&tab=handleliste');
 
     await page.getByRole('button', { name: 'Slett Brød' }).click();
     await expect(page.getByTestId('shopping-item')).toHaveCount(1);
@@ -57,7 +57,7 @@ test.describe('Handleliste', () => {
 
   test('clears bought items', async ({ page }) => {
     await mockShoppingList(page, [{ ...bread, status: 'kjopt' }, butter]);
-    await page.goto('/beholdning?tab=handleliste');
+    await page.goto('/ukesplanlegger?view=beholdning&tab=handleliste');
 
     await page.getByRole('button', { name: 'Tøm kjøpte' }).click();
     await expect(page.getByTestId('shopping-bought')).toHaveCount(0);
@@ -66,7 +66,7 @@ test.describe('Handleliste', () => {
 
   test('moves bought items to the chosen location', async ({ page }) => {
     const state = await mockShoppingList(page, [{ ...bread, status: 'kjopt' }]);
-    await page.goto('/beholdning?tab=handleliste');
+    await page.goto('/ukesplanlegger?view=beholdning&tab=handleliste');
 
     await page.getByLabel('Legg i').selectOption('skap');
     await page.getByRole('button', { name: 'Legg kjøpte i beholdningen' }).click();
@@ -78,7 +78,7 @@ test.describe('Handleliste', () => {
 
   test('shows an empty state', async ({ page }) => {
     await mockShoppingList(page);
-    await page.goto('/beholdning?tab=handleliste');
+    await page.goto('/ukesplanlegger?view=beholdning&tab=handleliste');
     await expect(page.getByText('Handlelisten er tom.')).toBeVisible();
   });
 });
@@ -106,7 +106,7 @@ test.describe('Forslag', () => {
         ],
       })
     );
-    await page.goto('/beholdning?tab=forslag');
+    await page.goto('/ukesplanlegger?view=beholdning&tab=forslag');
 
     const first = page.getByTestId('suggestion').first();
     await expect(first).toContainText('Pasta carbonara');
@@ -119,13 +119,13 @@ test.describe('Forslag', () => {
 
   test('shows an empty state when nothing matches', async ({ page }) => {
     await page.route(SUGGESTIONS_URL, (route) => route.fulfill({ json: [] }));
-    await page.goto('/beholdning?tab=forslag');
+    await page.goto('/ukesplanlegger?view=beholdning&tab=forslag');
     await expect(page.getByTestId('suggestions-empty')).toBeVisible();
   });
 
   test('switching tabs updates the URL', async ({ page }) => {
     await page.route(SUGGESTIONS_URL, (route) => route.fulfill({ json: [] }));
-    await page.goto('/beholdning');
+    await page.goto('/ukesplanlegger?view=beholdning');
     await page.getByTestId('tab-forslag').click();
     await expect(page).toHaveURL(/tab=forslag/);
     await page.getByTestId('tab-handleliste').click();

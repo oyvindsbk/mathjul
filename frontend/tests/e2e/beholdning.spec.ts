@@ -42,9 +42,9 @@ test.describe('Beholdning', () => {
       salt,
       { ...milk, id: 4, name: 'Yoghurt', quantity: 1, unit: 'stk', bestBefore: dateFromToday(-2) },
     ]);
-    await page.goto('/beholdning');
+    await page.goto('/ukesplanlegger?view=beholdning');
 
-    await expect(page.getByRole('heading', { name: 'Beholdning', level: 1 })).toBeVisible();
+    await expect(page.getByTestId('beholdning-panel')).toBeVisible();
     await expect(page.getByTestId('stock-location-kjoleskap')).toContainText('Melk');
     await expect(page.getByTestId('stock-location-fryser')).toContainText('Erter');
     await expect(page.getByTestId('stock-location-skap')).toContainText('Salt');
@@ -58,13 +58,13 @@ test.describe('Beholdning', () => {
 
   test('shows an empty state', async ({ page }) => {
     await mockStock(page);
-    await page.goto('/beholdning');
+    await page.goto('/ukesplanlegger?view=beholdning');
     await expect(page.getByText('Ingen varer registrert ennå')).toBeVisible();
   });
 
   test('adds, edits and deletes an item', async ({ page }) => {
     const items = await mockStock(page);
-    await page.goto('/beholdning');
+    await page.goto('/ukesplanlegger?view=beholdning');
 
     await page.getByTestId('stock-add').click();
     await page.getByLabel('Navn').fill('Egg');
@@ -93,7 +93,7 @@ test.describe('Beholdning', () => {
 
   test('a staple is saved without quantity and unit', async ({ page }) => {
     const items = await mockStock(page);
-    await page.goto('/beholdning');
+    await page.goto('/ukesplanlegger?view=beholdning');
 
     await page.getByTestId('stock-add').click();
     await page.getByLabel('Navn').fill('Olivenolje');
@@ -113,7 +113,7 @@ test.describe('Beholdning', () => {
         ? route.fulfill({ status: 400, json: { error: 'Navn er for langt' } })
         : route.fallback()
     );
-    await page.goto('/beholdning');
+    await page.goto('/ukesplanlegger?view=beholdning');
 
     await page.getByTestId('stock-add').click();
     await page.getByRole('button', { name: 'Lagre' }).click();
@@ -124,11 +124,31 @@ test.describe('Beholdning', () => {
     await expect(page.getByTestId('stock-form').getByRole('alert')).toHaveText('Navn er for langt');
   });
 
-  test('is reachable from the navigation', async ({ page }) => {
-    await mockStock(page);
-    await page.goto('/');
-    const link = page.getByTestId('nav-beholdning').or(page.getByTestId('bottom-nav-beholdning')).first();
-    await link.click();
-    await expect(page).toHaveURL(/\/beholdning/);
+  test('is a view inside the planner, switched with the toggle', async ({ page }) => {
+    await mockStock(page, [milk]);
+    await page.route(/\/api\/groups\/1\/mealplans/, (route) => route.fulfill({ json: [] }));
+    await page.route(/\/api\/recipes/, (route) => route.fulfill({ json: [] }));
+    await page.goto('/ukesplanlegger');
+
+    await expect(page.getByTestId('beholdning-panel')).toHaveCount(0);
+    await expect(page.getByTestId('week-missing-button')).toBeVisible();
+
+    await page.getByTestId('view-beholdning').click();
+    await expect(page).toHaveURL(/view=beholdning/);
+    await expect(page.getByTestId('stock-item')).toContainText('Melk');
+    await expect(page.getByTestId('week-missing-button')).toHaveCount(0);
+
+    await page.getByTestId('view-plan').click();
+    await expect(page).not.toHaveURL(/view=/);
+    await expect(page.getByTestId('beholdning-panel')).toHaveCount(0);
+  });
+
+  test('the old /beholdning address redirects into the planner', async ({ page }) => {
+    await mockStock(page, [milk]);
+    await page.goto('/beholdning?tab=handleliste&groupId=1');
+
+    await expect(page).toHaveURL(/\/ukesplanlegger\?.*view=beholdning/);
+    await expect(page).toHaveURL(/tab=handleliste/);
+    await expect(page.getByTestId('beholdning-panel')).toBeVisible();
   });
 });

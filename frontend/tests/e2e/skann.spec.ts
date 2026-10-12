@@ -28,7 +28,7 @@ interface DraftBody {
 
 async function openScan(page: Page, seeds: FakeStockItem[]) {
   await mockStock(page, seeds);
-  await page.goto('/beholdning');
+  await page.goto('/ukesplanlegger?view=beholdning');
   await page.getByTestId('stock-scan').click();
   await page.getByLabel('Bilder (maks 4)').setInputFiles({ name: 'kjoleskap.png', mimeType: 'image/png', buffer: PNG });
 }
