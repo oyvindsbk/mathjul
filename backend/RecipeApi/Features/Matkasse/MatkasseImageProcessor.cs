@@ -1,8 +1,7 @@
 using Azure;
 using Azure.AI.OpenAI;
 using OpenAI.Chat;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
+using ImageMagick;
 using System.Text.Json;
 
 namespace RecipeApi.Features.Matkasse;
@@ -190,16 +189,14 @@ public class MatkasseImageProcessor : IMatkasseImageProcessor
     {
         try
         {
-            using var img = SixLabors.ImageSharp.Image.Load(imageBytes);
+            using var img = new MagickImage(imageBytes);
             if (img.Width <= MaxImageDimension && img.Height <= MaxImageDimension)
                 return imageBytes;
 
-            var ratio = Math.Min((float)MaxImageDimension / img.Width, (float)MaxImageDimension / img.Height);
-            img.Mutate(x => x.Resize((int)(img.Width * ratio), (int)(img.Height * ratio)));
-
-            using var ms = new MemoryStream();
-            img.SaveAsJpeg(ms);
-            return ms.ToArray();
+            // A geometry resize keeps the aspect ratio and fits inside the box.
+            img.Resize(new MagickGeometry((uint)MaxImageDimension, (uint)MaxImageDimension));
+            img.Format = MagickFormat.Jpeg;
+            return img.ToByteArray();
         }
         catch
         {

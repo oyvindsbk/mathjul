@@ -3,8 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using RecipeApi.Features.Stock;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using ImageMagick;
 using Xunit;
 
 namespace RecipeApi.Tests.Stock;
@@ -104,10 +103,9 @@ public class StockImagesTests
 
     private static byte[] Png(int width, int height)
     {
-        using var image = new Image<Rgb24>(width, height);
-        using var stream = new MemoryStream();
-        image.SaveAsPng(stream);
-        return stream.ToArray();
+        using var image = new MagickImage(MagickColors.White, (uint)width, (uint)height);
+        image.Format = MagickFormat.Png;
+        return image.ToByteArray();
     }
 
     // ── Validate ───────────────────────────────────────────────────────────
@@ -167,9 +165,9 @@ public class StockImagesTests
         var bytes = await StockImages.PrepareAsync(File(Png(3072, 1024)));
 
         Assert.NotNull(bytes);
-        var info = Image.Identify(bytes);
-        Assert.Equal(StockImages.MaxDimension, info.Width);
-        Assert.Equal(512, info.Height);
+        var info = new MagickImageInfo(bytes);
+        Assert.Equal((uint)StockImages.MaxDimension, info.Width);
+        Assert.Equal(512u, info.Height);
     }
 
     [Fact]
@@ -177,8 +175,8 @@ public class StockImagesTests
     {
         var bytes = await StockImages.PrepareAsync(File(Png(400, 300)));
 
-        var info = Image.Identify(bytes!);
-        Assert.Equal((400, 300), (info.Width, info.Height));
+        var info = new MagickImageInfo(bytes!);
+        Assert.Equal((400u, 300u), (info.Width, info.Height));
     }
 
     [Fact]
@@ -186,7 +184,7 @@ public class StockImagesTests
     {
         var bytes = await StockImages.PrepareAsync(File(Png(50, 50)));
 
-        Assert.Equal("JPEG", Image.DetectFormat(bytes!).Name);
+        Assert.Equal(MagickFormat.Jpeg, new MagickImageInfo(bytes!).Format);
     }
 
     [Fact]
