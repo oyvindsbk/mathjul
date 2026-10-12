@@ -51,7 +51,7 @@
       (valgfrie bilder). Grenser: 100 rader, 500 tegn.
       Verifisering: `dotnet build` + `dotnet test`.
 
-- [ ] Task 8: Frontend — beholdning-fanen. `stock.service.ts` (typer uten `any`), side
+- [x] Task 8: Frontend — beholdning-fanen. `stock.service.ts` (typer uten `any`), side
       `/beholdning` med gruppevelger (`?groupId=`, mønster fra ukesplanleggeren), faner,
       liste gruppert på plassering, best-før-markering, legg til / endre / slett, basisvare.
       Nav-oppføring i `Sidebar` og `BottomNav`. Playwright-test `beholdning.spec.ts`.
