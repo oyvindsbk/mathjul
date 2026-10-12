@@ -1,6 +1,4 @@
 using System.Text.Json;
-using Azure;
-using Azure.AI.OpenAI;
 using OpenAI.Chat;
 
 namespace RecipeApi.Features.Stock;
@@ -111,16 +109,7 @@ public class StockScanProcessor : IStockScanProcessor
 
     public StockScanProcessor(IConfiguration configuration, ILogger<StockScanProcessor> logger)
     {
-        var endpoint = configuration["AiFoundry:ImageEndpoint"]
-            ?? configuration["AiFoundry:Endpoint"]
-            ?? throw new InvalidOperationException("Missing config: AiFoundry:ImageEndpoint or AiFoundry:Endpoint");
-        var apiKey = configuration["AiFoundry:ImageApiKey"]
-            ?? configuration["AiFoundry:ApiKey"]
-            ?? throw new InvalidOperationException("Missing config: AiFoundry:ImageApiKey or AiFoundry:ApiKey");
-        var deploymentName = configuration["AiFoundry:StockScanModelName"] ?? "gpt-5.4-mini";
-
-        _chatClient = new AzureOpenAIClient(new Uri(endpoint), new AzureKeyCredential(apiKey))
-            .GetChatClient(deploymentName);
+        _chatClient = StockChatClientFactory.Create(configuration, "AiFoundry:StockScanModelName");
         _logger = logger;
     }
 

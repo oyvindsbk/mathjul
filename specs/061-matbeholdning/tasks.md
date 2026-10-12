@@ -44,7 +44,7 @@
       erstatt sletter usette, `keepIds` beholdes, andre plasseringer urørt.
       Verifisering: `dotnet build` + `dotnet test`.
 
-- [ ] Task 7: Korreksjon-backend. `IStockCorrectionProcessor` + implementasjon + Disabled,
+- [x] Task 7: Korreksjon-backend. `IStockCorrectionProcessor` + implementasjon + Disabled,
       DI. Schema for endringer (`add` / `remove` / `update` med indeks). Validering og
       anvendelse som ren funksjon: ukjent indeks, tomt navn, negativ mengde, to endringer på
       samme indeks, remove + update på samme rad. Endepunkt `POST stock/scan/correct`
