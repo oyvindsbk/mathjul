@@ -1,6 +1,4 @@
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats.Jpeg;
-using SixLabors.ImageSharp.Processing;
+using ImageMagick;
 
 namespace RecipeApi.Features.Stock;
 
@@ -46,31 +44,28 @@ public static class StockImages
     {
         try
         {
-            // Read only the header first: a tiny file can still declare enormous dimensions.
-            await using (var probe = file.OpenReadStream())
-            {
-                var info = await Image.IdentifyAsync(probe, cancellationToken);
-                if (info == null || (long)info.Width * info.Height > MaxPixels) return null;
-            }
+            await using var upload = file.OpenReadStream();
+            using var buffer = new MemoryStream();
+            await upload.CopyToAsync(buffer, cancellationToken);
+            var bytes = buffer.ToArray();
 
-            await using var input = file.OpenReadStream();
-            using var image = await Image.LoadAsync(input, cancellationToken);
+            // Read only the header first: a tiny file can still declare enormous dimensions,
+            // and only the formats we advertise are decoded at all.
+            var info = new MagickImageInfo(bytes);
+            if ((long)info.Width * info.Height > MaxPixels) return null;
+            if (info.Format is not (MagickFormat.Jpeg or MagickFormat.Png or MagickFormat.WebP)) return null;
 
-            image.Mutate(x => x.AutoOrient());
+            using var image = new MagickImage(bytes);
+            image.AutoOrient();
             if (image.Width > MaxDimension || image.Height > MaxDimension)
-            {
-                image.Mutate(x => x.Resize(new ResizeOptions
-                {
-                    Size = new Size(MaxDimension, MaxDimension),
-                    Mode = ResizeMode.Max,
-                }));
-            }
+                image.Resize(new MagickGeometry(MaxDimension, MaxDimension));
 
-            using var output = new MemoryStream();
-            await image.SaveAsJpegAsync(output, new JpegEncoder { Quality = 80 }, cancellationToken);
-            return output.ToArray();
+            image.Strip();
+            image.Quality = 80;
+            image.Format = MagickFormat.Jpeg;
+            return image.ToByteArray();
         }
-        catch (Exception ex) when (ex is UnknownImageFormatException or InvalidImageContentException or NotSupportedException)
+        catch (MagickException)
         {
             return null;
         }

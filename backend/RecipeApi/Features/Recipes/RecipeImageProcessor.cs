@@ -1,8 +1,7 @@
 using Azure;
 using Azure.AI.OpenAI;
 using OpenAI.Chat;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
+using ImageMagick;
 using System.Text.Json;
 
 namespace RecipeApi.Features.Recipes;
@@ -219,20 +218,19 @@ public class RecipeImageProcessor : IRecipeImageProcessor
                 return imageBytes;
 
             // Crop to bounding box
-            using var image = SixLabors.ImageSharp.Image.Load(imageBytes);
-            var cropX = (int)(result.X * image.Width);
-            var cropY = (int)(result.Y * image.Height);
-            var cropW = (int)(result.Width * image.Width);
-            var cropH = (int)(result.Height * image.Height);
-            cropX = Math.Max(0, Math.Min(cropX, image.Width - 1));
-            cropY = Math.Max(0, Math.Min(cropY, image.Height - 1));
-            cropW = Math.Max(1, Math.Min(cropW, image.Width - cropX));
-            cropH = Math.Max(1, Math.Min(cropH, image.Height - cropY));
+            using var image = new MagickImage(imageBytes);
+            var width = (int)image.Width;
+            var height = (int)image.Height;
+            var cropX = Math.Max(0, Math.Min((int)(result.X * width), width - 1));
+            var cropY = Math.Max(0, Math.Min((int)(result.Y * height), height - 1));
+            var cropW = Math.Max(1, Math.Min((int)(result.Width * width), width - cropX));
+            var cropH = Math.Max(1, Math.Min((int)(result.Height * height), height - cropY));
 
-            image.Mutate(ctx => ctx.Crop(new SixLabors.ImageSharp.Rectangle(cropX, cropY, cropW, cropH)));
-            using var output = new MemoryStream();
-            image.SaveAsJpeg(output, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder { Quality = 85 });
-            return output.ToArray();
+            image.Crop(new MagickGeometry(cropX, cropY, (uint)cropW, (uint)cropH));
+            image.ResetPage();
+            image.Format = MagickFormat.Jpeg;
+            image.Quality = 85;
+            return image.ToByteArray();
         }
         catch (Exception ex)
         {
@@ -243,27 +241,18 @@ public class RecipeImageProcessor : IRecipeImageProcessor
 
     private byte[] ResizeImageIfNeeded(byte[] imageBytes)
     {
-        using var image = Image.Load(imageBytes);
+        using var image = new MagickImage(imageBytes);
+        image.Format = MagickFormat.Jpeg;
+        image.Quality = 85;
 
-        if (image.Width <= MaxImageDimension && image.Height <= MaxImageDimension)
+        if (image.Width > MaxImageDimension || image.Height > MaxImageDimension)
         {
-            using var output = new MemoryStream();
-            image.SaveAsJpeg(output, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder { Quality = 85 });
-            return output.ToArray();
+            _logger.LogInformation("Resizing image from {Width}x{Height} to fit within {Max}px",
+                image.Width, image.Height, MaxImageDimension);
+            image.Resize(new MagickGeometry((uint)MaxImageDimension, (uint)MaxImageDimension));
         }
 
-        _logger.LogInformation("Resizing image from {Width}x{Height} to fit within {Max}px",
-            image.Width, image.Height, MaxImageDimension);
-
-        image.Mutate(x => x.Resize(new ResizeOptions
-        {
-            Mode = ResizeMode.Max,
-            Size = new Size(MaxImageDimension, MaxImageDimension)
-        }));
-
-        using var resizedOutput = new MemoryStream();
-        image.SaveAsJpeg(resizedOutput, new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder { Quality = 85 });
-        return resizedOutput.ToArray();
+        return image.ToByteArray();
     }
 }
 
