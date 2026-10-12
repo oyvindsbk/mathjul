@@ -27,7 +27,7 @@
       move-to-stock oppretter beholdning og fjerner fra liste, 403.
       Verifisering: `dotnet build` + `dotnet test`.
 
-- [ ] Task 5: Ukeplan-dekning og forslag. `StockCoverageService` med
+- [x] Task 5: Ukeplan-dekning og forslag. `StockCoverageService` med
       `GetWeekCoverage(groupId, weekStart)` og `GetSuggestions(groupId, limit)`. Ingredienser
       fra `Ingredients` + `IngredientSections` + tilbehør. Matkasse/egendefinert merkes
       `utenIngredienser`. Samlet «mangler» slått sammen på normalisert navn, mengde summert
