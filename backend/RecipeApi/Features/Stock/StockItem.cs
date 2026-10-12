@@ -10,9 +10,17 @@ public static class StockLocations
     public const string Pantry = "skap";
     public const string Other = "annet";
 
-    public static readonly IReadOnlyList<string> All = [Fridge, Freezer, Pantry, Other];
+    /// <summary>In display order.</summary>
+    public static readonly string[] All = [Fridge, Freezer, Pantry, Other];
 
     public static bool IsValid(string? value) => value != null && All.Contains(value);
+
+    /// <summary>Position in the natural display order; unknown values sort last.</summary>
+    public static int SortIndex(string? value)
+    {
+        var index = value == null ? -1 : Array.IndexOf(All, value);
+        return index < 0 ? All.Length : index;
+    }
 }
 
 /// <summary>One kind of food the group has at home.</summary>

@@ -14,7 +14,7 @@
       basisvare gir alltid «har», tom beholdning.
       Verifisering: `dotnet build` + `dotnet test`.
 
-- [ ] Task 3: Beholdning-API. `StockController` på `api/groups/{groupId}/stock`:
+- [x] Task 3: Beholdning-API. `StockController` på `api/groups/{groupId}/stock`:
       GET, POST, PUT, DELETE. Gruppemedlemskap (403), validering av `Location`, lengder,
       ikke-negativ mengde. `NormalizedName` settes via `IngredientMatcher.Normalize`.
       Tester: CRUD, 403 for ikke-medlem, 404 for vare i annen gruppe, ugyldig plassering.
