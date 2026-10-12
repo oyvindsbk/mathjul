@@ -57,6 +57,14 @@ format og en utvidbar `Status`.
   - **Erstatt plassering**: som over, men varer på plasseringen som ikke er i utkastet
     slettes. Hver «fjernes»-vare kan krysses av for å beholdes (bildet kan ha gått glipp
     av ting bak andre varer).
+- Matching ved lagring er på normalisert navn + enhet, innenfor valgt plassering. Et
+  skann-resultat viser det som ligger der *nå*, så mengden i utkastet **erstatter**
+  eksisterende mengde (summeres ikke). Utkast uten enhet matcher på navn alene og
+  endrer ikke mengden (enhetene er ikke sammenlignbare). Doble rader i ett utkast slås
+  sammen først.
+- **Basisvarer slettes aldri av «Erstatt plassering»** — et bilde som ikke viser saltet
+  betyr ikke at saltet er borte.
+- Tomt utkast kan ikke lagres, så «Erstatt» aldri kan tømme en plassering ved et uhell.
 - Utkastet kan redigeres direkte i listen (endre, slette, legge til rad).
 - Bilder lagres ikke — verken i blob storage eller database.
 

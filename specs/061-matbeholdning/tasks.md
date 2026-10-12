@@ -36,7 +36,7 @@
       `GET stock/suggestions`. Tester for begge, inkludert seksjonsingredienser og tilbehør.
       Verifisering: `dotnet build` + `dotnet test`.
 
-- [ ] Task 6: Skann-backend. `IStockScanProcessor` + `StockScanProcessor` +
+- [x] Task 6: Skann-backend. `IStockScanProcessor` + `StockScanProcessor` +
       `DisabledStockScanProcessor`, DI i `Program.cs` med samme betingede mønster.
       JSON-schema-output, skalering til 1536 px, maks 4 bilder / 10 MB, filtypesjekk.
       Endepunkter `POST stock/scan` og `POST stock/scan/apply` (modus `legg-til` / `erstatt`,
