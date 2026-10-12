@@ -63,7 +63,7 @@
       Playwright-tester for begge.
       Verifisering: lint + tsc + build + playwright.
 
-- [ ] Task 10: Frontend — skann-flyt. Velg plassering → last opp/ta bilde
+- [x] Task 10: Frontend — skann-flyt. Velg plassering → last opp/ta bilde
       (`capture="environment"`) → gjennomgang: redigerbart utkast, merker
       ny / finnes / fjernes, modusvalg, behold-avkrysning, korreksjonsboks med
       «Se på bildet igjen» og visning av avviste endringer → «Lagre». Bildene holdes kun i

@@ -8,6 +8,7 @@ import {
   type StockItem,
   type StockItemInput,
 } from "@/lib/services/stock.service";
+import { ScanFlow } from "./ScanFlow";
 import { StockItemForm } from "./StockItemForm";
 import { bestBeforeState, formatAmount, formatBestBefore } from "./stockDisplay";
 
@@ -27,6 +28,8 @@ export function StockTab({ groupId, token, onError }: Props) {
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -69,14 +72,49 @@ export function StockTab({ groupId, token, onError }: Props) {
 
   return (
     <div data-testid="stock-tab">
-      {!adding && !editing && (
-        <button
-          onClick={() => setAdding(true)}
-          data-testid="stock-add"
-          className="mb-4 px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-        >
-          + Legg til vare
-        </button>
+      {notice && (
+        <p role="status" className="mb-4 p-3 bg-green-50 border border-green-200 text-green-800 rounded-lg text-sm">
+          {notice}
+        </p>
+      )}
+
+      {!adding && !editing && !scanning && (
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            onClick={() => {
+              setNotice(null);
+              setAdding(true);
+            }}
+            data-testid="stock-add"
+            className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+          >
+            + Legg til vare
+          </button>
+          <button
+            onClick={() => {
+              setNotice(null);
+              setScanning(true);
+            }}
+            data-testid="stock-scan"
+            className="px-4 py-2 text-sm rounded-lg border border-blue-600 text-blue-700 hover:bg-blue-50"
+          >
+            Skann med bilde
+          </button>
+        </div>
+      )}
+
+      {scanning && (
+        <ScanFlow
+          groupId={groupId}
+          token={token}
+          stock={items}
+          onCancel={() => setScanning(false)}
+          onSaved={async (message) => {
+            setScanning(false);
+            setNotice(message);
+            await load();
+          }}
+        />
       )}
 
       {adding && <StockItemForm onSave={handleCreate} onCancel={() => setAdding(false)} />}
