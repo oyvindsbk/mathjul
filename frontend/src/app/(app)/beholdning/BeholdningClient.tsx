@@ -6,10 +6,16 @@ import Link from "next/link";
 import { useAuth } from "@/lib/context/AuthContext";
 import { groupsService, type GroupOption } from "@/lib/services/groups.service";
 import { StockTab } from "@/components/beholdning/StockTab";
+import { ShoppingListTab } from "@/components/beholdning/ShoppingListTab";
+import { SuggestionsTab } from "@/components/beholdning/SuggestionsTab";
 
-type TabId = "beholdning";
+type TabId = "beholdning" | "handleliste" | "forslag";
 
-const TABS: { id: TabId; label: string }[] = [{ id: "beholdning", label: "Beholdning" }];
+const TABS: { id: TabId; label: string }[] = [
+  { id: "beholdning", label: "Beholdning" },
+  { id: "handleliste", label: "Handleliste" },
+  { id: "forslag", label: "Forslag" },
+];
 
 export function BeholdningClient() {
   const { token, isLoading: authLoading } = useAuth();
@@ -127,6 +133,12 @@ export function BeholdningClient() {
 
         {token && selectedGroupId && activeTab === "beholdning" && (
           <StockTab key={selectedGroupId} groupId={selectedGroupId} token={token} onError={handleError} />
+        )}
+        {token && selectedGroupId && activeTab === "handleliste" && (
+          <ShoppingListTab key={selectedGroupId} groupId={selectedGroupId} token={token} onError={handleError} />
+        )}
+        {token && selectedGroupId && activeTab === "forslag" && (
+          <SuggestionsTab key={selectedGroupId} groupId={selectedGroupId} token={token} onError={handleError} />
         )}
       </div>
     </div>

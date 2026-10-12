@@ -57,7 +57,7 @@
       Nav-oppføring i `Sidebar` og `BottomNav`. Playwright-test `beholdning.spec.ts`.
       Verifisering: lint + tsc + build + playwright.
 
-- [ ] Task 9: Frontend — handleliste- og forslagsfanene. Handleliste: legg til, kryss av,
+- [x] Task 9: Frontend — handleliste- og forslagsfanene. Handleliste: legg til, kryss av,
       slett, tøm kjøpte, «Legg kjøpte i beholdningen» med plasseringsvalg. Forslag: topp 10
       med dekningsgrad og manglende ingredienser, lenke til oppskrift.
       Playwright-tester for begge.
