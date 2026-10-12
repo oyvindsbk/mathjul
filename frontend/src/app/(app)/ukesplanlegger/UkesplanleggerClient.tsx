@@ -142,6 +142,18 @@ export function UkesplanleggerClient() {
 
   // Ingredient status for the open day. Best effort: the modal works without it.
   const dayModalWeekKey = dayModalDate ? formatDate(mondayOf(dayModalDate)) : null;
+  // Only entries in the modal's week affect coverage, so unrelated plan reloads must not refetch it.
+  const dayModalWeekSignature = dayModalDate
+    ? plans
+        .filter((p) => {
+          const monday = mondayOf(dayModalDate);
+          const sunday = new Date(monday);
+          sunday.setDate(monday.getDate() + 6);
+          return p.date >= formatDate(monday) && p.date <= formatDate(sunday);
+        })
+        .map((p) => `${p.id}:${p.date}:${p.recipeId ?? ""}`)
+        .join("|")
+    : "";
   useEffect(() => {
     if (!token || !selectedGroupId || !dayModalWeekKey) {
       setDayCoverage(undefined);
@@ -159,7 +171,7 @@ export function UkesplanleggerClient() {
     return () => {
       cancelled = true;
     };
-  }, [token, selectedGroupId, dayModalWeekKey, plans]);
+  }, [token, selectedGroupId, dayModalWeekKey, dayModalWeekSignature]);
 
   async function handleRecipePicked(recipe: Recipe) {
     if (!activeDayDate || !token || !selectedGroupId) return;

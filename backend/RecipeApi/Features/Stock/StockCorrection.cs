@@ -168,9 +168,14 @@ public static class StockCorrectionParser
             var amount = new List<string>();
             if (row.Quantity != null) amount.Add(row.Quantity.Value.ToString("0.###", CultureInfo.InvariantCulture));
             if (!string.IsNullOrEmpty(row.Unit)) amount.Add(row.Unit);
-            return amount.Count == 0 ? $"{i + 1}. {row.Name}" : $"{i + 1}. {row.Name} — {string.Join(' ', amount)}";
+            var name = Flatten(row.Name);
+            return amount.Count == 0 ? $"{i + 1}. {name}" : $"{i + 1}. {name} — {string.Join(' ', amount)}";
         }));
     }
+
+    /// <summary>Single line, without the triple quotes that delimit user text in the prompt.</summary>
+    public static string Flatten(string? text) =>
+        (text ?? string.Empty).Replace((char)13, (char)32).Replace((char)10, (char)32).Replace("\"\"\"", "\"").Trim();
 
     public static bool TryParse(string? content, out List<CorrectionChange> changes)
     {

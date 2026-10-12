@@ -39,6 +39,7 @@ public static class StockFields
     {
         if (a == null) return b;
         if (b == null) return a;
-        return Math.Round(a.Value + b.Value, 3);
+        // Capped so two valid amounts can never overflow the database column.
+        return Math.Min(Math.Round(a.Value + b.Value, 3), MaxQuantity);
     }
 }

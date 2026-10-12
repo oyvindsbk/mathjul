@@ -45,6 +45,7 @@ public static class DraftItems
 
         foreach (var item in items)
         {
+            if (item == null) return "Ugyldig vare i utkastet";
             var error = StockFields.Validate(item.Name, item.Quantity, item.Unit);
             if (error != null) return error;
         }

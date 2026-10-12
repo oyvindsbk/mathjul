@@ -16,6 +16,9 @@ public static class StockImages
     /// <summary>Longest side after scaling. Keeps the vision cost of a phone photo down.</summary>
     public const int MaxDimension = 1536;
 
+    /// <summary>Decoded size cap (about 40 MP); stops a small file with huge dimensions exhausting memory.</summary>
+    public const long MaxPixels = 40_000_000;
+
     private static readonly string[] AllowedContentTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
     /// <summary>Null when the files are acceptable, otherwise a Norwegian error message.</summary>
@@ -43,6 +46,13 @@ public static class StockImages
     {
         try
         {
+            // Read only the header first: a tiny file can still declare enormous dimensions.
+            await using (var probe = file.OpenReadStream())
+            {
+                var info = await Image.IdentifyAsync(probe, cancellationToken);
+                if (info == null || (long)info.Width * info.Height > MaxPixels) return null;
+            }
+
             await using var input = file.OpenReadStream();
             using var image = await Image.LoadAsync(input, cancellationToken);
 

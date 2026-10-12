@@ -55,7 +55,7 @@ public class StockCorrectionProcessor : IStockCorrectionProcessor
             {
                 ChatMessageContentPart.CreateTextPart(
                     $"Gjeldende liste:\n{StockCorrectionParser.FormatDraft(draft)}\n\n" +
-                    $"Instruksjon fra brukeren:\n\"\"\"\n{instruction}\n\"\"\"")
+                    $"Instruksjon fra brukeren:\n\"\"\"\n{instruction.Replace("\"\"\"", "\"")}\n\"\"\"")
             };
 
             foreach (var image in images)
