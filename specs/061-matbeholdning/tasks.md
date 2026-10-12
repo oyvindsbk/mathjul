@@ -20,7 +20,7 @@
       Tester: CRUD, 403 for ikke-medlem, 404 for vare i annen gruppe, ugyldig plassering.
       Verifisering: `dotnet build` + `dotnet test`.
 
-- [ ] Task 4: Handleliste-API. `ShoppingListController` på `api/groups/{groupId}/shopping-list`:
+- [x] Task 4: Handleliste-API. `ShoppingListController` på `api/groups/{groupId}/shopping-list`:
       GET (statusfilter), POST (én eller flere, sammenslåing på normalisert navn + enhet),
       PATCH, DELETE, DELETE `?status=kjopt`, POST `move-to-stock`. Sammenslåing som ren
       funksjon. Tester: sammenslåing lik/ulik enhet, kjøpt-vare slås ikke sammen med ny,
