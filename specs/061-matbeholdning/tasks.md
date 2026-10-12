@@ -7,7 +7,7 @@
       med gruppe), lag EF-migrering. Konstanter for gyldige `Location`/`Source`/`Status`.
       Verifisering: `dotnet build` + `dotnet test`.
 
-- [ ] Task 2: `IngredientMatcher`. Ren statisk klasse: `Normalize(string)` og
+- [x] Task 2: `IngredientMatcher`. Ren statisk klasse: `Normalize(string)` og
       `Match(string ingredient, IReadOnlyList<StockItem> stock)` → `har | kanskje | mangler`
       + matchet vare. Tester: parentes, komma, tilberedningsord, eksakt treff, helt-ord-treff,
       sammensatt ord (prefiks/suffiks), 4-tegnsgrensen («ris»/«kapris» gir ikke treff),
