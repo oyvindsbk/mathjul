@@ -104,11 +104,15 @@ if (!string.IsNullOrEmpty(imageEndpoint) && !string.IsNullOrEmpty(imageApiKey))
 {
     builder.Services.AddScoped<IRecipeImageProcessor, RecipeImageProcessor>();
     builder.Services.AddScoped<RecipeApi.Features.Matkasse.IMatkasseImageProcessor, RecipeApi.Features.Matkasse.MatkasseImageProcessor>();
+    builder.Services.AddScoped<RecipeApi.Features.Stock.IStockScanProcessor, RecipeApi.Features.Stock.StockScanProcessor>();
+    builder.Services.AddScoped<RecipeApi.Features.Stock.IStockCorrectionProcessor, RecipeApi.Features.Stock.StockCorrectionProcessor>();
 }
 else
 {
     builder.Services.AddScoped<IRecipeImageProcessor, DisabledRecipeImageProcessor>();
     builder.Services.AddScoped<RecipeApi.Features.Matkasse.IMatkasseImageProcessor, RecipeApi.Features.Matkasse.DisabledMatkasseImageProcessor>();
+    builder.Services.AddScoped<RecipeApi.Features.Stock.IStockScanProcessor, RecipeApi.Features.Stock.DisabledStockScanProcessor>();
+    builder.Services.AddScoped<RecipeApi.Features.Stock.IStockCorrectionProcessor, RecipeApi.Features.Stock.DisabledStockCorrectionProcessor>();
 }
 
 if (!string.IsNullOrEmpty(aiEndpoint) && !string.IsNullOrEmpty(aiApiKey))

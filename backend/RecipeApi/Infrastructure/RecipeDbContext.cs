@@ -8,6 +8,7 @@ using RecipeApi.Features.Matkasse;
 using RecipeApi.Features.MealPlans;
 using RecipeApi.Features.HeftyMesterskapet;
 using RecipeApi.Features.Recipes;
+using RecipeApi.Features.Stock;
 
 namespace RecipeApi.Infrastructure;
 
@@ -28,6 +29,8 @@ public class RecipeDbContext : DbContext
     public DbSet<RecipeShare> RecipeShares { get; set; }
     public DbSet<MealPlan> MealPlans { get; set; }
     public DbSet<MatkasseRecipe> MatkasseRecipes { get; set; }
+    public DbSet<StockItem> StockItems { get; set; }
+    public DbSet<ShoppingListItem> ShoppingListItems { get; set; }
     public DbSet<FeatureColumn> FeatureColumns { get; set; }
     public DbSet<FeatureCard> FeatureCards { get; set; }
     public DbSet<HeftyMesterskapetCompetition> HeftyMesterskapetCompetitions { get; set; }
@@ -306,6 +309,48 @@ public class RecipeDbContext : DbContext
             entity.Property(e => e.CreatedByEmail).HasMaxLength(200);
             entity.Property(e => e.CreatedAt).IsRequired();
             entity.HasIndex(e => new { e.GroupId, e.UkeStart });
+            entity.HasOne(e => e.Group)
+                  .WithMany()
+                  .HasForeignKey(e => e.GroupId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure StockItem entity
+        modelBuilder.Entity<StockItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.NormalizedName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Quantity).HasPrecision(10, 3);
+            entity.Property(e => e.Unit).HasMaxLength(20);
+            entity.Property(e => e.Location).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.BestBefore).HasColumnType("date");
+            entity.Property(e => e.UpdatedByEmail).HasMaxLength(200);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.Property(e => e.UpdatedAt).IsRequired();
+            entity.HasIndex(e => new { e.GroupId, e.NormalizedName });
+            entity.HasOne(e => e.Group)
+                  .WithMany()
+                  .HasForeignKey(e => e.GroupId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Configure ShoppingListItem entity
+        modelBuilder.Entity<ShoppingListItem>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.Property(e => e.Id).ValueGeneratedOnAdd();
+            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.NormalizedName).IsRequired().HasMaxLength(100);
+            entity.Property(e => e.Quantity).HasPrecision(10, 3);
+            entity.Property(e => e.Unit).HasMaxLength(20);
+            entity.Property(e => e.Note).HasMaxLength(200);
+            entity.Property(e => e.Source).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.Status).IsRequired().HasMaxLength(20);
+            entity.Property(e => e.CreatedByEmail).HasMaxLength(200);
+            entity.Property(e => e.CreatedAt).IsRequired();
+            entity.HasIndex(e => new { e.GroupId, e.Status });
             entity.HasOne(e => e.Group)
                   .WithMany()
                   .HasForeignKey(e => e.GroupId)
