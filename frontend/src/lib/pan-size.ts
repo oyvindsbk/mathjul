@@ -83,6 +83,7 @@ export const MUFFIN_VOLUME_CM3 = 100;
  */
 export const PAN_PRESETS: readonly PanPreset[] = [
   { id: "rund-20", label: "Rund Ø20", shape: "rund", diameter: 20, height: ROUND_HEIGHT_CM },
+  { id: "rund-22", label: "Rund Ø22", shape: "rund", diameter: 22, height: ROUND_HEIGHT_CM },
   { id: "rund-23", label: "Rund Ø23", shape: "rund", diameter: 23, height: ROUND_HEIGHT_CM },
   { id: "rund-24", label: "Rund Ø24", shape: "rund", diameter: 24, height: ROUND_HEIGHT_CM },
   { id: "rund-26", label: "Rund Ø26", shape: "rund", diameter: 26, height: ROUND_HEIGHT_CM },
@@ -120,15 +121,21 @@ export const PAN_PRESETS: readonly PanPreset[] = [
  * Round→round and square→square conversions are absent here on purpose: those
  * charts agree with {@link panVolume} at every row, so the volume model
  * already reproduces them.
+ *
+ * Ø22 has no chart row. Its factors follow the charts' own pattern — the Ø24
+ * factor scaled by the area ratio (24/22)², rounded to one decimal — which
+ * reproduces the Ø20 and Ø23 rows to within the charts' rounding.
  */
 const CHART_FACTORS: Readonly<Record<string, number>> = {
   "rund-20->liten-langpanne-20x30": 1.5,
+  "rund-22->liten-langpanne-20x30": 1.2,
   "rund-23->liten-langpanne-20x30": 1.1,
   "rund-24->liten-langpanne-20x30": 1,
   "rund-26->liten-langpanne-20x30": 0.9,
   "rund-28->liten-langpanne-20x30": 0.8,
   "rund-30->liten-langpanne-20x30": 0.7,
   "rund-20->stor-langpanne-30x40": 2.1,
+  "rund-22->stor-langpanne-30x40": 1.8,
   "rund-23->stor-langpanne-30x40": 1.6,
   "rund-24->stor-langpanne-30x40": 1.5,
   "rund-26->stor-langpanne-30x40": 1.2,
@@ -357,7 +364,7 @@ export interface BakeGuidance {
  * both a lower temperature and a longer time. No volume-ratio model
  * reproduces that, so only the chart's actual entries are encoded here.
  *
- * Deliberately partial: the chart has no row for Ø20 or Ø23, so those presets
+ * Deliberately partial: the chart has no row for Ø20, Ø22 or Ø23, so those presets
  * fall back to {@link conversionWarning}'s qualitative guidance — see callers.
  */
 const BAKE_GUIDANCE: Partial<Record<string, BakeGuidance>> = {

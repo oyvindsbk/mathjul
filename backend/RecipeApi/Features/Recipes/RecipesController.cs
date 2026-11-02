@@ -857,7 +857,7 @@ public class RecipesController : ControllerBase
     /// </summary>
     private static readonly string[] PanPresetIds =
     [
-        "rund-20", "rund-23", "rund-24", "rund-26", "rund-28", "rund-30",
+        "rund-20", "rund-22", "rund-23", "rund-24", "rund-26", "rund-28", "rund-30",
         "liten-langpanne-20x30", "stor-langpanne-30x40"
     ];
 
