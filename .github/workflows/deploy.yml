@@ -215,7 +215,7 @@ jobs:
         dotnet restore ./backend/RecipeApi/RecipeApi.csproj
 
     - name: Install EF Core tools
-      run: dotnet tool install --global dotnet-ef
+      run: dotnet tool install --global dotnet-ef --version 9.0.14
     
     - name: Azure Login
       uses: azure/login@v1
