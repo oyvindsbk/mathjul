@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 env:
-  DOTNET_VERSION: '9.0.x'
+  DOTNET_VERSION: '10.0.x'
   NODE_VERSION: '20.x'
   AZURE_RESOURCE_GROUP: rg-recipe-app-prod
 
@@ -215,7 +215,7 @@ jobs:
         dotnet restore ./backend/RecipeApi/RecipeApi.csproj
 
     - name: Install EF Core tools
-      run: dotnet tool install --global dotnet-ef --version 9.0.14
+      run: dotnet tool install --global dotnet-ef --version 10.0.15
     
     - name: Azure Login
       uses: azure/login@v1

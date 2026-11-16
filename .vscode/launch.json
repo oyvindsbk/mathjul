@@ -12,7 +12,7 @@
       "name": "Launch Backend (.NET)",
       "type": "coreclr",
       "request": "launch",
-      "program": "${workspaceFolder}/backend/RecipeApi/bin/Debug/net9.0/RecipeApi.dll",
+      "program": "${workspaceFolder}/backend/RecipeApi/bin/Debug/net10.0/RecipeApi.dll",
       "args": [],
       "cwd": "${workspaceFolder}/backend/RecipeApi",
       "env": {

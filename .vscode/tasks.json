@@ -101,7 +101,7 @@
     {
       "label": "start:aspire-no-dashboard",
       "type": "shell",
-      "command": "cd aspire/FoodRecipesApp && dotnet build -c Debug && cd ../.. && ASPNETCORE_URLS=http://localhost:15112 ASPIRE_ALLOW_UNSECURED_TRANSPORT=true ASPNETCORE_ENVIRONMENT=Development DOTNET_ENVIRONMENT=Development DOTNET_DASHBOARD_OTLP_ENDPOINT_URL=http://localhost:19190 DOTNET_RESOURCE_SERVICE_ENDPOINT_URL=http://localhost:20128 dotnet aspire/FoodRecipesApp/bin/Debug/net9.0/FoodRecipesApp.dll",
+      "command": "cd aspire/FoodRecipesApp && dotnet build -c Debug && cd ../.. && ASPNETCORE_URLS=http://localhost:15112 ASPIRE_ALLOW_UNSECURED_TRANSPORT=true ASPNETCORE_ENVIRONMENT=Development DOTNET_ENVIRONMENT=Development DOTNET_DASHBOARD_OTLP_ENDPOINT_URL=http://localhost:19190 DOTNET_RESOURCE_SERVICE_ENDPOINT_URL=http://localhost:20128 dotnet aspire/FoodRecipesApp/bin/Debug/net10.0/FoodRecipesApp.dll",
       "isBackground": true,
       "presentation": {
         "reveal": "always",
