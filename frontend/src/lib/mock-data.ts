@@ -291,6 +291,9 @@ export const mockRecipes: Recipe[] = [
       { quantity: 2, unit: 'ts', name: 'bakepulver' },
       { quantity: 2, unit: 'dl', name: 'melk' },
       { quantity: 1, unit: 'ts', name: 'vaniljesukker' },
+      // A countable that, unlike egg, can be halved: it rounds to the nearest
+      // half after a conversion, and is shown as authored on its own tin.
+      { quantity: 1.5, unit: 'stk', name: 'eple' },
     ],
     instructionSteps: [
       { text: 'Sett stekeovnen på 175°C.' },

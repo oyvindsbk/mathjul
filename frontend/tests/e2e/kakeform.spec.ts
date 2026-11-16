@@ -147,7 +147,7 @@ test.describe('Kakeoppskrift - visning', () => {
     // Unscaled: the authored amounts, exactly as entered.
     await expect
       .poll(() => ingredientLines(page))
-      .toEqual(['3 egg', '200 g sukker', '2 ts bakepulver', '2 dl melk', '1 ts vaniljesukker']);
+      .toEqual(['3 egg', '200 g sukker', '2 ts bakepulver', '2 dl melk', '1 ts vaniljesukker', '1 1/2 stk eple']);
   });
 
   test('no warning or guidance is shown before anything is converted', async ({ page }) => {
@@ -167,7 +167,8 @@ test.describe('Konvertering til langpanne', () => {
     // The chart's factor is exactly 1,5. Each amount is rounded against its
     // own unit: 3 egg -> 4.5 -> 5 (countable, whole); 200 g -> 300 (nearest
     // 5); 2 ts -> 3 and 2 dl -> 3 (whole, no fractional part); 1 ts -> 1.5 ->
-    // 1 1/2 (nearest spoon step).
+    // 1 1/2 (nearest spoon step); 1 1/2 stk eple -> 2.25 -> 2 1/2 (countable,
+    // nearest half — only egg rounds to whole).
     await expect
       .poll(() => ingredientLines(page))
       .toEqual([
@@ -176,6 +177,7 @@ test.describe('Konvertering til langpanne', () => {
         '3 ts bakepulver',
         '3 dl melk',
         '1 1/2 ts vaniljesukker',
+        '2 1/2 stk eple',
       ]);
   });
 
@@ -208,7 +210,7 @@ test.describe('Konvertering til langpanne', () => {
     // accumulated, so a round trip lands back on the original numbers.
     await expect
       .poll(() => ingredientLines(page))
-      .toEqual(['3 egg', '200 g sukker', '2 ts bakepulver', '2 dl melk', '1 ts vaniljesukker']);
+      .toEqual(['3 egg', '200 g sukker', '2 ts bakepulver', '2 dl melk', '1 ts vaniljesukker', '1 1/2 stk eple']);
     // Ø24 has chart coverage, but it's the standard pan again — no message,
     // covered or not, shows for the pan the reader isn't converting away from.
     await expect(velger(page).getByTestId('form-velger-warning')).toHaveCount(0);
@@ -253,7 +255,7 @@ test.describe('Temperatur og steketid', () => {
     // nothing happened: the tin really did change, and the guidance says so.
     await expect
       .poll(() => ingredientLines(page))
-      .toEqual(['3 egg', '200 g sukker', '2 ts bakepulver', '2 dl melk', '1 ts vaniljesukker']);
+      .toEqual(['3 egg', '200 g sukker', '2 ts bakepulver', '2 dl melk', '1 ts vaniljesukker', '1 1/2 stk eple']);
     await expect(velger(page).getByTestId('form-velger-bake-guidance')).toHaveText(
       '175–180°C i 25–30 min'
     );

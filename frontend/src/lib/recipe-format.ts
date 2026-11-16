@@ -22,11 +22,22 @@ export function formatQuantity(quantity: number): string {
 }
 
 /**
- * Units whose amounts are counted rather than measured, so a fractional result
- * is meaningless — you cannot use 2.65 eggs. The empty string covers an
- * ingredient with no unit at all ("3 egg"), which is the common case.
+ * Units whose amounts are counted rather than measured, so 2.65 of them is
+ * meaningless. The empty string covers an ingredient with no unit at all
+ * ("3 egg"), which is the common case. Most counted things can be halved — an
+ * apple, an onion, a lemon — so these round to the nearest half.
  */
 const COUNTABLE_UNITS: ReadonlySet<string> = new Set(["", "stk", "plate", "plater", "egg"]);
+
+/**
+ * Eggs are the one counted ingredient a baker cannot halve, so they round to
+ * whole numbers. Matched on the unit ("2 egg") or, for an unlabelled count, on
+ * the name — which also covers "eggeplomme" and "eggehvite".
+ */
+function isEgg(unitKey: string, name: string | null | undefined): boolean {
+  if (unitKey === "egg") return true;
+  return (unitKey === "" || unitKey === "stk") && /^egg/i.test((name ?? "").trim());
+}
 
 /**
  * Units measured in grams, where 5 g is finer than any kitchen scale needs.
@@ -71,15 +82,20 @@ const SPOON_STEPS: readonly number[] = [1 / 8, 1 / 4, 1 / 2, 3 / 4, 1];
  * by AI extraction, so the set of units seen in practice is open-ended, and
  * silently rounding something we do not recognise is worse than leaving it.
  */
-export function roundForUnit(quantity: number, unit: string | null | undefined): number {
+export function roundForUnit(
+  quantity: number,
+  unit: string | null | undefined,
+  name?: string | null
+): number {
   if (!Number.isFinite(quantity) || quantity <= 0) return quantity;
 
   const key = (unit ?? "").trim().toLowerCase();
 
   if (COUNTABLE_UNITS.has(key)) {
-    // Clamped to 1: scaling a single egg down by 0.56 rounds to 0, which would
-    // drop the ingredient from the recipe entirely.
-    return Math.max(1, Math.round(quantity));
+    // Clamped to the smallest usable amount: scaling a single egg down by 0.56
+    // rounds to 0, which would drop the ingredient from the recipe entirely.
+    if (isEgg(key, name)) return Math.max(1, Math.round(quantity));
+    return Math.max(0.5, Math.round(quantity * 2) / 2);
   }
 
   if (GRAM_UNITS.has(key)) {
@@ -135,12 +151,14 @@ export function formatIngredientParts(
 ): { qtyUnit: string; name: string } {
   let qtyStr = "";
   if (ingredient.quantity != null) {
-    let scaled =
-      baseServings && baseServings > 0
-        ? (ingredient.quantity * desiredServings) / baseServings
-        : ingredient.quantity;
-    if (quantityType === "form") {
-      scaled = roundForUnit(scaled, ingredient.unit);
+    const factor = baseServings && baseServings > 0 ? desiredServings / baseServings : 1;
+    let scaled = ingredient.quantity * factor;
+    // Rounding exists to tidy up a conversion's output. At ×1 the amount is
+    // exactly what the author wrote, so it is shown as-is: rounding it would
+    // turn an authored "1,5 eple" into "2 eple" on the recipe's own tin.
+    const isScaled = Math.abs(factor - 1) > 1e-9;
+    if (quantityType === "form" && isScaled) {
+      scaled = roundForUnit(scaled, ingredient.unit, ingredient.name);
     }
     qtyStr = formatQuantity(scaled);
   }
