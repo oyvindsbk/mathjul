@@ -6,6 +6,7 @@ import { AuthButton } from '@/components/AuthButton';
 import { useApiToken } from '@/hooks/useApiToken';
 import RecipeForm from '@/components/RecipeForm';
 import MainPhotoUpload from '@/components/MainPhotoUpload';
+import CropModal from '@/components/CropModal';
 import VisibilitySelector, { type Visibility } from '@/components/VisibilitySelector';
 import { recipeService } from '@/lib/services/recipe.service';
 import { consumeSseStream } from '@/lib/sseStream';
@@ -24,10 +25,22 @@ type ApiExtractedRecipe = Omit<RecipeFormData, 'categoryIds' | 'instructionSteps
 
 type InputMode = 'image' | 'url' | 'manual';
 
+/**
+ * One selected photo. `original` is kept so re-cropping always starts from the full
+ * image; `current` (the crop, or the original) is what gets extracted and stored.
+ */
+interface SelectedImage {
+  original: File;
+  current: File;
+  previewUrl: string;
+}
+
+const MAX_IMAGES = 5;
+
 export default function UploadRecipe() {
   const [inputMode, setInputMode] = useState<InputMode>('image');
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [selectedImages, setSelectedImages] = useState<SelectedImage[]>([]);
+  const [cropIndex, setCropIndex] = useState<number | null>(null);
   const [recipeUrl, setRecipeUrl] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
   const [progressMessage, setProgressMessage] = useState<string | null>(null);
@@ -58,6 +71,12 @@ export default function UploadRecipe() {
     recipeService.getTilbehorRecipes(token || undefined).then(setAvailableSideDishes).catch(() => {});
   }, [tokenLoading, token]);
 
+  /** The extracted recipe no longer matches the photos, so drop it and its source URLs. */
+  const invalidateExtraction = () => {
+    setExtractedRecipe(null);
+    setSourceImageUrls([]);
+  };
+
   const handleFilesSelect = (files: File[]) => {
     const validFiles: File[] = [];
     for (const file of files) {
@@ -72,21 +91,35 @@ export default function UploadRecipe() {
       validFiles.push(file);
     }
 
-    const combined = [...selectedFiles, ...validFiles].slice(0, 5);
-    setSelectedFiles(combined);
+    const added = validFiles
+      .slice(0, MAX_IMAGES - selectedImages.length)
+      .map((file) => ({ original: file, current: file, previewUrl: URL.createObjectURL(file) }));
+    setSelectedImages([...selectedImages, ...added]);
     setError(null);
-    setExtractedRecipe(null);
-
-    const newUrls = combined.map((f) => URL.createObjectURL(f));
-    previewUrls.forEach((u) => URL.revokeObjectURL(u));
-    setPreviewUrls(newUrls);
+    invalidateExtraction();
   };
 
   const handleRemoveFile = (index: number) => {
-    URL.revokeObjectURL(previewUrls[index]);
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
-    setPreviewUrls((prev) => prev.filter((_, i) => i !== index));
+    URL.revokeObjectURL(selectedImages[index].previewUrl);
+    setSelectedImages((prev) => prev.filter((_, i) => i !== index));
   };
+
+  /** Replaces the photo at `index` with `current` (a crop, or the original on reset). */
+  const replaceCurrentImage = (index: number, current: File) => {
+    const target = selectedImages[index];
+    if (!target) return;
+    URL.revokeObjectURL(target.previewUrl);
+    const updated: SelectedImage = { ...target, current, previewUrl: URL.createObjectURL(current) };
+    setSelectedImages(selectedImages.map((img, i) => (i === index ? updated : img)));
+    invalidateExtraction();
+  };
+
+  const handleCropConfirm = (cropped: File) => {
+    if (cropIndex !== null) replaceCurrentImage(cropIndex, cropped);
+    setCropIndex(null);
+  };
+
+  const handleCropCancel = () => setCropIndex(null);
 
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -143,9 +176,9 @@ export default function UploadRecipe() {
     setSourceImageUrls([]);
     setCurrentMainImageUrl(null);
     setPendingMainImageFile(null);
-    previewUrls.forEach((u) => URL.revokeObjectURL(u));
-    setSelectedFiles([]);
-    setPreviewUrls([]);
+    selectedImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
+    setSelectedImages([]);
+    setCropIndex(null);
     if (mode === 'manual') {
       setExtractedRecipe(emptyRecipe());
     }
@@ -161,7 +194,7 @@ export default function UploadRecipe() {
   };
 
   const handleExtractFromImage = async () => {
-    if (selectedFiles.length === 0) return;
+    if (selectedImages.length === 0) return;
 
     if (!token) {
       setError('Autentiseringstoken ikke tilgjengelig. Prøv å logge inn igjen.');
@@ -174,8 +207,8 @@ export default function UploadRecipe() {
 
     try {
       const formData = new FormData();
-      for (const file of selectedFiles) {
-        formData.append('images', file);
+      for (const img of selectedImages) {
+        formData.append('images', img.current);
       }
 
       const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
@@ -443,7 +476,7 @@ export default function UploadRecipe() {
               className="hidden"
             />
 
-            {previewUrls.length === 0 ? (
+            {selectedImages.length === 0 ? (
               <div>
                 <svg
                   className="mx-auto h-12 w-12 text-gray-400"
@@ -474,26 +507,58 @@ export default function UploadRecipe() {
             ) : (
               <div>
                 <div className="flex flex-wrap gap-3 justify-center mb-4">
-                  {previewUrls.map((url, i) => (
-                    <div key={url} className="relative">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={url}
-                        alt={`Bilde ${i + 1}`}
-                        className="h-32 w-32 object-cover rounded-lg shadow"
-                      />
-                      <button
-                        onClick={() => handleRemoveFile(i)}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
-                        aria-label={`Fjern bilde ${i + 1}`}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
+                  {selectedImages.map((img, i) => {
+                    const isCropped = img.current !== img.original;
+                    return (
+                      <div key={img.previewUrl} className="flex flex-col items-center gap-1" data-testid="upload-thumbnail">
+                        <div className="relative">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={img.previewUrl}
+                            alt={`Bilde ${i + 1}`}
+                            className="h-32 w-32 object-cover rounded-lg shadow"
+                          />
+                          {isCropped && (
+                            <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-xs text-white">
+                              Beskjært
+                            </span>
+                          )}
+                          <button
+                            onClick={() => handleRemoveFile(i)}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs hover:bg-red-600 transition-colors"
+                            aria-label={`Fjern bilde ${i + 1}`}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <div className="flex gap-2 text-xs">
+                          <button
+                            type="button"
+                            onClick={() => setCropIndex(i)}
+                            disabled={isExtracting}
+                            className="text-blue-600 dark:text-blue-400 hover:underline disabled:text-gray-400 disabled:no-underline"
+                            aria-label={`Beskjær bilde ${i + 1}`}
+                          >
+                            Beskjær
+                          </button>
+                          {isCropped && (
+                            <button
+                              type="button"
+                              onClick={() => replaceCurrentImage(i, img.original)}
+                              disabled={isExtracting}
+                              className="text-gray-600 dark:text-gray-400 hover:underline disabled:text-gray-400 disabled:no-underline"
+                              aria-label={`Tilbakestill bilde ${i + 1}`}
+                            >
+                              Tilbakestill
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className="flex gap-4 justify-center">
-                  {selectedFiles.length < 5 && (
+                  {selectedImages.length < MAX_IMAGES && (
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       className="px-4 py-2 bg-gray-200 dark:bg-gray-800 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors"
@@ -514,6 +579,17 @@ export default function UploadRecipe() {
               </div>
             )}
           </div>
+        )}
+
+        {cropIndex !== null && selectedImages[cropIndex] && (
+          <CropModal
+            file={selectedImages[cropIndex].original}
+            initialCrop="full"
+            confirmLabel="Beskjær"
+            skipLabel="Avbryt"
+            onConfirm={handleCropConfirm}
+            onSkip={handleCropCancel}
+          />
         )}
 
         {/* URL Input Area */}

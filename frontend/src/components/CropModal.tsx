@@ -18,6 +18,13 @@ interface CropModalProps {
   file: File;
   onConfirm: (cropped: File) => void;
   onSkip: () => void;
+  /**
+   * Starting selection: 'square' (largest centered square, for dish photos) or
+   * 'full' (the whole image, for recipe pages where a square would cut text).
+   */
+  initialCrop?: 'square' | 'full';
+  confirmLabel?: string;
+  skipLabel?: string;
 }
 
 /** Clamp value between min and max. */
@@ -44,7 +51,14 @@ function hitHandle(crop: CropBox, x: number, y: number): Handle {
   return null;
 }
 
-export default function CropModal({ file, onConfirm, onSkip }: CropModalProps) {
+export default function CropModal({
+  file,
+  onConfirm,
+  onSkip,
+  initialCrop = 'square',
+  confirmLabel = 'Beskjær',
+  skipLabel = 'Hopp over',
+}: CropModalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
   const [crop, setCrop] = useState<CropBox>({ x: 0, y: 0, w: 0, h: 0 });
@@ -71,6 +85,11 @@ export default function CropModal({ file, onConfirm, onSkip }: CropModalProps) {
       const dh = Math.round(img.naturalHeight * scale);
       setCanvasSize({ w: dw, h: dh });
 
+      if (initialCrop === 'full') {
+        setCrop({ x: 0, y: 0, w: dw, h: dh });
+        return;
+      }
+
       // Default: largest centered square
       const side = Math.min(dw, dh);
       setCrop({
@@ -82,7 +101,7 @@ export default function CropModal({ file, onConfirm, onSkip }: CropModalProps) {
     };
     img.src = url;
     return () => URL.revokeObjectURL(url);
-  }, [file]);
+  }, [file, initialCrop]);
 
   // ---------- Draw ----------
   const draw = useCallback(() => {
@@ -169,7 +188,10 @@ export default function CropModal({ file, onConfirm, onSkip }: CropModalProps) {
     e.currentTarget.setPointerCapture(e.pointerId);
     const { x, y } = getCanvasXY(e);
     const handle = hitHandle(crop, x, y);
-    if (!handle) {
+    // A selection that already fills the canvas cannot move, so a drag inside it
+    // starts a new selection instead (the 'full' starting crop is exactly that).
+    const fillsCanvas = crop.w >= canvasSize.w && crop.h >= canvasSize.h;
+    if (!handle || (handle === 'move' && fillsCanvas)) {
       // Start a new selection
       dragRef.current = { handle: 'se', startX: x, startY: y, startCrop: { x, y, w: 0, h: 0 } };
       setCrop({ x, y, w: 0, h: 0 });
@@ -228,17 +250,6 @@ export default function CropModal({ file, onConfirm, onSkip }: CropModalProps) {
     dragRef.current = null;
   };
 
-  // ---------- Keyboard ----------
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onSkip();
-      if (e.key === 'Enter') handleCrop();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [crop, canvasSize, file]);
-
   // ---------- Crop action ----------
   const handleCrop = useCallback(() => {
     const img = imgRef.current;
@@ -277,6 +288,17 @@ export default function CropModal({ file, onConfirm, onSkip }: CropModalProps) {
     );
   }, [crop, canvasSize, file, onConfirm, onSkip]);
 
+  // ---------- Keyboard ----------
+  // Re-subscribes whenever handleCrop changes, so Enter always crops the current selection.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onSkip();
+      if (e.key === 'Enter') handleCrop();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [handleCrop, onSkip]);
+
   if (canvasSize.w === 0) {
     // Still loading
     return (
@@ -314,14 +336,14 @@ export default function CropModal({ file, onConfirm, onSkip }: CropModalProps) {
           onClick={onSkip}
           className="px-4 py-2 text-sm bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
         >
-          Hopp over
+          {skipLabel}
         </button>
         <button
           type="button"
           onClick={handleCrop}
           className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
         >
-          Beskjær
+          {confirmLabel}
         </button>
       </div>
     </div>
