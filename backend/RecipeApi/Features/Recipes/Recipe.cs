@@ -153,7 +153,11 @@ public class Recipe
 
     public string? SourceUrl { get; set; }
 
-    public string? SourceImageUrl { get; set; }
+    /// <summary>
+    /// Blob URLs of the photos this recipe was extracted from, in upload order.
+    /// Immutable provenance: set on create, deleted with the recipe.
+    /// </summary>
+    public List<string> SourceImageUrls { get; set; } = new();
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

@@ -783,7 +783,7 @@ public class RecipesController : ControllerBase
             NoCookTime = request.NoCookTime,
             ImageUrl = request.MainImageUrl,
             SourceUrl = request.SourceUrl,
-            SourceImageUrl = request.SourceImageUrl,
+            SourceImageUrls = request.SourceImageUrl != null ? [request.SourceImageUrl] : new List<string>(),
             Categories = categories,
             Visibility = visibility,
             OwnerEmail = callerEmail,

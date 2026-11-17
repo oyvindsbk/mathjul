@@ -17,7 +17,7 @@ namespace RecipeApi.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.14")
+                .HasAnnotation("ProductVersion", "10.0.15")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -577,7 +577,8 @@ namespace RecipeApi.Migrations
                     b.Property<double?>("Servings")
                         .HasColumnType("float");
 
-                    b.Property<string>("SourceImageUrl")
+                    b.Property<string>("SourceImageUrls")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SourceUrl")
@@ -620,6 +621,7 @@ namespace RecipeApi.Migrations
                             InstructionSteps = "[]",
                             NoCookTime = false,
                             QuantityType = "porsjoner",
+                            SourceImageUrls = "[]",
                             Tips = "[]",
                             Title = "Classic Spaghetti Carbonara",
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -638,6 +640,7 @@ namespace RecipeApi.Migrations
                             InstructionSteps = "[]",
                             NoCookTime = false,
                             QuantityType = "porsjoner",
+                            SourceImageUrls = "[]",
                             Tips = "[]",
                             Title = "Chicken Tikka Masala",
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -656,6 +659,7 @@ namespace RecipeApi.Migrations
                             InstructionSteps = "[]",
                             NoCookTime = false,
                             QuantityType = "porsjoner",
+                            SourceImageUrls = "[]",
                             Tips = "[]",
                             Title = "Chocolate Chip Cookies",
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
@@ -674,6 +678,7 @@ namespace RecipeApi.Migrations
                             InstructionSteps = "[]",
                             NoCookTime = false,
                             QuantityType = "porsjoner",
+                            SourceImageUrls = "[]",
                             Tips = "[]",
                             Title = "Caesar Salad",
                             UpdatedAt = new DateTime(2025, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
