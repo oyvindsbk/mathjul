@@ -27,6 +27,12 @@ public sealed class RecipeTestContext : IDisposable
     /// <summary>The URL processor mock handed to the last created controller.</summary>
     public Mock<IRecipeUrlProcessor> UrlProcessor { get; } = new();
 
+    /// <summary>The image processor mock handed to every created controller.</summary>
+    public Mock<IRecipeImageProcessor> ImageProcessor { get; } = new();
+
+    /// <summary>The blob storage mock handed to every created controller.</summary>
+    public Mock<IBlobStorageService> BlobStorage { get; } = new();
+
     public RecipeTestContext()
     {
         var options = new DbContextOptionsBuilder<RecipeDbContext>()
@@ -35,6 +41,13 @@ public sealed class RecipeTestContext : IDisposable
 
         Db = new RecipeDbContext(options);
         Db.Database.EnsureCreated();
+
+        BlobStorage
+            .Setup(b => b.DeleteByPrefixAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        BlobStorage
+            .Setup(b => b.DeleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
     }
 
     /// <summary>
@@ -52,16 +65,11 @@ public sealed class RecipeTestContext : IDisposable
         var adminService = new Mock<IAdminService>();
         adminService.Setup(a => a.IsAdmin(It.IsAny<string>())).Returns(isAdmin);
 
-        var blobStorage = new Mock<IBlobStorageService>();
-        blobStorage
-            .Setup(b => b.DeleteByPrefixAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
-
         var controller = new RecipesController(
             Db,
-            new Mock<IRecipeImageProcessor>().Object,
+            ImageProcessor.Object,
             UrlProcessor.Object,
-            blobStorage.Object,
+            BlobStorage.Object,
             adminService.Object,
             configuration ?? new ConfigurationBuilder().Build(),
             NullLogger<RecipesController>.Instance);

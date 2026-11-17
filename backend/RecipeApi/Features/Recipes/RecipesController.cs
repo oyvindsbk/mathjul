@@ -13,6 +13,8 @@ public class RecipesController : ControllerBase
 {
     private static readonly string[] AllowedImageContentTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
     private const long MaxImageBytes = 10 * 1024 * 1024; // 10MB
+    /// <summary>Blob path prefix for uploaded source photos; save only accepts URLs under it.</summary>
+    public const string SourceImageBlobPrefix = "recipes/pending/source-";
 
     private readonly RecipeDbContext _context;
     private readonly IRecipeImageProcessor _imageProcessor;
@@ -456,24 +458,9 @@ public class RecipesController : ControllerBase
             _logger.LogWarning(ex, "Dish photo extraction failed, continuing without main image");
         }
 
-        // Upload original source image to blob storage for provenance
-        string? sourceImageUrl = null;
-        try
-        {
-            var ext = Path.GetExtension(image.FileName).ToLowerInvariant();
-            if (string.IsNullOrEmpty(ext)) ext = ".jpg";
-            var sourceBlobPath = $"recipes/pending/source-{Guid.NewGuid()}{ext}";
-            using var sourceStream = image.OpenReadStream();
-            sourceImageUrl = await _blobStorage.UploadAsync(sourceStream, sourceBlobPath, image.ContentType);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Source image upload failed, continuing without sourceImageUrl");
-        }
-
         var extracted = MapToExtractedResponse(result.Recipe!);
         extracted.MainImageUrl = mainImageUrl;
-        extracted.SourceImageUrl = sourceImageUrl;
+        extracted.SourceImageUrls = await UploadSourceImagesAsync([image]);
 
         return Ok(new RecipeExtractionResponse { Success = true, ExtractedRecipe = extracted });
     }
@@ -525,28 +512,9 @@ public class RecipesController : ControllerBase
             _logger.LogWarning(ex, "Dish photo extraction failed, continuing without main image");
         }
 
-        // Source provenance: store all source images, keep first URL as primary
-        string? sourceImageUrl = null;
-        try
-        {
-            foreach (var imageFile in images)
-            {
-                var ext = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
-                if (string.IsNullOrEmpty(ext)) ext = ".jpg";
-                var sourceBlobPath = $"recipes/pending/source-{Guid.NewGuid()}{ext}";
-                using var sourceStream = imageFile.OpenReadStream();
-                var url = await _blobStorage.UploadAsync(sourceStream, sourceBlobPath, imageFile.ContentType);
-                sourceImageUrl ??= url;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Source image upload failed, continuing without sourceImageUrl");
-        }
-
         var extracted = MapToExtractedResponse(result.Recipe!);
         extracted.MainImageUrl = mainImageUrl;
-        extracted.SourceImageUrl = sourceImageUrl;
+        extracted.SourceImageUrls = await UploadSourceImagesAsync(images);
 
         return Ok(new RecipeExtractionResponse { Success = true, ExtractedRecipe = extracted });
     }
@@ -616,31 +584,38 @@ public class RecipesController : ControllerBase
             _logger.LogWarning(ex, "Dish photo extraction failed, continuing without main image");
         }
 
-        string? sourceImageUrl = null;
-        try
-        {
-            foreach (var imageFile in images)
-            {
-                var ext = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
-                if (string.IsNullOrEmpty(ext)) ext = ".jpg";
-                var sourceBlobPath = $"recipes/pending/source-{Guid.NewGuid()}{ext}";
-                using var sourceStream = imageFile.OpenReadStream();
-                var url = await _blobStorage.UploadAsync(sourceStream, sourceBlobPath, imageFile.ContentType);
-                sourceImageUrl ??= url;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Source image upload failed, continuing without sourceImageUrl");
-        }
-
         var extracted = MapToExtractedResponse(result.Recipe!);
         extracted.MainImageUrl = mainImageUrl;
-        extracted.SourceImageUrl = sourceImageUrl;
+        extracted.SourceImageUrls = await UploadSourceImagesAsync(images);
 
         var payload = System.Text.Json.JsonSerializer.Serialize(new RecipeExtractionResponse { Success = true, ExtractedRecipe = extracted },
             new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
         await SendEventAsync($"{{\"stage\":\"done\",\"result\":{payload}}}");
+    }
+
+    /// <summary>
+    /// Uploads the original photos to blob storage for provenance, in upload order.
+    /// Best-effort per image: a failed upload is logged and skipped, never fails extraction.
+    /// </summary>
+    private async Task<List<string>> UploadSourceImagesAsync(IEnumerable<IFormFile> images)
+    {
+        var urls = new List<string>();
+        foreach (var imageFile in images)
+        {
+            try
+            {
+                var ext = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
+                if (string.IsNullOrEmpty(ext)) ext = ".jpg";
+                var sourceBlobPath = $"{SourceImageBlobPrefix}{Guid.NewGuid()}{ext}";
+                using var sourceStream = imageFile.OpenReadStream();
+                urls.Add(await _blobStorage.UploadAsync(sourceStream, sourceBlobPath, imageFile.ContentType));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Source image upload failed for {FileName}, skipping it", imageFile.FileName);
+            }
+        }
+        return urls;
     }
 
     [HttpPost("from-url/stream")]
@@ -1876,8 +1851,8 @@ public class ExtractedRecipeResponse
     public List<string> Tips { get; set; } = new();
     /// <summary>Blob URL of the AI-extracted dish photo, if detected.</summary>
     public string? MainImageUrl { get; set; }
-    /// <summary>Blob URL of the original uploaded source image.</summary>
-    public string? SourceImageUrl { get; set; }
+    /// <summary>Blob URLs of the original uploaded source images, in upload order.</summary>
+    public List<string> SourceImageUrls { get; set; } = new();
     /// <summary>Original URL the recipe was extracted from (URL mode).</summary>
     public string? SourceUrl { get; set; }
 }
