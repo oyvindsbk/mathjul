@@ -12,6 +12,7 @@ import { useCookingProgress } from "@/hooks/useCookingProgress";
 import type { Recipe } from "@/lib/mock-data";
 import { RecipeBody } from "@/components/RecipeBody";
 import { ShareRecipeModal } from "@/components/ShareRecipeModal";
+import { SourceImages } from "@/components/SourceImages";
 import { parseRecipeId, recipeHref } from "@/lib/recipe-url";
 import RecipeDetailLoading from "./loading";
 
@@ -114,8 +115,13 @@ export default function RecipeDetailClient({ id: routeParam }: { id: string }) {
   // Falls back to the raw email only for recipes whose owner has no user record.
   const ownerLabel = recipe.ownerDisplayName || recipe.ownerEmail;
 
+  const sourceImageUrls = recipe.sourceImageUrls ?? [];
+
   const hasMeta = Boolean(
-    ownerLabel || recipe.sourceUrl || (recipe.categories && recipe.categories.length > 0)
+    ownerLabel ||
+      recipe.sourceUrl ||
+      sourceImageUrls.length > 0 ||
+      (recipe.categories && recipe.categories.length > 0)
   );
 
   const metaContent = (
@@ -143,6 +149,8 @@ export default function RecipeDetailClient({ id: routeParam }: { id: string }) {
           )}
         </div>
       )}
+
+      <SourceImages recipeId={recipe.id} urls={sourceImageUrls} token={token} />
 
       {recipe.categories && recipe.categories.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-6">

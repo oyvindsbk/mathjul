@@ -502,6 +502,33 @@ class RecipeService {
   }
 
   /**
+   * Download source photo `index` of a recipe as a file. Goes through the API
+   * (Bearer auth, Content-Disposition: attachment) because the browser ignores
+   * `download` on cross-origin blob-storage links.
+   */
+  async downloadSourceImage(recipeId: number, index: number, token?: string): Promise<void> {
+    const fallbackName = `kilde-${index + 1}.jpg`;
+
+    if (appConfig.mocking.enabled) {
+      const url = mockRecipes.find((r) => r.id === recipeId)?.sourceImageUrls?.[index];
+      if (!url) throw new Error('Kildebildet finnes ikke');
+      saveBlob(await (await fetch(url)).blob(), fallbackName);
+      return;
+    }
+
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const response = await apiFetch(
+      `${appConfig.api.baseUrl}/api/recipes/${recipeId}/source-images/${index}`,
+      { headers }
+    );
+    if (!response.ok) throw new Error(`Failed to download source image: ${response.statusText}`);
+
+    const fileName = fileNameFromContentDisposition(response.headers.get('Content-Disposition')) ?? fallbackName;
+    saveBlob(await response.blob(), fileName);
+  }
+
+  /**
    * Helper for mutation requests (POST/PUT/DELETE)
    */
   private fetchWithBody(url: string, method: string, body?: unknown, token?: string): Promise<Response> {
@@ -556,3 +583,34 @@ class RecipeService {
 
 // Export singleton instance
 export const recipeService = new RecipeService();
+
+/**
+ * File name from a Content-Disposition header. Prefers the RFC 5987 `filename*`
+ * form that ASP.NET also emits, then plain `filename`.
+ */
+export function fileNameFromContentDisposition(header: string | null): string | null {
+  if (!header) return null;
+  const extended = /filename\*\s*=\s*(?:UTF-8|utf-8)''([^;]+)/.exec(header);
+  if (extended) {
+    try {
+      return decodeURIComponent(extended[1].trim());
+    } catch {
+      // Malformed encoding: fall through to the plain form.
+    }
+  }
+  const plain = /filename\s*=\s*"?([^";]+)"?/.exec(header);
+  return plain ? plain[1].trim() : null;
+}
+
+/** Saves a blob through a temporary object URL and `<a download>`. */
+function saveBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  // Revoke after the click has been handled; revoking synchronously can cancel it in some browsers.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
