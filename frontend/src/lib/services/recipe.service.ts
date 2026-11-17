@@ -45,7 +45,8 @@ export interface RecipeFormData {
   tips?: string[];
   mainImageUrl?: string | null;
   sourceUrl?: string | null;
-  sourceImageUrl?: string | null;
+  /** Blob URLs of the photos an image-mode recipe was extracted from. Only sent on create. */
+  sourceImageUrls?: string[];
 }
 
 /**

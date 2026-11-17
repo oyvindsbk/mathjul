@@ -108,6 +108,8 @@ export interface Recipe {
   /** Owner's user id for profile links. Null when the owner has no user record. */
   ownerUserId?: number | null;
   sourceUrl?: string | null;
+  /** Photos the recipe was extracted from (image upload), in upload order. */
+  sourceImageUrls?: string[];
   createdAt?: string;
   /** Last edit timestamp. Scopes persisted cooking progress — see lib/cooking-progress.ts. */
   updatedAt?: string;
@@ -138,6 +140,14 @@ export const mockCategories: Category[] = [
   // had drifted behind.
   { id: 17, name: 'Kake', group: 'Måltidstype' },
 ];
+
+/** A tiny inline placeholder, so mock mode can show the Kildebilder section without assets. */
+const MOCK_SOURCE_IMAGE =
+  'data:image/svg+xml;utf8,' +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400"><rect width="300" height="400" fill="#f5f0e6"/>' +
+      '<text x="150" y="200" font-family="serif" font-size="28" text-anchor="middle" fill="#6b5b3e">Kildebilde</text></svg>'
+  );
 
 export const mockRecipes: Recipe[] = [
   {
@@ -171,6 +181,7 @@ export const mockRecipes: Recipe[] = [
     prepTime: 10,
     cookTimeMinutes: 20,
     servings: 4,
+    sourceImageUrls: [MOCK_SOURCE_IMAGE, MOCK_SOURCE_IMAGE],
 
     categories: [
       { id: 3, name: 'Middag', group: 'Måltidstype' },

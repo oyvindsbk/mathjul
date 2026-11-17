@@ -18,7 +18,7 @@ type ApiExtractedRecipe = Omit<RecipeFormData, 'categoryIds' | 'instructionSteps
   suggestedCategoryIds?: number[];
   instructionSteps?: RecipeFormData['instructionSteps'];
   sourceUrl?: string | null;
-  sourceImageUrl?: string | null;
+  sourceImageUrls?: string[];
   mainImageUrl?: string | null;
 };
 
@@ -37,9 +37,9 @@ export default function UploadRecipe() {
   const [isDragging, setIsDragging] = useState(false);
   const [availableCategories, setAvailableCategories] = useState<Category[]>([]);
   const [availableSideDishes, setAvailableSideDishes] = useState<Recipe[]>([]);
-  // Provenance: original source URL or source image blob URL
+  // Provenance: original source URL (URL mode) or source image blob URLs (image mode)
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
-  const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
+  const [sourceImageUrls, setSourceImageUrls] = useState<string[]>([]);
   // Main photo state for the extracted recipe
   const [currentMainImageUrl, setCurrentMainImageUrl] = useState<string | null>(null);
   const [pendingMainImageFile, setPendingMainImageFile] = useState<File | null>(null);
@@ -132,7 +132,7 @@ export default function UploadRecipe() {
     tips: [],
     mainImageUrl: null,
     sourceUrl: null,
-    sourceImageUrl: null,
+    sourceImageUrls: [],
   });
 
   const handleSwitchMode = (mode: InputMode) => {
@@ -140,7 +140,7 @@ export default function UploadRecipe() {
     setError(null);
     setExtractedRecipe(null);
     setSourceUrl(null);
-    setSourceImageUrl(null);
+    setSourceImageUrls([]);
     setCurrentMainImageUrl(null);
     setPendingMainImageFile(null);
     previewUrls.forEach((u) => URL.revokeObjectURL(u));
@@ -204,9 +204,9 @@ export default function UploadRecipe() {
               reject(new Error(data.errorMessage || 'Kunne ikke hente oppskriften'));
               return;
             }
-            const { suggestedCategoryIds, mainImageUrl, sourceImageUrl: extractedSourceImageUrl, instructionSteps, ...rest } = data.extractedRecipe;
+            const { suggestedCategoryIds, mainImageUrl, sourceImageUrls: extractedSourceImageUrls, instructionSteps, ...rest } = data.extractedRecipe;
             setCurrentMainImageUrl(mainImageUrl ?? null);
-            setSourceImageUrl(extractedSourceImageUrl ?? null);
+            setSourceImageUrls(extractedSourceImageUrls ?? []);
             setSourceUrl(null);
             setPendingMainImageFile(null);
             setExtractedRecipe({
@@ -281,7 +281,7 @@ export default function UploadRecipe() {
             const { suggestedCategoryIds, mainImageUrl, sourceUrl: extractedSourceUrl, instructionSteps, ...rest } = data.extractedRecipe;
             setCurrentMainImageUrl(mainImageUrl ?? null);
             setSourceUrl(extractedSourceUrl ?? capturedUrl ?? null);
-            setSourceImageUrl(null);
+            setSourceImageUrls([]);
             setPendingMainImageFile(null);
             setExtractedRecipe({
               ...rest,
@@ -328,7 +328,7 @@ export default function UploadRecipe() {
         instructionSteps: cleanedSteps,
         mainImageUrl: currentMainImageUrl,
         sourceUrl: sourceUrl ?? undefined,
-        sourceImageUrl: sourceImageUrl ?? undefined,
+        sourceImageUrls: sourceImageUrls.length > 0 ? sourceImageUrls : undefined,
         visibility,
         groupIds,
       };
