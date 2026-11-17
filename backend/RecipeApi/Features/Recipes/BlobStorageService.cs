@@ -9,6 +9,13 @@ public interface IBlobStorageService
     Task<string> UploadAsync(Stream content, string blobPath, string contentType, CancellationToken cancellationToken = default);
     Task DeleteAsync(string blobPath, CancellationToken cancellationToken = default);
     Task DeleteByPrefixAsync(string prefix, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the blob path of <paramref name="url"/> when it points into this service's
+    /// container (same scheme, host and container path), otherwise null. Use it to reject
+    /// client-supplied URLs that are not ours.
+    /// </summary>
+    string? GetBlobPathFromUrl(string url);
 }
 
 public class BlobStorageOptions
@@ -68,5 +75,26 @@ public class AzureBlobStorageService : IBlobStorageService
         {
             await _containerClient.GetBlobClient(blob.Name).DeleteIfExistsAsync(cancellationToken: cancellationToken);
         }
+    }
+
+    public string? GetBlobPathFromUrl(string url)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
+            || !string.IsNullOrEmpty(uri.Query)
+            || !string.IsNullOrEmpty(uri.Fragment))
+            return null;
+
+        var container = _containerClient.Uri;
+        if (!string.Equals(uri.Scheme, container.Scheme, StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(uri.Authority, container.Authority, StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        // Uri has already collapsed any "." / ".." segments in AbsolutePath.
+        var containerPath = container.AbsolutePath.TrimEnd('/') + "/";
+        if (!uri.AbsolutePath.StartsWith(containerPath, StringComparison.Ordinal))
+            return null;
+
+        var blobPath = Uri.UnescapeDataString(uri.AbsolutePath[containerPath.Length..]);
+        return blobPath.Length == 0 ? null : blobPath;
     }
 }

@@ -22,6 +22,21 @@ public sealed class RecipeTestContext : IDisposable
 {
     public const string OwnerEmail = "owner@example.com";
 
+    /// <summary>Container URL of <see cref="RealBlobStorage"/>; blob URLs in tests start with it.</summary>
+    public const string BlobContainerUrl = "https://acct.blob.core.windows.net/recipe-images/";
+
+    /// <summary>
+    /// A real storage service on a fake account. Constructing it makes no network calls; it
+    /// backs <see cref="IBlobStorageService.GetBlobPathFromUrl"/> on the mock so URL parsing
+    /// in controller tests is the production code.
+    /// </summary>
+    private static readonly AzureBlobStorageService RealBlobStorage = new(new BlobStorageOptions
+    {
+        ContainerName = "recipe-images",
+        ConnectionString = "DefaultEndpointsProtocol=https;AccountName=acct;AccountKey="
+            + Convert.ToBase64String(new byte[64]) + ";EndpointSuffix=core.windows.net"
+    });
+
     public RecipeDbContext Db { get; }
 
     /// <summary>The URL processor mock handed to the last created controller.</summary>
@@ -45,6 +60,9 @@ public sealed class RecipeTestContext : IDisposable
         BlobStorage
             .Setup(b => b.DeleteByPrefixAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
+        BlobStorage
+            .Setup(b => b.GetBlobPathFromUrl(It.IsAny<string>()))
+            .Returns((string url) => RealBlobStorage.GetBlobPathFromUrl(url));
         BlobStorage
             .Setup(b => b.DeleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);

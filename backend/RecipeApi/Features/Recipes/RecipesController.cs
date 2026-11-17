@@ -15,6 +15,7 @@ public class RecipesController : ControllerBase
     private const long MaxImageBytes = 10 * 1024 * 1024; // 10MB
     /// <summary>Blob path prefix for uploaded source photos; save only accepts URLs under it.</summary>
     public const string SourceImageBlobPrefix = "recipes/pending/source-";
+    private const int MaxSourceImages = 5;
 
     private readonly RecipeDbContext _context;
     private readonly IRecipeImageProcessor _imageProcessor;
@@ -354,6 +355,7 @@ public class RecipesController : ControllerBase
             Visibility = recipe.Visibility,
             OwnerEmail = recipe.OwnerEmail,
             SourceUrl = recipe.SourceUrl,
+            SourceImageUrls = recipe.SourceImageUrls,
             Ingredients = recipe.Ingredients.Select(i => i.ToDto()).ToList(),
             InstructionSteps = recipe.InstructionSteps.Select(s => s.ToDto()).ToList(),
             IngredientSections = recipe.IngredientSections.Select(s => new IngredientSectionDto
@@ -721,6 +723,10 @@ public class RecipesController : ControllerBase
         if (panError != null)
             return BadRequest(new { message = panError });
 
+        var sourceImageError = ValidateSourceImageUrls(request.SourceImageUrls);
+        if (sourceImageError != null)
+            return BadRequest(new { message = sourceImageError });
+
         var visibility = request.Visibility ?? "Public";
 
         var recipe = new Recipe
@@ -758,7 +764,7 @@ public class RecipesController : ControllerBase
             NoCookTime = request.NoCookTime,
             ImageUrl = request.MainImageUrl,
             SourceUrl = request.SourceUrl,
-            SourceImageUrls = request.SourceImageUrl != null ? [request.SourceImageUrl] : new List<string>(),
+            SourceImageUrls = request.SourceImageUrls ?? new List<string>(),
             Categories = categories,
             Visibility = visibility,
             OwnerEmail = callerEmail,
@@ -1107,6 +1113,7 @@ public class RecipesController : ControllerBase
             Visibility = recipe.Visibility,
             OwnerEmail = recipe.OwnerEmail,
             SourceUrl = recipe.SourceUrl,
+            SourceImageUrls = recipe.SourceImageUrls,
             Ingredients = recipe.Ingredients.Select(i => i.ToDto()).ToList(),
             InstructionSteps = recipe.InstructionSteps.Select(s => s.ToDto()).ToList(),
             IngredientSections = recipe.IngredientSections.Select(s => new IngredientSectionDto
@@ -1255,6 +1262,7 @@ public class RecipesController : ControllerBase
 
         // Delete all blobs for this recipe (main image + all step images)
         await _blobStorage.DeleteByPrefixAsync($"recipes/{id}/");
+        await DeleteSourceImagesAsync(recipe);
 
         // Remove meal plan entries referencing this recipe before deleting
         var mealPlanEntries = await _context.MealPlans.Where(mp => mp.RecipeId == id).ToListAsync();
@@ -1271,6 +1279,54 @@ public class RecipesController : ControllerBase
         await _context.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Source image URLs must come from our own extraction upload: in our container, under
+    /// <see cref="SourceImageBlobPrefix"/>. Otherwise a client could attach external links we
+    /// would render, or point recipe delete at arbitrary blobs.
+    /// </summary>
+    private string? ValidateSourceImageUrls(List<string>? urls)
+    {
+        if (urls == null || urls.Count == 0)
+            return null;
+
+        if (urls.Count > MaxSourceImages)
+            return $"En oppskrift kan ha maks {MaxSourceImages} kildebilder.";
+
+        foreach (var url in urls)
+        {
+            var blobPath = _blobStorage.GetBlobPathFromUrl(url);
+            if (blobPath == null
+                || !blobPath.StartsWith(SourceImageBlobPrefix, StringComparison.Ordinal)
+                || blobPath.IndexOf('/', SourceImageBlobPrefix.Length) >= 0)
+                return "Ugyldig kildebilde.";
+        }
+
+        return null;
+    }
+
+    /// <summary>Best-effort delete of a recipe's source image blobs; failures are logged.</summary>
+    private async Task DeleteSourceImagesAsync(Recipe recipe)
+    {
+        foreach (var url in recipe.SourceImageUrls)
+        {
+            var blobPath = _blobStorage.GetBlobPathFromUrl(url);
+            if (blobPath == null)
+            {
+                _logger.LogWarning("Recipe {RecipeId} has a source image outside our container, not deleting it", recipe.Id);
+                continue;
+            }
+
+            try
+            {
+                await _blobStorage.DeleteAsync(blobPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to delete source image {BlobPath} for recipe {RecipeId}", blobPath, recipe.Id);
+            }
+        }
     }
 
     // ── Share endpoints ─────────────────────────────────────────────────────
@@ -1806,6 +1862,8 @@ public class RecipeDetailDto
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public string? SourceUrl { get; set; }
+    /// <summary>Blob URLs of the photos the recipe was extracted from, in upload order.</summary>
+    public List<string> SourceImageUrls { get; set; } = new();
     public bool IsLikedByMe { get; set; }
 }
 
@@ -1895,8 +1953,8 @@ public class SaveExtractedRecipeRequest
     public string? MainImageUrl { get; set; }
     /// <summary>Original URL the recipe was extracted from (URL mode).</summary>
     public string? SourceUrl { get; set; }
-    /// <summary>Blob URL of the original uploaded source image (image mode).</summary>
-    public string? SourceImageUrl { get; set; }
+    /// <summary>Blob URLs of the original uploaded source images (image mode), as returned by extraction.</summary>
+    public List<string>? SourceImageUrls { get; set; }
     public string? Visibility { get; set; }
     public List<int>? GroupIds { get; set; }
     /// <summary>Ids of Tilbehør-marked recipes to attach. List order becomes SortOrder.</summary>
