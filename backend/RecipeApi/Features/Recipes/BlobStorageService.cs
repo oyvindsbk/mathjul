@@ -1,3 +1,4 @@
+using Azure;
 using Azure.Identity;
 using Azure.Storage.Blobs;
 using Azure.Storage.Blobs.Models;
@@ -16,7 +17,13 @@ public interface IBlobStorageService
     /// client-supplied URLs that are not ours.
     /// </summary>
     string? GetBlobPathFromUrl(string url);
+
+    /// <summary>Opens a blob for reading, or returns null when it does not exist.</summary>
+    Task<BlobDownload?> OpenReadAsync(string blobPath, CancellationToken cancellationToken = default);
 }
+
+/// <summary>An open blob stream and the content type it was stored with. Caller disposes the stream.</summary>
+public sealed record BlobDownload(Stream Content, string? ContentType);
 
 public class BlobStorageOptions
 {
@@ -96,5 +103,19 @@ public class AzureBlobStorageService : IBlobStorageService
 
         var blobPath = Uri.UnescapeDataString(uri.AbsolutePath[containerPath.Length..]);
         return blobPath.Length == 0 ? null : blobPath;
+    }
+
+    public async Task<BlobDownload?> OpenReadAsync(string blobPath, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var response = await _containerClient.GetBlobClient(blobPath)
+                .DownloadStreamingAsync(cancellationToken: cancellationToken);
+            return new BlobDownload(response.Value.Content, response.Value.Details.ContentType);
+        }
+        catch (RequestFailedException ex) when (ex.Status == 404)
+        {
+            return null;
+        }
     }
 }

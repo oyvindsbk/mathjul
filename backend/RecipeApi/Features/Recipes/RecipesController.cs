@@ -313,16 +313,10 @@ public class RecipesController : ControllerBase
         if (recipe == null)
             return NotFound(new { message = "Recipe not found" });
 
-        // Visibility check
-        var isAdmin = callerEmail != null && _adminService.IsAdmin(callerEmail);
-        var canView = isAdmin
-            || recipe.Visibility == "Public"
-            || (recipe.Visibility == "Private" && recipe.OwnerEmail == callerEmail)
-            || (recipe.Visibility == "Group" && recipe.Groups.Any(rg =>
-                rg.Group.Members.Any(m => m.User.Email == callerEmail)));
-
-        if (!canView)
+        if (!CanView(recipe, callerEmail))
             return StatusCode(403, new { message = "You do not have access to this recipe" });
+
+        var isAdmin = callerEmail != null && _adminService.IsAdmin(callerEmail);
 
         // A recipe written before mentions existed has no ingredient ids. Backfill and
         // persist them here so the detail page and the edit form agree on identity;
@@ -1327,6 +1321,53 @@ public class RecipesController : ControllerBase
                 _logger.LogWarning(ex, "Failed to delete source image {BlobPath} for recipe {RecipeId}", blobPath, recipe.Id);
             }
         }
+    }
+
+    /// <summary>
+    /// Visibility rule shared by every endpoint that reads one recipe. Requires
+    /// <c>Groups → Group → Members → User</c> to be loaded for group recipes.
+    /// </summary>
+    private bool CanView(Recipe recipe, string? callerEmail) =>
+        (callerEmail != null && _adminService.IsAdmin(callerEmail))
+        || recipe.Visibility == "Public"
+        || (recipe.Visibility == "Private" && recipe.OwnerEmail == callerEmail)
+        || (recipe.Visibility == "Group" && recipe.Groups.Any(rg =>
+            rg.Group.Members.Any(m => m.User.Email == callerEmail)));
+
+    /// <summary>
+    /// Streams one source photo as an attachment. Same visibility as the recipe detail;
+    /// the browser cannot use <c>download</c> on cross-origin blob URLs, hence this endpoint.
+    /// </summary>
+    [HttpGet("{id:int}/source-images/{index:int}")]
+    public async Task<IActionResult> DownloadSourceImage(int id, int index)
+    {
+        var recipe = await _context.Recipes
+            .Include(r => r.Groups).ThenInclude(rg => rg.Group).ThenInclude(g => g.Members).ThenInclude(m => m.User)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(r => r.Id == id);
+
+        if (recipe == null)
+            return NotFound(new { message = "Recipe not found" });
+
+        if (!CanView(recipe, GetCallerEmail()))
+            return StatusCode(403, new { message = "You do not have access to this recipe" });
+
+        if (index < 0 || index >= recipe.SourceImageUrls.Count)
+            return NotFound(new { message = "Source image not found" });
+
+        var blobPath = _blobStorage.GetBlobPathFromUrl(recipe.SourceImageUrls[index]);
+        var blob = blobPath == null ? null : await _blobStorage.OpenReadAsync(blobPath, HttpContext.RequestAborted);
+        if (blob == null)
+            return NotFound(new { message = "Source image not found" });
+
+        // The stored content type came from the uploading client; only echo known image types.
+        var contentType = blob.ContentType?.ToLowerInvariant() is { } ct && AllowedImageContentTypes.Contains(ct)
+            ? ct
+            : "application/octet-stream";
+        var ext = Path.GetExtension(blobPath).ToLowerInvariant();
+        if (string.IsNullOrEmpty(ext)) ext = ".jpg";
+
+        return File(blob.Content, contentType, $"{FileNameSlug.From(recipe.Title)}-kilde-{index + 1}{ext}");
     }
 
     // ── Share endpoints ─────────────────────────────────────────────────────

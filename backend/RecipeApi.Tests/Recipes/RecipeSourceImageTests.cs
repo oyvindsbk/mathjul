@@ -209,4 +209,98 @@ public class RecipeSourceImageTests
 
         Assert.Equal(expected, storage.GetBlobPathFromUrl(url));
     }
+
+    // ── Download ────────────────────────────────────────────────────────────
+
+    private static Recipe SeedWithSourceImages(RecipeTestContext ctx, string visibility, params string[] names)
+    {
+        var recipe = ctx.SeedRecipe("Mormors spesial");
+        recipe.Visibility = visibility;
+        recipe.SourceImageUrls = names.Select(n => $"{BlobBase}{RecipesController.SourceImageBlobPrefix}{n}").ToList();
+        ctx.Db.SaveChanges();
+        return recipe;
+    }
+
+    private static void SetupBlob(RecipeTestContext ctx, string name, string? contentType)
+    {
+        ctx.BlobStorage
+            .Setup(b => b.OpenReadAsync(RecipesController.SourceImageBlobPrefix + name, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new BlobDownload(new MemoryStream(Encoding.UTF8.GetBytes("img")), contentType));
+    }
+
+    [Fact]
+    public async Task Download_Owner_GetsAttachmentWithSlugFileName()
+    {
+        using var ctx = new RecipeTestContext();
+        var recipe = SeedWithSourceImages(ctx, "Private", "a.jpg", "b.png");
+        SetupBlob(ctx, "b.png", "image/png");
+
+        var result = await ctx.CreateController().DownloadSourceImage(recipe.Id, 1);
+
+        var file = Assert.IsType<FileStreamResult>(result);
+        Assert.Equal("image/png", file.ContentType);
+        Assert.Equal("mormors-spesial-kilde-2.png", file.FileDownloadName);
+    }
+
+    [Fact]
+    public async Task Download_UnknownStoredContentType_IsServedAsOctetStream()
+    {
+        using var ctx = new RecipeTestContext();
+        var recipe = SeedWithSourceImages(ctx, "Public", "a.jpg");
+        SetupBlob(ctx, "a.jpg", "text/html");
+
+        var result = await ctx.CreateController().DownloadSourceImage(recipe.Id, 0);
+
+        Assert.Equal("application/octet-stream", Assert.IsType<FileStreamResult>(result).ContentType);
+    }
+
+    [Fact]
+    public async Task Download_PrivateRecipe_NonOwnerIsForbidden()
+    {
+        using var ctx = new RecipeTestContext();
+        var recipe = SeedWithSourceImages(ctx, "Private", "a.jpg");
+        SetupBlob(ctx, "a.jpg", "image/jpeg");
+
+        var result = await ctx.CreateController("other@example.com").DownloadSourceImage(recipe.Id, 0);
+
+        Assert.Equal(403, Assert.IsType<ObjectResult>(result).StatusCode);
+        ctx.BlobStorage.Verify(b => b.OpenReadAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(1)]
+    public async Task Download_IndexOutOfRange_IsNotFound(int index)
+    {
+        using var ctx = new RecipeTestContext();
+        var recipe = SeedWithSourceImages(ctx, "Public", "a.jpg");
+
+        var result = await ctx.CreateController().DownloadSourceImage(recipe.Id, index);
+
+        Assert.IsType<NotFoundObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task Download_MissingBlobOrRecipe_IsNotFound()
+    {
+        using var ctx = new RecipeTestContext();
+        var recipe = SeedWithSourceImages(ctx, "Public", "gone.jpg");
+        ctx.BlobStorage
+            .Setup(b => b.OpenReadAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((BlobDownload?)null);
+
+        Assert.IsType<NotFoundObjectResult>(await ctx.CreateController().DownloadSourceImage(recipe.Id, 0));
+        Assert.IsType<NotFoundObjectResult>(await ctx.CreateController().DownloadSourceImage(recipe.Id + 999, 0));
+    }
+
+    [Theory]
+    [InlineData("Mormors spesial", "mormors-spesial")]
+    [InlineData("Blåbærsyltetøy (gammel) ", "blabaersyltetoy-gammel")]
+    [InlineData("Serina-kaker!!", "serina-kaker")]
+    [InlineData("🍪", "oppskrift")]
+    [InlineData("", "oppskrift")]
+    public void FileNameSlug_IsAsciiAndReadable(string title, string expected)
+    {
+        Assert.Equal(expected, FileNameSlug.From(title));
+    }
 }

@@ -190,7 +190,9 @@ builder.Services.AddCors(options =>
                     })
                     .AllowAnyHeader()
                     .AllowAnyMethod()
-                    .AllowCredentials();
+                    .AllowCredentials()
+                    // Lets the frontend read the file name of source-image downloads.
+                    .WithExposedHeaders("Content-Disposition");
             }
             else
             {
@@ -208,7 +210,9 @@ builder.Services.AddCors(options =>
                 policy.WithOrigins(allowedOrigins)
                     .AllowAnyHeader()
                     .AllowAnyMethod()
-                    .AllowCredentials();
+                    .AllowCredentials()
+                    // Lets the frontend read the file name of source-image downloads.
+                    .WithExposedHeaders("Content-Disposition");
             }
         });
 });
