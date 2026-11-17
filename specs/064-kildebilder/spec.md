@@ -29,6 +29,9 @@ Much of the plumbing already exists — this feature closes the gaps rather than
 - R6: Deleting a recipe deletes its source image blobs.
 - R7: Recipes with no source images render exactly as today (no empty section).
 - R8: Extraction failure/discard still behaves as today (no new orphan-cleanup obligations beyond today's).
+- R9: On the upload page, each selected image can optionally be cropped before extraction, e.g. to pick one recipe out of a page holding several. Cropping is never forced.
+- R10: The cropped image is what is sent for AI extraction **and** what is stored as the source image, so the "Kilde" photo matches the recipe.
+- R11: Re-cropping starts from the original file, not from the previous crop, and the user can reset to the uncropped original.
 
 ## Design
 
@@ -53,6 +56,16 @@ Much of the plumbing already exists — this feature closes the gaps rather than
 ### UI Changes
 - `recipe.service.ts`: `RecipeDetail.sourceImageUrls?: string[]`; save payload `sourceImageUrls`.
 - `last-opp-oppskrift/page.tsx`: `sourceImageUrl` state → `sourceImageUrls: string[]`; reset to `[]` on URL mode / reset.
+- **Crop before extraction** (`last-opp-oppskrift/page.tsx` + `CropModal.tsx`):
+  - Reuse the existing `CropModal` (canvas, corner handles, outputs a JPEG `File`). Changes to it:
+    - New prop `initialCrop?: 'square' | 'full'`, default `'square'` (today's behavior for the main photo). The upload page uses `'full'`, because a recipe page is portrait and a centered square would cut it.
+    - Optional `confirmLabel` / `skipLabel` props. The upload page uses "Beskjær" / "Avbryt", and Avbryt there means "leave the image as it was".
+    - Remove the existing `eslint-disable-next-line react-hooks/exhaustive-deps` while touching the file (CLAUDE.md: no suppressions). Keep `handleCrop` stable in a ref or reorder it so the keyboard effect can list its deps.
+  - The upload page's state changes from `File[]` to `{ original: File; current: File }[]`. Preview URLs are derived from `current`.
+  - Each preview thumbnail gets a "Beskjær" button (crop icon) that opens `CropModal` on `original`. Confirm sets `current` to the cropped file and regenerates that preview URL. Cancel changes nothing.
+  - Cropped thumbnails show a small "Beskjært" badge and a "Tilbakestill" action (`current = original`).
+  - Extraction sends `current` for every slot. No backend change is needed: the cropped image is just a smaller JPEG.
+  - Changing a crop after extraction clears the extracted recipe (same as adding or removing a file today), so the extracted recipe always matches the photos that will be saved.
 - `recipes/[id]/client.tsx`: new `SourceImages` component in the metadata area:
   - Label "Kildebilder" with a row of small thumbnails (`<img>`, `loading="lazy"`, object-cover, ~64px).
   - Thumbnail is a link to the full image, `target="_blank" rel="noopener noreferrer"`.
@@ -68,6 +81,9 @@ Much of the plumbing already exists — this feature closes the gaps rather than
 - Cleaning up orphan blobs from extractions that were never saved (pre-existing issue, also affects main images).
 - Backfilling the orphaned 2nd–5th images of past multi-image uploads (no link from recipe to them exists).
 - Lightbox/gallery viewer — new tab is enough for v1.
+- Keeping the uncropped original as well as the crop. Only the cropped image is stored, because the original may hold other people's recipes or unrelated content.
+- Rotate, perspective correction or several crops from one image (e.g. splitting one page into 4 recipes in one go). To extract several recipes from one page, upload the page once per recipe with a different crop.
+- Cropping in URL mode.
 
 ## Decisions (resolved 2026-11-17)
 - **Q1 — Download mechanism → (b) backend endpoint.** Blob URLs are cross-origin, so `<a download>` would just open the image. The API streams the blob with `Content-Disposition: attachment` and enforces recipe visibility. No storage CORS / Bicep change.
