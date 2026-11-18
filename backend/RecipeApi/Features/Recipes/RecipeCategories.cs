@@ -34,4 +34,17 @@ public static class RecipeCategories
 
     /// <summary>Display name of the Kake category.</summary>
     public const string KakeName = "Kake";
+
+    /// <summary>Category group for occasions (Jul, and later påske, 17. mai, ...).</summary>
+    public const string OccasionGroup = "Anledning";
+
+    /// <summary>
+    /// "Jul" — gathers the Christmas recipes shown on the /jul page. Tagged by hand only:
+    /// it is kept out of the category list sent to AI extraction, since "anything with
+    /// cinnamon" would otherwise be suggested as Christmas food.
+    /// </summary>
+    public const int JulId = 18;
+
+    /// <summary>Display name of the Jul category.</summary>
+    public const string JulName = "Jul";
 }
