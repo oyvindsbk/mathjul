@@ -1709,7 +1709,9 @@ public class RecipesController : ControllerBase
     {
         // Tilbehør is included: sauces and sides otherwise get forced into the nearest meal
         // type (bearnaise -> Middag). It is only a suggestion the user can untick.
+        // Jul is left out: it is tagged by hand, or anything with cinnamon would be "Christmas".
         var categories = await _context.Categories
+            .Where(c => c.Id != RecipeCategories.JulId)
             .OrderBy(c => c.Group).ThenBy(c => c.Name)
             .Select(c => new { c.Id, c.Name, c.Group })
             .ToListAsync();

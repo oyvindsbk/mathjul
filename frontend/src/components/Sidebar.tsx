@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { recipeService } from "@/lib/services/recipe.service";
 import type { Recipe } from "@/lib/mock-data";
 import { recipeHref } from "@/lib/recipe-url";
+import { useJulSeason } from "@/components/jul/useJulSeason";
 
 function getEmailFromToken(token: string): string | null {
   try {
@@ -24,6 +25,9 @@ const mainNavLinks = [
   { href: "/snurr-mathjulet", label: "Snurr mathjulet", testId: "nav-snurr" },
   { href: "/last-opp-oppskrift", label: "Last opp oppskrift", testId: "nav-upload" },
 ];
+
+/** Shown after the main links during the Christmas season only (feature 066). */
+const julNavLink = { href: "/jul", label: "Jul 🎄", testId: "nav-jul" };
 
 const RECIPES_PATH = "/alle-oppskrifter";
 
@@ -204,6 +208,7 @@ export function Sidebar() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
 
+  const julSeason = useJulSeason();
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
 
@@ -236,7 +241,7 @@ export function Sidebar() {
 
         {/* Desktop nav links */}
         <nav className="hidden md:flex items-center gap-1 shrink-0">
-          {mainNavLinks.map(({ href, label, testId }) => (
+          {(julSeason ? [...mainNavLinks, julNavLink] : mainNavLinks).map(({ href, label, testId }) => (
             <Link
               key={href}
               href={href}

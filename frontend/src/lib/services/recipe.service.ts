@@ -7,7 +7,7 @@
 
 import { apiFetch } from '../api-fetch';
 import { appConfig } from '../config';
-import { mockCategories, mockRecipes, TILBEHOR_CATEGORY_ID, type Category, type IngredientSection, type InstructionSection, type InstructionStep, type Recipe, type StructuredIngredient } from '../mock-data';
+import { JUL_CATEGORY_ID, mockCategories, mockRecipes, TILBEHOR_CATEGORY_ID, type Category, type IngredientSection, type InstructionSection, type InstructionStep, type Recipe, type StructuredIngredient } from '../mock-data';
 
 export interface RecipeFormData {
   title: string;
@@ -214,6 +214,20 @@ class RecipeService {
     }
 
     return this.getAllRecipes(token, [TILBEHOR_CATEGORY_ID]);
+  }
+
+  /**
+   * Fetch every recipe tagged Jul, for the /jul page. Categories come back on
+   * each recipe, so the page can group them into sections client-side.
+   */
+  async getJulRecipes(token?: string): Promise<Recipe[]> {
+    if (appConfig.mocking.enabled) {
+      return mockRecipes.filter((r) =>
+        r.categories?.some((c) => c.id === JUL_CATEGORY_ID)
+      );
+    }
+
+    return this.getAllRecipes(token, [JUL_CATEGORY_ID]);
   }
 
   /**

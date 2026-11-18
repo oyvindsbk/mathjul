@@ -27,6 +27,12 @@ export interface Category {
  */
 export const TILBEHOR_CATEGORY_ID = 16;
 
+/**
+ * Id of the seeded "Jul" category (group "Anledning") behind the /jul page.
+ * Must match RecipeCategories.JulId on the backend.
+ */
+export const JUL_CATEGORY_ID = 18;
+
 /** Lightweight reference to a recipe in a side-dish (tilbehør) relationship. */
 export interface RecipeRef {
   id: number;
@@ -139,7 +145,10 @@ export const mockCategories: Category[] = [
   // Matches the backend seed (RecipeCategories.KakeId), which the mock list
   // had drifted behind.
   { id: 17, name: 'Kake', group: 'Måltidstype' },
+  { id: JUL_CATEGORY_ID, name: 'Jul', group: 'Anledning' },
 ];
+
+const JUL: Category = { id: JUL_CATEGORY_ID, name: 'Jul', group: 'Anledning' };
 
 /** A tiny inline placeholder, so mock mode can show the Kildebilder section without assets. */
 const MOCK_SOURCE_IMAGE =
@@ -396,5 +405,120 @@ export const mockRecipes: Recipe[] = [
       { id: 17, name: 'Kake', group: 'Måltidstype' },
       { id: 9, name: 'Enkel', group: 'Vanskelighetsgrad' },
     ],
+  },
+  // Jul-tagged recipes for the /jul page (feature 066). Spread over the
+  // sections so mock mode shows the grouping: Krumkaker carries both Søtbakst
+  // and Dessert and must land in Julebakst only, and nothing is Tilbehør, so
+  // that section stays hidden.
+  {
+    id: 8,
+    title: 'Pepperkaker',
+    description: 'Sprø pepperkaker med kanel, nellik og ingefær',
+    ingredients: [
+      { quantity: 250, unit: 'g', name: 'smør' },
+      { quantity: 3, unit: 'dl', name: 'sirup' },
+      { quantity: 1, unit: 'ts', name: 'kanel' },
+    ],
+    instructionSteps: [
+      { text: 'Kok opp smør og sirup, rør inn krydder.' },
+      { text: 'Kjevle ut og stikk ut figurer.' },
+      { text: 'Stek på 175°C i 8 minutter.' },
+    ],
+    prepTime: 30,
+    cookTimeMinutes: 8,
+    servings: 60,
+    quantityType: 'antall',
+    categories: [{ id: 6, name: 'Søtbakst', group: 'Måltidstype' }, JUL],
+  },
+  {
+    id: 9,
+    title: 'Krumkaker',
+    description: 'Tynne krumkaker, gjerne med multekrem',
+    ingredients: [
+      { quantity: 3, unit: null, name: 'egg' },
+      { quantity: 150, unit: 'g', name: 'sukker' },
+      { quantity: 150, unit: 'g', name: 'hvetemel' },
+    ],
+    instructionSteps: [
+      { text: 'Visp egg og sukker, rør inn smeltet smør og mel.' },
+      { text: 'Stek i krumkakejern og rull rundt en kjegle.' },
+    ],
+    prepTime: 20,
+    cookTimeMinutes: 30,
+    servings: 30,
+    quantityType: 'antall',
+    categories: [
+      { id: 6, name: 'Søtbakst', group: 'Måltidstype' },
+      { id: 4, name: 'Dessert', group: 'Måltidstype' },
+      JUL,
+    ],
+  },
+  {
+    id: 10,
+    title: 'Pinnekjøtt',
+    description: 'Tradisjonelt pinnekjøtt med kålrabistappe',
+    ingredients: [
+      { quantity: 2, unit: 'kg', name: 'pinnekjøtt' },
+      { quantity: 1, unit: 'kg', name: 'kålrabi' },
+    ],
+    instructionSteps: [
+      { text: 'Legg kjøttet i bløt over natten.' },
+      { text: 'Damp over bjørkepinner i 3 timer.' },
+    ],
+    prepTime: 20,
+    cookTimeMinutes: 180,
+    servings: 6,
+    categories: [
+      { id: 3, name: 'Middag', group: 'Måltidstype' },
+      { id: 15, name: 'Over 1 time', group: 'Tilberedningstid' },
+      JUL,
+    ],
+  },
+  {
+    id: 11,
+    title: 'Riskrem',
+    description: 'Riskrem med rød saus, og en mandel til den heldige',
+    ingredients: [
+      { quantity: 5, unit: 'dl', name: 'risgrøt' },
+      { quantity: 3, unit: 'dl', name: 'kremfløte' },
+    ],
+    instructionSteps: [
+      { text: 'Visp krem og vend inn kald grøt.' },
+      { text: 'Server med rød saus.' },
+    ],
+    prepTime: 15,
+    cookTimeMinutes: null,
+    servings: 6,
+    noCookTime: true,
+    categories: [{ id: 4, name: 'Dessert', group: 'Måltidstype' }, JUL],
+  },
+  {
+    id: 12,
+    title: 'Gløgg',
+    description: 'Varm alkoholfri gløgg med rosiner og mandler',
+    ingredients: [
+      { quantity: 1, unit: 'l', name: 'solbærsaft' },
+      { quantity: 2, unit: null, name: 'kanelstenger' },
+    ],
+    instructionSteps: [{ text: 'Varm saft og krydder sakte opp, ikke kok.' }],
+    prepTime: 5,
+    cookTimeMinutes: 20,
+    servings: 8,
+    categories: [{ id: 8, name: 'Drikke', group: 'Måltidstype' }, JUL],
+  },
+  {
+    id: 13,
+    title: 'Sursild',
+    description: 'Hjemmelaget sursild til julefrokosten',
+    ingredients: [
+      { quantity: 4, unit: null, name: 'sildefileter' },
+      { quantity: 1, unit: null, name: 'rødløk' },
+    ],
+    instructionSteps: [{ text: 'Legg silden i lake med løk og krydder i to døgn.' }],
+    prepTime: 20,
+    cookTimeMinutes: null,
+    servings: 6,
+    noCookTime: true,
+    categories: [{ id: 2, name: 'Lunsj', group: 'Måltidstype' }, JUL],
   },
 ];

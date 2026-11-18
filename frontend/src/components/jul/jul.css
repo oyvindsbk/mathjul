@@ -1,0 +1,215 @@
+/*
+ * Christmas mood for the /jul page only (feature 066). Everything is scoped
+ * under .jul-theme so nothing leaks into the rest of the site.
+ *
+ * Contrast (WCAG AA, checked against --jul-bg):
+ *   light: text #2b1d14 ~17:1, red #a4161a ~7.9:1, green #1f5132 ~9.4:1, gold #8a6508 ~5.4:1
+ *   dark:  text #f8f4ea ~15:1, red #ff8a80 ~7.7:1, green #8fd19e ~10:1, gold #f2c94c ~11:1
+ */
+
+.jul-theme {
+  --jul-bg: #ffffff;
+  --jul-surface: #ffffff;
+  --jul-text: #2b1d14;
+  --jul-muted: #5a4636;
+  --jul-red: #a4161a;
+  --jul-green: #1f5132;
+  --jul-gold: #8a6508;
+  --jul-gold-soft: #e0b44a;
+  --jul-border: #e7d6b0;
+  --jul-frame: #a4161a;
+  --jul-flake-fill: #ffffff;
+  --jul-flake-edge: #4b5563;
+  --jul-button-bg: #a4161a;
+  --jul-button-text: #ffffff;
+
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  color: var(--jul-text);
+  background: var(--jul-bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  .jul-theme {
+    --jul-bg: #0b1a2e;
+    --jul-surface: #16243a;
+    --jul-text: #f8f4ea;
+    --jul-muted: #cfd8e6;
+    --jul-red: #ff8a80;
+    --jul-green: #8fd19e;
+    --jul-gold: #f2c94c;
+    --jul-gold-soft: #f2c94c;
+    --jul-border: #3a4d6b;
+    --jul-frame: #c0392b;
+    --jul-flake-fill: #ffffff;
+    --jul-flake-edge: #9aa5b8;
+    --jul-button-bg: #f2c94c;
+    --jul-button-text: #0b1a2e;
+  }
+}
+
+.jul-display {
+  font-family: var(--font-jul), Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.jul-title {
+  color: var(--jul-red);
+}
+
+.jul-muted {
+  color: var(--jul-muted);
+}
+
+.jul-section-title {
+  color: var(--jul-green);
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.jul-section-title::after {
+  content: "";
+  flex: 1;
+  height: 2px;
+  background: var(--jul-green);
+  border-radius: 1px;
+}
+
+.jul-panel {
+  background: var(--jul-surface);
+  border: 2px dashed var(--jul-border);
+  color: var(--jul-text);
+}
+
+.jul-pill {
+  background: var(--jul-surface);
+  border: 1px solid var(--jul-border);
+  color: var(--jul-gold);
+}
+
+.jul-button {
+  background: var(--jul-button-bg);
+  color: var(--jul-button-text);
+}
+
+.jul-button:hover {
+  filter: brightness(1.08);
+}
+
+.jul-toggle {
+  background: var(--jul-surface);
+  border: 1px solid var(--jul-border);
+  color: var(--jul-text);
+}
+
+/* Card frame: one solid red rim around the unchanged card. */
+.jul-card-frame {
+  border: 3px solid var(--jul-frame);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+.jul-card-frame > * {
+  height: 100%;
+  border-radius: 0;
+}
+
+/* ── Julelenke (paper chain) ─────────────────────────────────────────── */
+
+/*
+ * Seen from the side, a paper chain alternates between a loop facing you and
+ * a loop seen edge-on (a flat strip). The strips sit on top of the loops'
+ * ends, which is what makes the links look threaded through each other.
+ */
+.jul-chain {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  height: 34px;
+  padding: 0 4px;
+}
+
+.jul-chain-loop,
+.jul-chain-strip {
+  flex-shrink: 0;
+  background-color: var(--link);
+}
+
+.jul-chain-loop {
+  width: 34px;
+  height: 22px;
+  border: 5px solid var(--link);
+  border-radius: 999px;
+  background: transparent;
+  /* Paper sheen: a lighter top edge and a darker bottom edge. */
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.25),
+    0 1px 0 rgba(0, 0, 0, 0.25);
+}
+
+.jul-chain-strip {
+  position: relative;
+  z-index: 1;
+  width: 26px;
+  height: 8px;
+  margin: 0 -9px;
+  border-radius: 3px;
+  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(0, 0, 0, 0.15));
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+}
+
+/* ── Snow ────────────────────────────────────────────────────────────── */
+
+/*
+ * A viewport-tall layer that sticks to the top of the page while scrolling,
+ * with a negative margin so it takes no space. Scoped to the page column, so
+ * the sidebar stays snow-free.
+ */
+.jul-snow {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  margin-bottom: -100vh;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.jul-flake {
+  position: absolute;
+  top: 0;
+  left: var(--x);
+  width: var(--size);
+  height: var(--size);
+  opacity: var(--opacity);
+  will-change: transform;
+  animation: jul-fall var(--duration) linear infinite;
+  animation-delay: var(--delay);
+}
+
+.jul-flake svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes jul-fall {
+  from { transform: translate3d(0, -10vh, 0) rotate(0deg); }
+  to { transform: translate3d(var(--drift), 105vh, 0) rotate(var(--spin)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .jul-snow {
+    display: none;
+  }
+}
+
+/* The home-page card reuses the palette, but is a card, not a full page. */
+.jul-theme.jul-home-card {
+  min-height: 0;
+  border: 2px solid var(--jul-border);
+}

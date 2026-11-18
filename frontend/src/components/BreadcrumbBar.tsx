@@ -15,6 +15,7 @@ const LIST_PAGES: Record<string, string> = {
   "/snurr-mathjulet": "Snurr mathjulet",
   "/last-opp-oppskrift": "Last opp oppskrift",
   "/feature-planner": "Feature Planner",
+  "/jul": "Jul",
 };
 
 interface CrumbItem {

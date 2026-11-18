@@ -486,6 +486,12 @@ namespace RecipeApi.Migrations
                             Id = 17,
                             Group = "Måltidstype",
                             Name = "Kake"
+                        },
+                        new
+                        {
+                            Id = 18,
+                            Group = "Anledning",
+                            Name = "Jul"
                         });
                 });
 

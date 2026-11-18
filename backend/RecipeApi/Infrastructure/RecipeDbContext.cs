@@ -443,7 +443,9 @@ public class RecipeDbContext : DbContext
             // Tilbehør — marks a recipe as attachable as a side dish to other recipes
             new Category { Id = RecipeCategories.TilbehorId, Name = RecipeCategories.TilbehorName, Group = RecipeCategories.MealTypeGroup },
             // Kake — recipes scaled by pan area rather than portion count
-            new Category { Id = RecipeCategories.KakeId, Name = RecipeCategories.KakeName, Group = RecipeCategories.MealTypeGroup }
+            new Category { Id = RecipeCategories.KakeId, Name = RecipeCategories.KakeName, Group = RecipeCategories.MealTypeGroup },
+            // Anledning — Jul gathers the Christmas recipes for the /jul page
+            new Category { Id = RecipeCategories.JulId, Name = RecipeCategories.JulName, Group = RecipeCategories.OccasionGroup }
         );
 
         modelBuilder.Entity<Recipe>().HasData(
