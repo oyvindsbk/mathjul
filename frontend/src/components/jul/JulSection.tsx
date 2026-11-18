@@ -18,12 +18,13 @@ export function JulSection({ section, token }: JulSectionProps) {
       aria-labelledby={headingId}
       data-testid={`jul-section-${section.key}`}
     >
-      <h2 id={headingId} className="text-xl md:text-2xl font-semibold text-gray-900 mb-4">
+      <h2 id={headingId} className="jul-display jul-section-title text-2xl md:text-4xl mb-4">
+        <span aria-hidden="true">❄</span>
         {section.title}
       </h2>
       <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6">
         {section.recipes.map((recipe) => (
-          <div key={recipe.id} data-testid="jul-recipe">
+          <div key={recipe.id} className="jul-card-frame" data-testid="jul-recipe">
             <RecipeGridCard recipe={recipe} token={token} />
           </div>
         ))}

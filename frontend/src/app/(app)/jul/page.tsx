@@ -7,7 +7,11 @@ import { recipeService } from "@/lib/services/recipe.service";
 import { groupJulRecipes } from "@/lib/jul";
 import type { Recipe } from "@/lib/mock-data";
 import { JulSection } from "@/components/jul/JulSection";
-import JulLoading from "./loading";
+import { JulTheme } from "@/components/jul/JulTheme";
+import { JulLights } from "@/components/jul/JulLights";
+import { JulCountdown } from "@/components/jul/JulCountdown";
+import { Snowfall } from "@/components/jul/Snowfall";
+import { useSnowPreference } from "@/components/jul/useSnowPreference";
 
 /** Every recipe tagged Jul, grouped into Christmas sections (feature 066). */
 export default function JulPage() {
@@ -15,6 +19,7 @@ export default function JulPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [snowOn, toggleSnow] = useSnowPreference();
 
   useEffect(() => {
     if (authLoading) return;
@@ -41,46 +46,71 @@ export default function JulPage() {
   }, [authLoading, token]);
 
   const sections = useMemo(() => groupJulRecipes(recipes), [recipes]);
-
-  if (authLoading || loading) return <JulLoading />;
+  const busy = authLoading || loading;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-4 md:py-12 px-3 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
-        <header className="text-center mb-8 md:mb-12">
-          <h1 className="text-3xl md:text-5xl font-bold text-gray-900">Jul på mathjul</h1>
-          <p className="mt-3 text-gray-600">Julebakst, julemiddag og alt det andre som hører desember til.</p>
-        </header>
+    <JulTheme>
+      <Snowfall enabled={snowOn} />
+      <JulLights />
 
-        {error ? (
-          <div
-            role="alert"
-            data-testid="jul-error"
-            className="max-w-xl mx-auto bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 text-center"
-          >
-            {error}
-          </div>
-        ) : sections.length === 0 ? (
-          <div
-            data-testid="jul-empty"
-            className="max-w-xl mx-auto bg-white rounded-lg border border-dashed border-gray-300 py-10 px-6 text-center"
-          >
-            <p className="text-lg font-semibold text-gray-900 mb-2">Ingen juleoppskrifter ennå</p>
-            <p className="text-gray-600 text-sm mb-6">
-              Åpne en oppskrift, velg Rediger og huk av for <strong>Jul</strong> under Anledning.
-              Da dukker den opp her.
+      <div className="relative py-4 md:py-10 px-3 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <header className="text-center mb-8 md:mb-12">
+            <h1 className="jul-display jul-title text-5xl md:text-7xl">Jul på mathjul</h1>
+            <p className="jul-muted mt-3">
+              Julebakst, julemiddag og alt det andre som hører desember til.
             </p>
-            <Link
-              href="/alle-oppskrifter"
-              className="inline-block px-5 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+              <JulCountdown />
+              <button
+                type="button"
+                onClick={toggleSnow}
+                aria-pressed={snowOn}
+                data-testid="jul-snow-toggle"
+                className="jul-toggle rounded-full px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+              >
+                {snowOn ? "❄ Snø av" : "❄ Snø på"}
+              </button>
+            </div>
+          </header>
+
+          {busy ? (
+            <div
+              className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-6"
+              data-testid="jul-loading"
+              aria-busy="true"
             >
-              Gå til Alle oppskrifter
-            </Link>
-          </div>
-        ) : (
-          sections.map((section) => <JulSection key={section.key} section={section} token={token} />)
-        )}
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="jul-panel h-48 md:h-72 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : error ? (
+            <div
+              role="alert"
+              data-testid="jul-error"
+              className="jul-panel max-w-xl mx-auto rounded-xl p-6 text-center"
+            >
+              {error}
+            </div>
+          ) : sections.length === 0 ? (
+            <div data-testid="jul-empty" className="jul-panel max-w-xl mx-auto rounded-xl py-10 px-6 text-center">
+              <p className="jul-display jul-title text-3xl mb-3">Ingen juleoppskrifter ennå</p>
+              <p className="jul-muted text-sm mb-6">
+                Åpne en oppskrift, velg Rediger og huk av for <strong>Jul</strong> under Anledning.
+                Da dukker den opp her.
+              </p>
+              <Link
+                href="/alle-oppskrifter"
+                className="jul-button inline-block px-5 py-2 rounded-lg transition text-sm font-medium"
+              >
+                Gå til Alle oppskrifter
+              </Link>
+            </div>
+          ) : (
+            sections.map((section) => <JulSection key={section.key} section={section} token={token} />)
+          )}
+        </div>
       </div>
-    </div>
+    </JulTheme>
   );
 }
