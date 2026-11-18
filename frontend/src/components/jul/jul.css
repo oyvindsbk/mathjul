@@ -122,44 +122,16 @@
 
 /*
  * Seen from the side, a paper chain alternates between a loop facing you and
- * a loop seen edge-on (a flat strip). The strips sit on top of the loops'
- * ends, which is what makes the links look threaded through each other.
+ * a loop seen edge-on (a flat strip) lying over the loops' ends. One 126px
+ * tile holds three loop/strip pairs so the red/green/gold order repeats, and
+ * it tiles across any width. The tile also draws the previous tile's last
+ * strip at its left edge, so the seam is invisible.
  */
 .jul-chain {
-  display: flex;
-  align-items: center;
-  overflow: hidden;
   height: 34px;
-  padding: 0 4px;
-}
-
-.jul-chain-loop,
-.jul-chain-strip {
-  flex-shrink: 0;
-  background-color: var(--link);
-}
-
-.jul-chain-loop {
-  width: 34px;
-  height: 22px;
-  border: 5px solid var(--link);
-  border-radius: 999px;
-  background: transparent;
-  /* Paper sheen: a lighter top edge and a darker bottom edge. */
-  box-shadow:
-    inset 0 2px 0 rgba(255, 255, 255, 0.25),
-    0 1px 0 rgba(0, 0, 0, 0.25);
-}
-
-.jul-chain-strip {
-  position: relative;
-  z-index: 1;
-  width: 26px;
-  height: 8px;
-  margin: 0 -9px;
-  border-radius: 3px;
-  background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(0, 0, 0, 0.15));
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.3);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='126' height='34'%3E%3Crect x='2.5' y='8.5' width='29' height='17' rx='8.5' fill='none' stroke='%23c0392b' stroke-width='5'/%3E%3Crect x='44.5' y='8.5' width='29' height='17' rx='8.5' fill='none' stroke='%23d4a017' stroke-width='5'/%3E%3Crect x='86.5' y='8.5' width='29' height='17' rx='8.5' fill='none' stroke='%231f7a3f' stroke-width='5'/%3E%3Crect x='25' y='13' width='26' height='8' rx='3' fill='%231f7a3f'/%3E%3Crect x='25' y='13' width='26' height='3' rx='1.5' fill='%23fff' fill-opacity='.3'/%3E%3Crect x='67' y='13' width='26' height='8' rx='3' fill='%23c0392b'/%3E%3Crect x='67' y='13' width='26' height='3' rx='1.5' fill='%23fff' fill-opacity='.3'/%3E%3Crect x='109' y='13' width='26' height='8' rx='3' fill='%23d4a017'/%3E%3Crect x='109' y='13' width='26' height='3' rx='1.5' fill='%23fff' fill-opacity='.3'/%3E%3Crect x='-17' y='13' width='26' height='8' rx='3' fill='%23d4a017'/%3E%3Crect x='-17' y='13' width='26' height='3' rx='1.5' fill='%23fff' fill-opacity='.3'/%3E%3C/svg%3E");
+  background-repeat: repeat-x;
+  background-position: left center;
 }
 
 /* ── Snow ────────────────────────────────────────────────────────────── */
