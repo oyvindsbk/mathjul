@@ -7,6 +7,7 @@ import { useAuth } from "@/lib/context/AuthContext";
 import { recipeService } from "@/lib/services/recipe.service";
 import type { Recipe } from "@/lib/mock-data";
 import { recipeHref } from "@/lib/recipe-url";
+import { JulHomeCard } from "@/components/jul/JulHomeCard";
 
 function RecipeCard({ recipe, token }: { recipe: Recipe; token: string | null }) {
   return (
@@ -122,6 +123,7 @@ export default function HomeDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
+        <JulHomeCard />
 
         <RecipeSection
           title="❤️ Favoritter"
