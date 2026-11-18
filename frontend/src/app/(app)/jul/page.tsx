@@ -8,7 +8,7 @@ import { groupJulRecipes } from "@/lib/jul";
 import type { Recipe } from "@/lib/mock-data";
 import { JulSection } from "@/components/jul/JulSection";
 import { JulTheme } from "@/components/jul/JulTheme";
-import { JulLights } from "@/components/jul/JulLights";
+import { JulGarland } from "@/components/jul/JulGarland";
 import { JulCountdown } from "@/components/jul/JulCountdown";
 import { Snowfall } from "@/components/jul/Snowfall";
 import { useSnowPreference } from "@/components/jul/useSnowPreference";
@@ -51,7 +51,7 @@ export default function JulPage() {
   return (
     <JulTheme>
       <Snowfall enabled={snowOn} />
-      <JulLights />
+      <JulGarland />
 
       <div className="relative py-4 md:py-10 px-3 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto">

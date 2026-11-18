@@ -1,11 +1,11 @@
 import { JulTheme } from "@/components/jul/JulTheme";
-import { JulLights } from "@/components/jul/JulLights";
+import { JulGarland } from "@/components/jul/JulGarland";
 
 /** Skeleton for /jul while the route loads, already in the Jul palette. */
 export default function JulLoading() {
   return (
     <JulTheme>
-      <JulLights />
+      <JulGarland />
       <div className="py-4 md:py-10 px-3 sm:px-6 lg:px-8" data-testid="jul-loading" aria-busy="true">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-8 md:mb-12">
