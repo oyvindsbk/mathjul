@@ -22,7 +22,7 @@
   - `lib/julMelodies.ts` holds the four melodies, checked against sheet music.
   - `components/jul/musicBox.ts` holds the synth voice, the look-ahead scheduler, the playlist loop and the pause between songs, plus `start`/`stop`/`onSongChange`.
   - Lint, tsc, build.
-- [ ] Task 4: The music button on /jul (R8, R11, R12).
+- [x] Task 4: The music button on /jul (R8, R11, R12).
   - Add the `useJulMusic` hook and the button with "Nå spiller".
   - Pause when the tab is hidden, and stop and close the context on unmount.
   - E2E:

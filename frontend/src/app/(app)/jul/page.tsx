@@ -13,6 +13,8 @@ import { JulCountdown } from "@/components/jul/JulCountdown";
 import { Snowfall } from "@/components/jul/Snowfall";
 import { useSnowLevel } from "@/components/jul/useSnowLevel";
 import { SnowLevelSlider } from "@/components/jul/SnowLevelSlider";
+import { JulMusicToggle, JulNowPlaying } from "@/components/jul/JulMusicToggle";
+import { useJulMusic } from "@/components/jul/useJulMusic";
 
 /** Every recipe tagged Jul, grouped into Christmas sections (feature 066). */
 export default function JulPage() {
@@ -21,6 +23,7 @@ export default function JulPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [snowLevel, setSnowLevel] = useSnowLevel();
+  const music = useJulMusic();
 
   useEffect(() => {
     if (authLoading) return;
@@ -64,7 +67,9 @@ export default function JulPage() {
             <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
               <JulCountdown />
               <SnowLevelSlider level={snowLevel} onChange={setSnowLevel} />
+              <JulMusicToggle music={music} />
             </div>
+            <JulNowPlaying music={music} />
           </header>
 
           {busy ? (

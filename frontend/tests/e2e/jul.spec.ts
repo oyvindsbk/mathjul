@@ -156,11 +156,11 @@ test.describe('Julesider', () => {
 
     await slider.fill('1');
     await expect(name).toHaveText('Små snøfnugg');
-    const few = await flakes(page).count();
+    await expect(flakes(page)).toHaveCount(14);
 
     await slider.fill('3');
     await expect(name).toHaveText('Snøen laver ned');
-    expect(await flakes(page).count()).toBeGreaterThan(few);
+    await expect(flakes(page)).toHaveCount(80);
 
     // Keyboard moves one stop at a time; all the way left is no snow.
     await slider.focus();
@@ -203,5 +203,93 @@ test.describe('Julesider', () => {
     await expect(snowLevel(page)).toHaveValue('0');
     await expect(page.getByTestId('jul-snow-level-name')).toHaveText('Ingen snø');
     await expect(flakes(page)).toHaveCount(0);
+  });
+
+  test.describe('Julemusikk', () => {
+    /** Counts audio contexts opened and closed, so the tests can see the music start and stop. */
+    async function watchAudio(page: Page) {
+      await page.addInitScript(() => {
+        const w = window as Window & { __julAudio?: { opened: number; closed: number } };
+        w.__julAudio = { opened: 0, closed: 0 };
+        const Original = window.AudioContext;
+        if (!Original) return;
+        window.AudioContext = class extends Original {
+          constructor(options?: AudioContextOptions) {
+            super(options);
+            w.__julAudio!.opened++;
+          }
+          close() {
+            w.__julAudio!.closed++;
+            return super.close();
+          }
+        };
+      });
+    }
+
+    /** Skips the test where the browser has no Web Audio (WebKit on Windows), after checking the button says so. */
+    async function requireWebAudio(page: Page) {
+      const supported = await page.evaluate(() => typeof window.AudioContext === 'function');
+      if (!supported) {
+        await expect(page.getByTestId('jul-music-toggle')).toBeDisabled();
+        test.skip(true, 'No Web Audio in this browser: the button is disabled, as intended');
+      }
+    }
+
+    const audio = (page: Page) =>
+      page.evaluate(() => (window as Window & { __julAudio?: { opened: number; closed: number } }).__julAudio);
+
+    test('is off until clicked, shows what is playing, and stops again', async ({ page }) => {
+      await watchAudio(page);
+      await setup(page, '2026-12-01T10:00:00+01:00');
+      await page.goto('/jul');
+      await requireWebAudio(page);
+
+      const toggle = page.getByTestId('jul-music-toggle');
+      await expect(toggle).toBeEnabled();
+      await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+      await expect(page.getByTestId('jul-now-playing')).toHaveCount(0);
+      expect(await audio(page)).toEqual({ opened: 0, closed: 0 });
+
+      await toggle.click();
+      await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+      await expect(page.getByTestId('jul-now-playing')).toHaveText('Nå spiller: Glade jul');
+      expect((await audio(page))?.opened).toBe(1);
+
+      await toggle.click();
+      await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+      await expect(page.getByTestId('jul-now-playing')).toHaveCount(0);
+      await expect.poll(async () => (await audio(page))?.closed).toBe(1);
+    });
+
+    test('is not on again after a reload', async ({ page }) => {
+      await watchAudio(page);
+      await setup(page, '2026-12-01T10:00:00+01:00');
+      await page.goto('/jul');
+      await requireWebAudio(page);
+
+      await page.getByTestId('jul-music-toggle').click();
+      await expect(page.getByTestId('jul-now-playing')).toBeVisible();
+
+      await page.reload();
+      await expect(countdown(page)).toHaveText('23 dager til julaften');
+      await expect(page.getByTestId('jul-music-toggle')).toHaveAttribute('aria-pressed', 'false');
+      await expect(page.getByTestId('jul-now-playing')).toHaveCount(0);
+      expect((await audio(page))?.opened).toBe(0);
+    });
+
+    test('stops when leaving /jul', async ({ page }) => {
+      await watchAudio(page);
+      await setup(page, '2026-12-01T10:00:00+01:00');
+      await page.goto('/jul');
+      await requireWebAudio(page);
+
+      await page.getByTestId('jul-music-toggle').click();
+      await expect(page.getByTestId('jul-now-playing')).toBeVisible();
+
+      // Home, whose API calls are stubbed above (other pages would need their own stubs).
+      await page.getByRole('link', { name: 'Hjem' }).click();
+      await expect(page.getByTestId('jul-home-card')).toBeVisible();
+      await expect.poll(async () => (await audio(page))?.closed).toBe(1);
+    });
   });
 });
