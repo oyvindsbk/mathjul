@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "1716524386829266861"
+      "templateHash": "18002520746086960013"
     }
   },
   "parameters": {
@@ -628,6 +628,9 @@
           },
           "tags": {
             "value": "[variables('commonTags')]"
+          },
+          "corsAllowedOrigins": {
+            "value": "[filter(createArray(if(not(empty(parameters('frontendCustomDomainName'))), format('https://{0}', parameters('frontendCustomDomainName')), ''), reference(resourceId('Microsoft.Resources/deployments', 'frontendContainerAppDeployment'), '2025-04-01').outputs.containerAppUrl.value), lambda('origin', not(empty(lambdaVariables('origin')))))]"
           }
         },
         "template": {
@@ -637,7 +640,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "13112973682014280104"
+              "templateHash": "1630063414281023931"
             }
           },
           "parameters": {
@@ -672,6 +675,13 @@
               "metadata": {
                 "description": "Tags to apply to resources"
               }
+            },
+            "corsAllowedOrigins": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Browser origins allowed to read blobs with fetch() (e.g. the bug reporter screenshot, which inlines images). Plain <img> tags need no CORS."
+              }
             }
           },
           "variables": {
@@ -699,6 +709,11 @@
               "type": "Microsoft.Storage/storageAccounts/blobServices",
               "apiVersion": "2023-01-01",
               "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
+              "properties": {
+                "cors": {
+                  "corsRules": "[if(empty(parameters('corsAllowedOrigins')), createArray(), createArray(createObject('allowedOrigins', parameters('corsAllowedOrigins'), 'allowedMethods', createArray('GET', 'HEAD'), 'allowedHeaders', createArray('*'), 'exposedHeaders', createArray('*'), 'maxAgeInSeconds', 3600)))]"
+                }
+              },
               "dependsOn": [
                 "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
               ]
@@ -746,7 +761,8 @@
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', 'containerAppDeployment')]"
+        "[resourceId('Microsoft.Resources/deployments', 'containerAppDeployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'frontendContainerAppDeployment')]"
       ]
     },
     {

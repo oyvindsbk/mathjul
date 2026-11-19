@@ -90,6 +90,16 @@ module containerApp 'modules/container-app.bicep' = {
   }
 }
 
+// Origins the frontend is served from: the custom domain and the Container App
+// fqdn (taken from the module, so it is right even when frontendUrl is unset).
+var frontendOrigins = filter(
+  [
+    !empty(frontendCustomDomainName) ? 'https://${frontendCustomDomainName}' : ''
+    frontendContainerApp.outputs.containerAppUrl
+  ],
+  origin => !empty(origin)
+)
+
 // Blob Storage for recipe images
 module storage 'modules/storage.bicep' = {
   name: 'storageDeployment'
@@ -98,6 +108,7 @@ module storage 'modules/storage.bicep' = {
     location: location
     backendPrincipalId: containerApp.outputs.principalId
     tags: commonTags
+    corsAllowedOrigins: frontendOrigins
   }
 }
 

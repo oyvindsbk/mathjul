@@ -13,6 +13,9 @@ param backendPrincipalId string
 @description('Tags to apply to resources')
 param tags object = {}
 
+@description('Browser origins allowed to read blobs with fetch() (e.g. the bug reporter screenshot, which inlines images). Plain <img> tags need no CORS.')
+param corsAllowedOrigins array = []
+
 // Storage Account
 resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   name: storageAccountName
@@ -34,6 +37,27 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
 resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2023-01-01' = {
   parent: storageAccount
   name: 'default'
+  properties: {
+    cors: {
+      // Read-only: the blobs are public anyway, and writes go through the backend.
+      corsRules: empty(corsAllowedOrigins) ? [] : [
+        {
+          allowedOrigins: corsAllowedOrigins
+          allowedMethods: [
+            'GET'
+            'HEAD'
+          ]
+          allowedHeaders: [
+            '*'
+          ]
+          exposedHeaders: [
+            '*'
+          ]
+          maxAgeInSeconds: 3600
+        }
+      ]
+    }
+  }
 }
 
 // recipe-images container with public read access (blobs served directly via URL)
