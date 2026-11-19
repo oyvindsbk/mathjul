@@ -18,7 +18,7 @@
   - E2E: level 4 renders the storm flakes (`data-motion="whirl"`) within the count cap.
   - Manual check of smoothness in the dev server.
   - Lint, tsc, build, E2E.
-- [ ] Task 3: The music engine, with no UI yet (R9, R10, R13).
+- [x] Task 3: The music engine, with no UI yet (R9, R10, R13).
   - `lib/julMelodies.ts` holds the four melodies, checked against sheet music.
   - `components/jul/musicBox.ts` holds the synth voice, the look-ahead scheduler, the playlist loop and the pause between songs, plus `start`/`stop`/`onSongChange`.
   - Lint, tsc, build.

@@ -43,8 +43,10 @@ The snow is the most noticed part of the Christmas mood, and people want differe
 - R10: The playlist is public-domain melodies only, played in order and looped, with a short pause between songs:
   1. Glade jul (Franz Gruber, 1818)
   2. Jingle Bells (James Lord Pierpont, 1857)
-  3. Deilig er jorden (Schlesisk folketone)
-  4. O jul med din glede (Norsk folketone)
+  3. Deck the Halls (walisisk folketone)
+  4. We Wish You a Merry Christmas (engelsk folketone)
+
+  Deilig er jorden and O jul med din glede were planned, but they were swapped (2026-11-19) for two melodies whose notes could be written out with confidence. They can be added later from verified sheet music.
 - R11: While playing, the page shows "Nå spiller: {title}" (`data-testid="jul-now-playing"`).
 - R12: The music pauses when the tab is hidden and resumes when it is visible again, if it was playing. It stops when the user leaves `/jul`.
 - R13: The volume is moderate and fixed. Notes fade in and out, so starting and stopping makes no click.
