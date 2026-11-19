@@ -57,6 +57,7 @@ async function setup(page: Page, isoDate: string) {
 
 const countdown = (page: Page) => page.getByTestId('jul-countdown');
 const flakes = (page: Page) => page.getByTestId('jul-flake');
+const snowLevel = (page: Page) => page.getByTestId('jul-snow-level');
 
 test.describe('Julesider', () => {
   test('lists Jul recipes in festive sections, each once, empty sections hidden', async ({ page }) => {
@@ -133,23 +134,55 @@ test.describe('Julesider', () => {
     await expect(countdown(page)).toHaveText('23 dager til julaften');
     await expect(page.getByTestId('jul-snow')).toBeAttached();
     await expect(flakes(page)).toHaveCount(0);
+
+    // Not even a storm moves, but the slider still works.
+    await snowLevel(page).fill('4');
+    await expect(page.getByTestId('jul-snow-level-name')).toHaveText('Snøstorm');
+    await expect(flakes(page)).toHaveCount(0);
   });
 
-  test('the snow toggle hides the flakes and is remembered', async ({ page }) => {
+  test('the snow slider sets the amount of snow and is remembered', async ({ page }) => {
     await setup(page, '2026-12-01T10:00:00+01:00');
     await page.goto('/jul');
 
-    await expect(flakes(page).first()).toBeAttached();
+    const slider = snowLevel(page);
+    const name = page.getByTestId('jul-snow-level-name');
 
-    const toggle = page.getByTestId('jul-snow-toggle');
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
-    await toggle.click();
-    await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+    // Default: Lett snøfall.
+    await expect(slider).toHaveValue('2');
+    await expect(name).toHaveText('Lett snøfall');
+    await expect(slider).toHaveAttribute('aria-valuetext', 'Lett snøfall');
+    await expect(flakes(page)).toHaveCount(32);
+
+    await slider.fill('1');
+    await expect(name).toHaveText('Små snøfnugg');
+    const few = await flakes(page).count();
+
+    await slider.fill('3');
+    await expect(name).toHaveText('Snøen laver ned');
+    expect(await flakes(page).count()).toBeGreaterThan(few);
+
+    // Keyboard moves one stop at a time; all the way left is no snow.
+    await slider.focus();
+    for (let i = 0; i < 3; i++) await page.keyboard.press('ArrowLeft');
+    await expect(name).toHaveText('Ingen snø');
     await expect(flakes(page)).toHaveCount(0);
 
     await page.reload();
     await expect(countdown(page)).toHaveText('23 dager til julaften');
-    await expect(page.getByTestId('jul-snow-toggle')).toHaveAttribute('aria-pressed', 'false');
+    await expect(snowLevel(page)).toHaveValue('0');
+    await expect(flakes(page)).toHaveCount(0);
+  });
+
+  test('the old "snow off" choice from 066 carries over as Ingen snø', async ({ page }) => {
+    await setup(page, '2026-12-01T10:00:00+01:00');
+    await page.addInitScript(() => {
+      if (!localStorage.getItem('mathjul.jul.snowLevel')) localStorage.setItem('mathjul.jul.snow', 'off');
+    });
+    await page.goto('/jul');
+
+    await expect(snowLevel(page)).toHaveValue('0');
+    await expect(page.getByTestId('jul-snow-level-name')).toHaveText('Ingen snø');
     await expect(flakes(page)).toHaveCount(0);
   });
 });

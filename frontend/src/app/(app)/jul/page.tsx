@@ -11,7 +11,8 @@ import { JulTheme } from "@/components/jul/JulTheme";
 import { JulGarland } from "@/components/jul/JulGarland";
 import { JulCountdown } from "@/components/jul/JulCountdown";
 import { Snowfall } from "@/components/jul/Snowfall";
-import { useSnowPreference } from "@/components/jul/useSnowPreference";
+import { useSnowLevel } from "@/components/jul/useSnowLevel";
+import { SnowLevelSlider } from "@/components/jul/SnowLevelSlider";
 
 /** Every recipe tagged Jul, grouped into Christmas sections (feature 066). */
 export default function JulPage() {
@@ -19,7 +20,7 @@ export default function JulPage() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [snowOn, toggleSnow] = useSnowPreference();
+  const [snowLevel, setSnowLevel] = useSnowLevel();
 
   useEffect(() => {
     if (authLoading) return;
@@ -50,7 +51,7 @@ export default function JulPage() {
 
   return (
     <JulTheme>
-      <Snowfall enabled={snowOn} />
+      <Snowfall level={snowLevel} />
       <JulGarland />
 
       <div className="relative py-4 md:py-10 px-3 sm:px-6 lg:px-8">
@@ -62,15 +63,7 @@ export default function JulPage() {
             </p>
             <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
               <JulCountdown />
-              <button
-                type="button"
-                onClick={toggleSnow}
-                aria-pressed={snowOn}
-                data-testid="jul-snow-toggle"
-                className="jul-toggle rounded-full px-4 py-2 text-sm font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-              >
-                {snowOn ? "❄ Snø av" : "❄ Snø på"}
-              </button>
+              <SnowLevelSlider level={snowLevel} onChange={setSnowLevel} />
             </div>
           </header>
 

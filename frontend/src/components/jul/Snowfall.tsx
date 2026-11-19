@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties } from "react";
+import { SNOW_LEVELS, type SnowLevel, type SnowLevelConfig } from "./snowLevels";
 
-const FLAKE_COUNT = 32;
 const SHAPE_ID = "jul-flake-shape";
 
 interface Flake {
@@ -15,14 +15,16 @@ interface Flake {
   opacity: number;
 }
 
-function randomFlakes(): Flake[] {
-  return Array.from({ length: FLAKE_COUNT }, () => ({
+const between = ([min, max]: readonly [number, number]) => min + Math.random() * (max - min);
+
+function randomFlakes(config: SnowLevelConfig): Flake[] {
+  return Array.from({ length: config.count }, () => ({
     x: `${(Math.random() * 100).toFixed(2)}%`,
-    size: `${(18 + Math.random() * 14).toFixed(1)}px`,
-    duration: `${(9 + Math.random() * 10).toFixed(1)}s`,
+    size: `${between(config.size).toFixed(1)}px`,
+    duration: `${between(config.duration).toFixed(1)}s`,
     // Negative delay starts each flake part-way down, so the screen isn't empty at first.
-    delay: `${(-Math.random() * 19).toFixed(1)}s`,
-    drift: `${((Math.random() - 0.5) * 100).toFixed(0)}px`,
+    delay: `${(-Math.random() * config.duration[1]).toFixed(1)}s`,
+    drift: `${((Math.random() * 2 - 1) * config.drift).toFixed(0)}px`,
     spin: `${((Math.random() - 0.5) * 360).toFixed(0)}deg`,
     opacity: Number((0.75 + Math.random() * 0.25).toFixed(2)),
   }));
@@ -73,19 +75,20 @@ function FlakeDefs() {
 }
 
 /**
- * Falling snow over the page column. Positions are random, so flakes are only
- * created after mount: the server renders an empty layer and hydration matches.
- * Only transform is animated, and nothing renders under reduced motion.
+ * Falling snow over the page column, as much as the chosen level asks for.
+ * Positions are random, so flakes are only created after mount (and again on
+ * every level change): the server renders an empty layer and hydration
+ * matches. Only transform is animated, and nothing renders under reduced motion.
  */
-export function Snowfall({ enabled }: { enabled: boolean }) {
+export function Snowfall({ level }: { level: SnowLevel }) {
   const [flakes, setFlakes] = useState<Flake[]>([]);
   const reducedMotion = useReducedMotion();
 
   useEffect(() => {
-    setFlakes(randomFlakes());
-  }, []);
+    setFlakes(randomFlakes(SNOW_LEVELS[level]));
+  }, [level]);
 
-  const show = enabled && !reducedMotion;
+  const show = !reducedMotion;
 
   return (
     <div className="jul-snow" aria-hidden="true" data-testid="jul-snow">

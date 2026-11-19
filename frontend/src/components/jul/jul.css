@@ -185,3 +185,9 @@
   min-height: 0;
   border: 2px solid var(--jul-border);
 }
+
+/* Snow level slider: native range, tinted to the palette. */
+.jul-range {
+  accent-color: var(--jul-red);
+  cursor: pointer;
+}
