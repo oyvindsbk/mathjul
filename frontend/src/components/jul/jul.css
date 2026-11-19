@@ -174,6 +174,30 @@
   to { transform: translate3d(var(--drift), 105vh, 0) rotate(var(--spin)); }
 }
 
+/*
+ * Snøstorm: each flake runs through its own random waypoints (--wx0..4,
+ * --wy0..4, set per flake), so it blows sideways, rises and falls. It fades
+ * in and out at the ends, so the jump back to the start is never seen.
+ */
+.jul-flake-whirl {
+  animation:
+    jul-whirl var(--duration) ease-in-out infinite var(--delay),
+    jul-whirl-fade var(--duration) linear infinite var(--delay);
+}
+
+@keyframes jul-whirl {
+  0% { transform: translate3d(var(--wx0), var(--wy0), 0) rotate(0deg); }
+  25% { transform: translate3d(var(--wx1), var(--wy1), 0) rotate(calc(var(--spin) * 0.5)); }
+  50% { transform: translate3d(var(--wx2), var(--wy2), 0) rotate(var(--spin)); }
+  75% { transform: translate3d(var(--wx3), var(--wy3), 0) rotate(calc(var(--spin) * 1.5)); }
+  100% { transform: translate3d(var(--wx4), var(--wy4), 0) rotate(calc(var(--spin) * 2)); }
+}
+
+@keyframes jul-whirl-fade {
+  0%, 100% { opacity: 0; }
+  8%, 92% { opacity: var(--opacity); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .jul-snow {
     display: none;
@@ -189,5 +213,7 @@
 /* Snow level slider: native range, tinted to the palette. */
 .jul-range {
   accent-color: var(--jul-red);
+  border: none;
+  background: transparent;
   cursor: pointer;
 }

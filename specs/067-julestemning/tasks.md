@@ -13,7 +13,7 @@
     - The old "off" key migrates to 0.
     - Reduced motion shows no flakes.
   - Lint, tsc, build, `npx playwright test jul.spec`.
-- [ ] Task 2: Snøstorm (R7).
+- [x] Task 2: Snøstorm (R7).
   - Add the `jul-whirl` keyframes with random waypoints per flake, the denser count and faster durations, and flakes that enter from the sides.
   - E2E: level 4 renders the storm flakes (`data-motion="whirl"`) within the count cap.
   - Manual check of smoothness in the dev server.

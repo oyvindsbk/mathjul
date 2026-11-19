@@ -174,6 +174,25 @@ test.describe('Julesider', () => {
     await expect(flakes(page)).toHaveCount(0);
   });
 
+  test('Snøstorm whirls a dense storm of flakes, within the cap', async ({ page }) => {
+    await setup(page, '2026-12-01T10:00:00+01:00');
+    await page.goto('/jul');
+
+    await snowLevel(page).fill('4');
+    await expect(page.getByTestId('jul-snow-level-name')).toHaveText('Snøstorm');
+
+    const storm = page.locator('[data-testid="jul-flake"][data-motion="whirl"]');
+    await expect(storm.first()).toBeAttached();
+    const count = await storm.count();
+    expect(count).toBeGreaterThan(80);
+    expect(count).toBeLessThanOrEqual(150);
+    await expect(page.locator('[data-testid="jul-flake"][data-motion="fall"]')).toHaveCount(0);
+
+    // Back down a step, the snow falls again.
+    await snowLevel(page).fill('3');
+    await expect(page.locator('[data-testid="jul-flake"][data-motion="whirl"]')).toHaveCount(0);
+  });
+
   test('the old "snow off" choice from 066 carries over as Ingen snø', async ({ page }) => {
     await setup(page, '2026-12-01T10:00:00+01:00');
     await page.addInitScript(() => {

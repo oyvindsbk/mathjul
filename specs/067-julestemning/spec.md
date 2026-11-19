@@ -35,7 +35,7 @@ The snow is the most noticed part of the Christmas mood, and people want differe
 - R4: The level is remembered per browser in localStorage, key `mathjul.jul.snowLevel` (`"0"`–`"4"`). Storage may be missing, so reads and writes are guarded, and the default is used.
 - R5: Migration: if there is no stored level and the old key `mathjul.jul.snow` is `"off"`, start at 0 (Ingen snø). Otherwise the default is 2 (Lett snøfall).
 - R6: Under `prefers-reduced-motion: reduce`, no flakes render at any level, as today. The slider still shows and still saves the choice.
-- R7: Snøstorm stays smooth. Only `transform` is animated, the flake count has a ceiling (≈150), and it uses the same single shared SVG shape.
+- R7: Snøstorm stays smooth. Only `transform` and `opacity` are animated, the flake count has a ceiling (≈150), and it uses the same single shared SVG shape.
 
 ### Christmas music
 - R8: A button **"♪ Julemusikk"** sits next to the snow slider (`aria-pressed`, `data-testid="jul-music-toggle"`). It is **off by default** and never starts on its own. It is not resumed on the next visit either; browsers block audio without a click anyway.
