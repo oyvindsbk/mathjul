@@ -33,7 +33,7 @@
     - Leaving /jul stops it.
   - Listen to all four songs by hand.
   - Lint, tsc, build, E2E.
-- [ ] Task 5: Final verification.
+- [x] Task 5: Final verification.
   - Full frontend inner loop and the full `jul.spec`.
   - Review agents.
   - Start the dev server and check it in Chrome on desktop and at phone width (slider, storm, music).
