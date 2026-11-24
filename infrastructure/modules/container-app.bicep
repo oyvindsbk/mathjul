@@ -175,3 +175,5 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
 output containerAppUrl string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
 output containerAppName string = containerApp.name
 output principalId string = containerApp.identity.principalId
+@description('Shared with the Notater apps, which run in the same environment')
+output environmentId string = containerAppEnvironment.id

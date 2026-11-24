@@ -58,16 +58,16 @@
     - Skip report, listing empty pages and `2018/Uke 26`.
   - `scripts/notes-import` posts it with a dev token.
   - Run the full history against local Aspire. Spot-check about five weeks across the years in the UI, and confirm that today's carry-over picks up the last imported day.
-- [ ] Task 9: Infrastructure.
+- [x] Task 9: Infrastructure.
   - Output the backend environment id from `container-app.bicep`.
-  - New modules `notes-api-container-app.bicep` (system identity, Key Vault secret references, scale to zero) and `notes-web-container-app.bicep`.
+  - New modules `notes-api-container-app.bicep` (system identity, Container App secrets from GitHub secrets, internal ingress, scale to zero) and `notes-web-container-app.bicep`.
   - Wire both into `main.bicep`, with outputs.
   - `az bicep build --file infrastructure/main.bicep`.
-- [ ] Task 10: CI and runbook.
+- [x] Task 10: CI and runbook.
   - `.github/workflows/deploy-notes.yml`, path-filtered to `backend/NotesApi/**` and `frontend-notes/**`: build and push both images, `dotnet ef database update` for NotesDbContext, then deploy both apps.
   - DEPLOYMENT.md "Notater" section with the one-time steps:
     - The T-SQL that creates the identity's user and grants it the `notes` schema.
-    - Key Vault secrets `Notes--Jwt--SecretKey` and `Notes--AllowedEmails`.
+    - GitHub secrets `NOTES_JWT_SECRET_KEY` and `NOTES_ALLOWED_EMAILS`.
     - The Google OAuth redirect URI.
     - The custom domain (Q1).
 - [ ] Task 11: Go live, done with the user.

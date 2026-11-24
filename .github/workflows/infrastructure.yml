@@ -64,6 +64,10 @@ jobs:
           frontendUrl=${{ vars.FRONTEND_URL }}
           frontendCustomDomainName=${{ vars.FRONTEND_CUSTOM_DOMAIN }}
           frontendCustomDomainCertificateName=${{ vars.FRONTEND_CUSTOM_DOMAIN_CERT }}
+          notesJwtSecretKey=${{ secrets.NOTES_JWT_SECRET_KEY }}
+          notesAllowedEmails=${{ secrets.NOTES_ALLOWED_EMAILS }}
+          notesCustomDomainName=${{ vars.NOTES_CUSTOM_DOMAIN }}
+          notesCustomDomainCertificateName=${{ vars.NOTES_CUSTOM_DOMAIN_CERT }}
         failOnStdErr: false
 
     - name: Display deployment info
@@ -72,3 +76,5 @@ jobs:
         echo "🔐 Key Vault: ${{ steps.bicep-deploy.outputs.keyVaultName }}"
         echo "🔗 Backend API: ${{ steps.bicep-deploy.outputs.containerAppUrl }}"
         echo "🔗 Frontend: ${{ steps.bicep-deploy.outputs.frontendUrl }}"
+        echo "📝 Notater: ${{ steps.bicep-deploy.outputs.notesWebUrl }} (empty if NOTES_JWT_SECRET_KEY is not set)"
+        echo "📝 Notater API identity (SQL user name): ${{ steps.bicep-deploy.outputs.notesApiName }}"
