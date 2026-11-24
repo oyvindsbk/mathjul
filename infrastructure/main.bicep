@@ -34,6 +34,20 @@ param frontendCustomDomainName string = ''
 @description('Managed certificate name for frontendCustomDomainName. Leave empty to bind without TLS (domain validation only).')
 param frontendCustomDomainCertificateName string = ''
 
+@description('Notater: JWT signing key. Leave empty to skip deploying the Notater apps.')
+@secure()
+param notesJwtSecretKey string = ''
+
+@description('Notater: comma-separated emails allowed to sign in.')
+@secure()
+param notesAllowedEmails string = ''
+
+@description('Notater: custom domain, e.g. notater.kheradmandi.no. Empty: generated hostname only.')
+param notesCustomDomainName string = ''
+
+@description('Notater: managed certificate name for notesCustomDomainName.')
+param notesCustomDomainCertificateName string = ''
+
 // Generate unique names
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var sqlServerName = 'sql-recipe-${environment}-${uniqueSuffix}'
@@ -42,6 +56,10 @@ var containerAppName = 'ca-recipe-api-${environment}-${uniqueSuffix}'
 var frontendContainerAppName = 'ca-recipe-web-${environment}-${uniqueSuffix}'
 var keyVaultName = 'kv-recipe-${environment}-${take(uniqueSuffix, 8)}'
 var storageAccountName = 'strecipe${environment}${take(uniqueSuffix, 8)}'
+// Container App names are capped at 32 characters; these are 31.
+var notesApiName = 'ca-notes-api-${environment}-${uniqueSuffix}'
+var notesWebName = 'ca-notes-web-${environment}-${uniqueSuffix}'
+var deployNotes = !empty(notesJwtSecretKey)
 
 // Tags
 var commonTags = {
@@ -134,7 +152,42 @@ module frontendContainerApp 'modules/frontend-container-app.bicep' = {
   }
 }
 
+// Notater: a separate app on the same database (schema "notes") and in the recipe API's
+// Container Apps environment. The API has internal ingress; only the web app is public.
+module notesApi 'modules/notes-api-container-app.bicep' = if (deployNotes) {
+  name: 'notesApiDeployment'
+  params: {
+    containerAppName: notesApiName
+    location: location
+    environmentId: containerApp.outputs.environmentId
+    sqlServerFqdn: sqlServer.outputs.sqlServerFqdn
+    sqlDatabaseName: sqlDatabaseName
+    jwtSecretKey: notesJwtSecretKey
+    allowedEmails: notesAllowedEmails
+    googleClientId: googleClientId
+    tags: union(commonTags, { application: 'notater' })
+  }
+}
+
+module notesWeb 'modules/notes-web-container-app.bicep' = if (deployNotes) {
+  name: 'notesWebDeployment'
+  params: {
+    containerAppName: notesWebName
+    location: location
+    environmentId: containerApp.outputs.environmentId
+    notesApiUrl: notesApi!.outputs.internalUrl // same condition as this module
+    googleClientId: googleClientId
+    googleClientSecret: googleClientSecret
+    customDomainName: notesCustomDomainName
+    customDomainCertificateName: notesCustomDomainCertificateName
+    tags: union(commonTags, { application: 'notater' })
+  }
+}
+
 // Outputs
+output notesWebUrl string = notesWeb.?outputs.appUrl ?? ''
+output notesApiName string = notesApi.?outputs.containerAppName ?? ''
+output notesApiPrincipalId string = notesApi.?outputs.principalId ?? ''
 output keyVaultName string = keyVault.outputs.keyVaultName
 output sqlServerFqdn string = sqlServer.outputs.sqlServerFqdn
 output containerAppUrl string = containerApp.outputs.containerAppUrl

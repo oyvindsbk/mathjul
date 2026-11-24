@@ -1,0 +1,114 @@
+name: Deploy Notater
+
+# Builds and deploys the Notater API and web app, and migrates the `notes` schema.
+# Separate from deploy.yml: the two apps share infrastructure but deploy independently.
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/NotesApi/**'
+      - 'frontend-notes/**'
+      - '.github/workflows/deploy-notes.yml'
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '10.0.x'
+  AZURE_RESOURCE_GROUP: rg-recipe-app-prod
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  get-resources:
+    runs-on: ubuntu-latest
+    outputs:
+      api-name: ${{ steps.names.outputs.api-name }}
+      web-name: ${{ steps.names.outputs.web-name }}
+    steps:
+    - uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Find the Notater container apps
+      id: names
+      run: |
+        API=$(az containerapp list -g ${{ env.AZURE_RESOURCE_GROUP }} --query "[?contains(name, 'notes-api')].name | [0]" -o tsv)
+        WEB=$(az containerapp list -g ${{ env.AZURE_RESOURCE_GROUP }} --query "[?contains(name, 'notes-web')].name | [0]" -o tsv)
+        if [ -z "$API" ] || [ -z "$WEB" ]; then
+          echo "::error::Notater apps not found. Set NOTES_JWT_SECRET_KEY and run 'Deploy Infrastructure' first (DEPLOYMENT.md, Notater)."
+          exit 1
+        fi
+        echo "api-name=$API" >> $GITHUB_OUTPUT
+        echo "web-name=$WEB" >> $GITHUB_OUTPUT
+
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - image: notes-api
+            context: ./backend/NotesApi
+          - image: notes-web
+            context: ./frontend-notes
+    steps:
+    - uses: actions/checkout@v4
+    - uses: docker/setup-buildx-action@v3
+    - uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Build and push
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ matrix.context }}
+        push: true
+        tags: |
+          ghcr.io/${{ github.repository }}/${{ matrix.image }}:${{ github.ref_name }}-${{ github.sha }}
+          ghcr.io/${{ github.repository }}/${{ matrix.image }}:latest
+        cache-from: type=gha,scope=${{ matrix.image }}
+        cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+  migrate:
+    runs-on: ubuntu-latest
+    needs: get-resources
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+    - run: dotnet tool install --global dotnet-ef --version 10.0.15
+    - name: Migrate the notes schema
+      # Admin connection (the app's own identity can only read and write rows in `notes`).
+      run: |
+        dotnet ef database update \
+          --project ./backend/NotesApi/NotesApi.csproj \
+          --context NotesDbContext \
+          --connection "${{ secrets.AZURE_SQL_CONNECTION_STRING }}"
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [get-resources, build, migrate]
+    steps:
+    - uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Deploy both apps
+      run: |
+        TAG="${{ github.ref_name }}-${{ github.sha }}"
+        for pair in "${{ needs.get-resources.outputs.api-name }}:notes-api" "${{ needs.get-resources.outputs.web-name }}:notes-web"; do
+          APP="${pair%%:*}"; IMAGE="${pair##*:}"
+          az containerapp registry set -n "$APP" -g ${{ env.AZURE_RESOURCE_GROUP }} \
+            --server ghcr.io --username ${{ github.actor }} --password ${{ secrets.GHCR_TOKEN }}
+          az containerapp update -n "$APP" -g ${{ env.AZURE_RESOURCE_GROUP }} \
+            --image "ghcr.io/${{ github.repository }}/$IMAGE:$TAG"
+        done
+
+    - name: Show URL
+      run: |
+        FQDN=$(az containerapp show -n "${{ needs.get-resources.outputs.web-name }}" -g ${{ env.AZURE_RESOURCE_GROUP }} \
+          --query "properties.configuration.ingress.fqdn" -o tsv)
+        echo "✅ Notater: https://$FQDN"

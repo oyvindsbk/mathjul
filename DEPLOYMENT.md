@@ -306,6 +306,41 @@ For issues:
 3. Verify GitHub Secrets are correctly configured
 4. Check the troubleshooting sections in documentation
 
+## 📝 Notater (work log app)
+
+Notater is a separate app: `backend/NotesApi` and `frontend-notes`. It runs on the same resource group, the recipe API's Container Apps environment, and the same SQL database, with all of its tables in the `notes` schema. The API has internal ingress only, and the web app proxies to it. Nothing is deployed until `NOTES_JWT_SECRET_KEY` is set. Design: `specs/068-notater/`.
+
+### One-time setup
+
+1. **GitHub secrets.**
+   - `NOTES_JWT_SECRET_KEY`: run `openssl rand -base64 48`. Use a different key from `JWT_SECRET_KEY`.
+   - `NOTES_ALLOWED_EMAILS`: the Google account(s) allowed in, comma-separated with no spaces.
+   - Optional variables: `NOTES_CUSTOM_DOMAIN` and `NOTES_CUSTOM_DOMAIN_CERT`, which work like the recipe frontend's.
+2. **Infrastructure.** Run **Deploy Infrastructure**. The log prints the Notater URL and the API's name, which is also its identity's name, e.g. `ca-notes-api-prod-xxxx`.
+3. **Google OAuth.** In the existing OAuth client (the same `GOOGLE_CLIENT_ID`), add the redirect URI `https://<notater-host>/api/auth/google/callback`.
+4. **App and schema.** Run **Deploy Notater**. It builds both images, migrates the `notes` schema with `AZURE_SQL_CONNECTION_STRING`, then deploys.
+5. **Database user for the API's identity.** Connect to `RecipeDb` as the server's Entra admin (Query editor in the portal, or Azure Data Studio), then run:
+   ```sql
+   CREATE USER [ca-notes-api-prod-xxxx] FROM EXTERNAL PROVIDER;
+   GRANT SELECT, INSERT, UPDATE, DELETE ON SCHEMA::notes TO [ca-notes-api-prod-xxxx];
+   ```
+   The grant is deliberately rows-only and limited to `notes`. Schema changes run in CI with the admin connection.
+6. **Import the OneNote history.** Run this on your own machine, since the export holds private notes and is gitignored.
+   1. Sign in to Notater.
+   2. In DevTools → Application → Cookies, copy the value of `notes_token`.
+   3. Run the export and the import:
+      ```bash
+      cd tools/onenote-export
+      cargo run --release -- "<path to the OneNote export>" out
+      NOTES_TOKEN=<token> python -I notes_import.py out --url https://<notater-host>
+      ```
+   Re-running the import is safe: it replaces imported items per date and keeps anything written in the app. `out/import-report.txt` lists the corrected dates, attached pages and skipped pages.
+
+### Notes
+- **Re-running Deploy Infrastructure resets both Notater images to the placeholder**, the same as for the recipe apps. Run **Deploy Notater** afterwards.
+- **Both apps scale to zero**, so the first request after idle takes a few seconds.
+- **Locally**, `aspire run` starts Notater on http://localhost:3100 with a dev login. RecipeApi recreates the local database on every start, and that includes the notes schema.
+
 ---
 
 **Estimated setup time:** 15-20 minutes  

@@ -1,0 +1,77 @@
+# Tasks: Notater
+
+## Tasks
+
+- [x] Task 1: Spike the OneNote export (R12, R13, Q2).
+  - Build `tools/onenote-export` (Rust, `onenote_parser`). It writes JSON per section: pages, each with title, created time, and paragraphs (text, indent, to-do tag and checked state).
+  - Gitignore `tools/onenote-export/out/`.
+  - Run it on one file per year (2017, 2020, 2023, 2026) and check against OneNote: page boundaries, order, indentation, checkbox state, æøå.
+  - Record findings and any data-model changes in `research.md`. If a year fails, decide the fallback with the user.
+- [x] Task 2: NotesApi skeleton.
+  - Create `backend/NotesApi`, `backend/NotesApi.Tests`, and add both to `RecipeApi.slnx`.
+  - Add `NotesDbContext` (schema `notes`, own history table), the entities, and the `InitialCreate` migration.
+  - Add `/health`, TokenService (audience `NotesFrontend`) and the allowlist middleware, with dev-token and google-token endpoints (R1, R2).
+  - Aspire: add `notesapi` with a reference to `recipedb` and `WaitFor(recipeApi)`, migrating in local dev only.
+  - Tests: allowlist rejects other emails; a recipe-audience token is rejected.
+  - `dotnet build`, `dotnet test`.
+- [x] Task 3: Days, items and carry-over (R3–R5, R9–R11).
+  - Endpoints for weeks, days and items.
+  - Carry-over in a transaction when today's day is created.
+  - Tests:
+    - Carry-over copies only open to-dos, keeps context, indent and order, and marks originals Carried.
+    - It runs once.
+    - It skips empty days.
+    - Past and future dates create nothing.
+    - Carried originals can't be ticked.
+  - Build, test.
+- [x] Task 4: Contexts and the import endpoint (R7, R14).
+  - Context CRUD and archive.
+  - `POST /api/import/onenote`, idempotent per date for `Source = OneNote`, leaving manual items alone.
+  - Tests for idempotency and for keeping manual items.
+  - Build, test.
+- [x] Task 5: frontend-notes skeleton.
+  - A Next.js 15 standalone app, with the same lint, tsc and Tailwind setup as `frontend`.
+  - `/login` (dev fake login and Google), auth routes, and `middleware.ts`.
+  - API client with strict types.
+  - Aspire: `frontend-notes` referencing `notesapi`.
+  - Playwright config and a login E2E test.
+  - Lint, tsc, build, E2E.
+- [x] Task 6: Week and day views (R3–R6, R8, R11).
+  - `/uke/[week]`, `/dag/[date]` and the `/` redirect.
+  - Grouped items with inline editing and keyboard shortcuts.
+  - Carried-from hints and greyed-out originals.
+  - E2E:
+    - Add, tick and indent items with the keyboard.
+    - Carry-over appears on today.
+    - Week navigation.
+  - Lint, tsc, build, E2E.
+- [x] Task 7: Context management page (`/kontekster`, R7).
+  - Create, rename, reorder and archive contexts.
+  - E2E test.
+  - Lint, tsc, build, E2E.
+- [x] Task 8: Importer mapping and local import (R12–R16).
+  - Map the export JSON to the import payload, following `research.md`:
+    - Date resolution: §2. Prefer section week + weekday over a weekday-only match (`2026/Uke 16` "Torsdag 15. april" must become 2026-04-16, not 2027).
+    - Carried vs Open: §1.
+    - Undated pages and duplicate dates: §3–4.
+    - The context table and headings: §5.
+    - Skip report, listing empty pages and `2018/Uke 26`.
+  - `scripts/notes-import` posts it with a dev token.
+  - Run the full history against local Aspire. Spot-check about five weeks across the years in the UI, and confirm that today's carry-over picks up the last imported day.
+- [x] Task 9: Infrastructure.
+  - Output the backend environment id from `container-app.bicep`.
+  - New modules `notes-api-container-app.bicep` (system identity, Container App secrets from GitHub secrets, internal ingress, scale to zero) and `notes-web-container-app.bicep`.
+  - Wire both into `main.bicep`, with outputs.
+  - `az bicep build --file infrastructure/main.bicep`.
+- [x] Task 10: CI and runbook.
+  - `.github/workflows/deploy-notes.yml`, path-filtered to `backend/NotesApi/**` and `frontend-notes/**`: build and push both images, `dotnet ef database update` for NotesDbContext, then deploy both apps.
+  - DEPLOYMENT.md "Notater" section with the one-time steps:
+    - The T-SQL that creates the identity's user and grants it the `notes` schema.
+    - GitHub secrets `NOTES_JWT_SECRET_KEY` and `NOTES_ALLOWED_EMAILS`.
+    - The Google OAuth redirect URI.
+    - The custom domain (Q1).
+- [ ] Task 11: Go live, done with the user.
+  - Run infra and the notes deploy, and do the one-time steps.
+  - Sign in, then import the full history into prod.
+  - Verify the current week and today's carry-over.
+  - Final review agents, and a Playwright MCP walkthrough.

@@ -42,6 +42,17 @@ Read the spec before starting any task. Don't guess -- read the spec.
 |------------|----------------------------------------------------------------|
 | Validate   | `az bicep build --file infrastructure/main.bicep`              |
 
+### Notater (separate work-log app, spec `specs/068-notater/`)
+
+| Action     | Command                                                        |
+|------------|----------------------------------------------------------------|
+| Backend    | `cd backend/NotesApi.Tests && dotnet test`                     |
+| Frontend   | `cd frontend-notes && npm run lint && npx tsc --noEmit && npm run build` |
+| E2E        | `cd frontend-notes && npx playwright test` (needs `aspire run`; app on :3100) |
+| Migration  | `cd backend/NotesApi && dotnet ef migrations add <Name> --context NotesDbContext` |
+
+Notater shares the database but owns only the `notes` schema. Never reference recipe tables from NotesApi, or notes tables from RecipeApi.
+
 ## Agent Inner Loop
 
 Run verification after every meaningful change. Cheapest checks first.
