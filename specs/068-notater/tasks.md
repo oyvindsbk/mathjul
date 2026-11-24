@@ -7,14 +7,14 @@
   - Gitignore `tools/onenote-export/out/`.
   - Run it on one file per year (2017, 2020, 2023, 2026) and check against OneNote: page boundaries, order, indentation, checkbox state, æøå.
   - Record findings and any data-model changes in `research.md`. If a year fails, decide the fallback with the user.
-- [ ] Task 2: NotesApi skeleton.
+- [x] Task 2: NotesApi skeleton.
   - Create `backend/NotesApi`, `backend/NotesApi.Tests`, and add both to `RecipeApi.slnx`.
   - Add `NotesDbContext` (schema `notes`, own history table), the entities, and the `InitialCreate` migration.
   - Add `/health`, TokenService (audience `NotesFrontend`) and the allowlist middleware, with dev-token and google-token endpoints (R1, R2).
   - Aspire: add `notesapi` with a reference to `recipedb` and `WaitFor(recipeApi)`, migrating in local dev only.
   - Tests: allowlist rejects other emails; a recipe-audience token is rejected.
   - `dotnet build`, `dotnet test`.
-- [ ] Task 3: Days, items and carry-over (R3–R5, R9–R11).
+- [x] Task 3: Days, items and carry-over (R3–R5, R9–R11).
   - Endpoints for weeks, days and items.
   - Carry-over in a transaction when today's day is created.
   - Tests:
@@ -24,7 +24,7 @@
     - Past and future dates create nothing.
     - Carried originals can't be ticked.
   - Build, test.
-- [ ] Task 4: Contexts and the import endpoint (R7, R14).
+- [x] Task 4: Contexts and the import endpoint (R7, R14).
   - Context CRUD and archive.
   - `POST /api/import/onenote`, idempotent per date for `Source = OneNote`, leaving manual items alone.
   - Tests for idempotency and for keeping manual items.
