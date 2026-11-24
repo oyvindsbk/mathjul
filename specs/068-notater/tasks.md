@@ -29,14 +29,14 @@
   - `POST /api/import/onenote`, idempotent per date for `Source = OneNote`, leaving manual items alone.
   - Tests for idempotency and for keeping manual items.
   - Build, test.
-- [ ] Task 5: frontend-notes skeleton.
+- [x] Task 5: frontend-notes skeleton.
   - A Next.js 15 standalone app, with the same lint, tsc and Tailwind setup as `frontend`.
   - `/login` (dev fake login and Google), auth routes, and `middleware.ts`.
   - API client with strict types.
   - Aspire: `frontend-notes` referencing `notesapi`.
   - Playwright config and a login E2E test.
   - Lint, tsc, build, E2E.
-- [ ] Task 6: Week and day views (R3–R6, R8, R11).
+- [x] Task 6: Week and day views (R3–R6, R8, R11).
   - `/uke/[week]`, `/dag/[date]` and the `/` redirect.
   - Grouped items with inline editing and keyboard shortcuts.
   - Carried-from hints and greyed-out originals.
@@ -45,7 +45,7 @@
     - Carry-over appears on today.
     - Week navigation.
   - Lint, tsc, build, E2E.
-- [ ] Task 7: Context management page (`/kontekster`, R7).
+- [x] Task 7: Context management page (`/kontekster`, R7).
   - Create, rename, reorder and archive contexts.
   - E2E test.
   - Lint, tsc, build, E2E.

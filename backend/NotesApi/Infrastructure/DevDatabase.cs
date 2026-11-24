@@ -9,25 +9,29 @@ public static class DevDatabase
 {
     public static async Task MigrateAndSeedAsync(IServiceProvider services)
     {
-        using var scope = services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<NotesDbContext>();
-        var clock = scope.ServiceProvider.GetRequiredService<LocalClock>();
-        var logger = scope.ServiceProvider.GetRequiredService<ILogger<NotesDbContext>>();
-
+        var logger = services.GetRequiredService<ILogger<NotesDbContext>>();
         for (var attempt = 1; ; attempt++)
         {
             try
             {
-                await db.Database.MigrateAsync();
-                break;
+                using var scope = services.CreateScope();
+                await MigrateAndSeedOnceAsync(
+                    scope.ServiceProvider.GetRequiredService<NotesDbContext>(),
+                    scope.ServiceProvider.GetRequiredService<LocalClock>(),
+                    logger);
+                return;
             }
             catch (Exception ex) when (attempt < 10)
             {
-                logger.LogWarning(ex, "Notes migration failed (attempt {Attempt}); retrying", attempt);
+                logger.LogWarning(ex, "Notes migration/seed failed (attempt {Attempt}); retrying", attempt);
                 await Task.Delay(TimeSpan.FromSeconds(3));
             }
         }
+    }
 
+    private static async Task MigrateAndSeedOnceAsync(NotesDbContext db, LocalClock clock, ILogger logger)
+    {
+        await db.Database.MigrateAsync();
         if (await db.Days.AnyAsync())
             return;
 

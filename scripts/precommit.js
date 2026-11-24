@@ -39,6 +39,14 @@ function main() {
     console.log('\x1b[32m✅ lint-staged passed\x1b[0m');
   }
 
+  if (staged.some(f => f.startsWith('frontend-notes/'))) {
+    const cwd = path.join(process.cwd(), 'frontend-notes');
+    console.log('\x1b[33m📝 frontend-notes changed: ESLint + TypeScript...\x1b[0m');
+    run('npm run lint', { cwd });
+    run('npx tsc --noEmit', { cwd });
+    console.log('\x1b[32m✅ frontend-notes checks passed\x1b[0m');
+  }
+
   console.log('\x1b[32m✅ All pre-commit checks passed!\x1b[0m');
 }
 

@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+:root {
+  --background: #fbfaf7;
+  --surface: #ffffff;
+  --foreground: #1c1b19;
+  --muted: #6f6b63;
+  --border: #e6e2da;
+  --accent: #2f5d8a;
+  --accent-soft: #e8eff6;
+  --done: #8a867e;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #161615;
+    --surface: #1f1e1c;
+    --foreground: #ecebe8;
+    --muted: #9c978d;
+    --border: #34322e;
+    --accent: #8fb5dc;
+    --accent-soft: #23303c;
+    --done: #7d7970;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-done: var(--done);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Item text grows with its content (Chromium/Firefox); other browsers fall back to rows=1 + scroll. */
+.item-text {
+  field-sizing: content;
+}

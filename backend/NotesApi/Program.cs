@@ -66,7 +66,12 @@ builder.Services.AddAuthorization(options =>
         .Build();
 });
 
-builder.Services.AddControllers(o => o.Filters.Add<NotesExceptionFilter>())
+builder.Services.AddControllers(o =>
+    {
+        o.Filters.Add<NotesExceptionFilter>();
+        // An item's text may be empty while it's being typed (Enter creates a blank line).
+        o.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
+    })
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddHealthChecks();
 
