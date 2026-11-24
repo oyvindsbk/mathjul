@@ -49,7 +49,7 @@
   - Create, rename, reorder and archive contexts.
   - E2E test.
   - Lint, tsc, build, E2E.
-- [ ] Task 8: Importer mapping and local import (R12–R16).
+- [x] Task 8: Importer mapping and local import (R12–R16).
   - Map the export JSON to the import payload, following `research.md`:
     - Date resolution: §2. Prefer section week + weekday over a weekday-only match (`2026/Uke 16` "Torsdag 15. april" must become 2026-04-16, not 2027).
     - Carried vs Open: §1.

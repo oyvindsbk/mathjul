@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '@/lib/api';
+import { todayInOslo } from '@/lib/dates';
 import { MAX_INDENT, type Day, type Item, type ItemKind, type WorkContext } from '@/lib/types';
 import { ItemRow, type ItemHandlers } from './ItemRow';
 
@@ -76,17 +77,19 @@ export function DayEditor({ date, contexts, onChanged }: Props) {
 
   const groups: Group[] = useMemo(() => {
     const used = new Set(items.map((i) => i.contextId));
+    // Past days show only the groups they used; today and later offer every active context.
+    const planning = date >= todayInOslo();
     return [
       { id: null, name: NO_CONTEXT, archived: false },
       ...contexts
-        .filter((c) => !c.isArchived || used.has(c.id))
+        .filter((c) => used.has(c.id) || (planning && !c.isArchived))
         .map((c) => ({
           id: c.id,
           name: c.isArchived ? `${c.name} (arkivert)` : c.name,
           archived: c.isArchived,
         })),
     ];
-  }, [contexts, items]);
+  }, [contexts, items, date]);
 
   const inGroup = useCallback(
     (contextId: number | null) =>
