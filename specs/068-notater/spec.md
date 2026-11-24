@@ -91,5 +91,5 @@ The model is single-user, so there is no owner column (see Out of Scope).
 - Offline editing.
 
 ## Open Questions
-- Q1: A custom domain (e.g. `notater.kheradmandi.no`), or the generated Container Apps hostname for now?
+- ~~Q1: Custom domain~~. Resolved (2026-11-24): use the generated Container Apps hostname for now. A domain can be added later through `NOTES_CUSTOM_DOMAIN` / `NOTES_CUSTOM_DOMAIN_CERT`, and the Google redirect URI must then be updated to match.
 - ~~Q2: Rust for the importer~~. Resolved: approved and installed. `onenote_parser` exports 307 of 309 sections with full structure (`research.md`).
