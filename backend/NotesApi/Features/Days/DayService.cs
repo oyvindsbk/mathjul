@@ -21,7 +21,7 @@ public class DayService(NotesDbContext db, LocalClock clock)
 
         var items = await db.Items
             .Where(i => i.Day.Date == date)
-            .OrderBy(i => i.ContextId).ThenBy(i => i.SortOrder)
+            .OrderBy(i => i.ContextId).ThenBy(i => i.SortOrder).ThenBy(i => i.Id)
             .Select(i => new ItemDto(
                 i.Id, i.Kind, i.Text, i.State, i.Indent, i.SortOrder, i.ContextId,
                 i.CarriedFrom == null ? null : i.CarriedFrom.Day.Date,
@@ -56,12 +56,19 @@ public class DayService(NotesDbContext db, LocalClock clock)
     public async Task EnsureTodayAsync(CancellationToken ct = default)
     {
         var today = clock.Today;
-        if (await db.Days.AnyAsync(d => d.Date == today, ct))
+        var now = clock.UtcNow;
+        var day = await db.Days.FirstOrDefaultAsync(d => d.Date == today, ct);
+        if (day is { CarriedOverAt: not null })
             return;
 
-        var now = clock.UtcNow;
-        var day = new Day { Date = today, CreatedAt = now };
-        db.Days.Add(day);
+        // A day planned ahead already exists but hasn't been carried into yet.
+        var plannedDayId = day?.Id;
+        if (day is null)
+        {
+            day = new Day { Date = today, CreatedAt = now };
+            db.Days.Add(day);
+        }
+        day.CarriedOverAt = now;
 
         var sourceDayId = await db.Days
             .Where(d => d.Date < today && d.Items.Any())
@@ -77,7 +84,14 @@ public class DayService(NotesDbContext db, LocalClock clock)
                 .OrderBy(i => i.ContextId).ThenBy(i => i.SortOrder)
                 .ToListAsync(ct);
 
-            var nextOrder = new Dictionary<int, int>(); // key: context id, 0 for no context
+            // Carried copies go after anything already planned on the day, per group.
+            var nextOrder = plannedDayId is null
+                ? new Dictionary<int, int>()
+                : await db.Items
+                    .Where(i => i.DayId == plannedDayId)
+                    .GroupBy(i => i.ContextId ?? 0)
+                    .Select(g => new { g.Key, Next = g.Max(i => i.SortOrder) + 1 })
+                    .ToDictionaryAsync(g => g.Key, g => g.Next, ct); // key: context id, 0 for no context
             foreach (var original in open)
             {
                 // Archived contexts take no new items, so their open to-dos land in "Dagens TODOs".
@@ -86,8 +100,9 @@ public class DayService(NotesDbContext db, LocalClock clock)
                 var order = nextOrder.GetValueOrDefault(key);
                 nextOrder[key] = order + 1;
 
-                day.Items.Add(new Item
+                db.Items.Add(new Item
                 {
+                    Day = day,
                     Kind = ItemKind.Todo,
                     Text = original.Text,
                     State = ItemState.Open,
@@ -111,9 +126,10 @@ public class DayService(NotesDbContext db, LocalClock clock)
         }
         catch (DbUpdateException)
         {
-            // A concurrent request may have created today first (unique Date); its carry-over stands.
+            // A concurrent request created today (unique Date) or carried first (CarriedOverAt is a
+            // concurrency token, so the losing UPDATE matches no row); its carry-over stands.
             db.ChangeTracker.Clear();
-            if (!await db.Days.AnyAsync(d => d.Date == today, ct))
+            if (!await db.Days.AnyAsync(d => d.Date == today && d.CarriedOverAt != null, ct))
                 throw;
         }
     }
@@ -213,7 +229,7 @@ public class DayService(NotesDbContext db, LocalClock clock)
 
         var to = request.ContextId == item.ContextId ? from : await GroupAsync(item.DayId, request.ContextId, ct);
         item.ContextId = request.ContextId;
-        to.Insert(Math.Min(request.Index, to.Count), item);
+        to.Insert(Math.Min(request.Index ?? to.Count, to.Count), item);
         Renumber(to);
 
         item.UpdatedAt = clock.UtcNow;

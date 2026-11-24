@@ -23,6 +23,7 @@ public class NotesDbContext(DbContextOptions<NotesDbContext> options) : DbContex
         modelBuilder.Entity<Day>(entity =>
         {
             entity.HasIndex(d => d.Date).IsUnique();
+            entity.Property(d => d.CarriedOverAt).IsConcurrencyToken();
         });
 
         modelBuilder.Entity<WorkContext>(entity =>

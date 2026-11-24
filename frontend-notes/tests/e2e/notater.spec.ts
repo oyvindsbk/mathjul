@@ -103,6 +103,31 @@ test.describe('Notater', () => {
     await expect(today(page).getByTestId(`group-${renamed}`)).toHaveCount(0);
   });
 
+  test('an item can be moved to another context', async ({ page }) => {
+    await signIn(page);
+    const day = today(page);
+    const text = unique('Flyttes');
+
+    await day.getByTestId('group-Dagens TODOs').getByRole('button', { name: '+ Ny' }).click();
+    await page.keyboard.type(text);
+    await page.getByTestId('week-title').click();
+    await saved(page);
+
+    const row = day.getByTestId('item-row').filter({ has: page.locator(`textarea:text-is("${text}")`) });
+    await row.getByLabel('Kontekst').selectOption({ label: 'Jobb' });
+    await saved(page);
+
+    await expect(day.getByTestId('group-Jobb').locator(`textarea:text-is("${text}")`)).toBeVisible();
+    await expect(page.getByRole('alert').filter({ hasText: /\S/ })).toHaveCount(0);
+  });
+
+  test('the API proxy does not expose the API sign-in endpoints', async ({ request }) => {
+    const response = await request.post('/api/proxy/auth/dev-token', {
+      headers: { authorization: 'Bearer anything' },
+    });
+    expect(response.status()).toBe(404);
+  });
+
   test('the API proxy rejects requests without a session', async ({ request }) => {
     const response = await request.get('/api/proxy/contexts');
     expect(response.status()).toBe(401);

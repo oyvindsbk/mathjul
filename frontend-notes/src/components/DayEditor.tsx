@@ -52,7 +52,20 @@ export function DayEditor({ date, contexts, onChanged }: Props) {
 
   const load = useCallback(async () => {
     try {
-      setDay(await api.day(date));
+      const fresh = await api.day(date);
+      // Keep rows that are still being created, and every row's clientKey, so a reload neither
+      // drops a line someone is typing into nor remounts (and blurs) the rows on screen.
+      setDay((previous) => {
+        if (!previous) return fresh;
+        const keys = new Map(previous.items.map((i) => [i.id, i.clientKey]));
+        return {
+          ...fresh,
+          items: [
+            ...fresh.items.map((i) => ({ ...i, clientKey: keys.get(i.id) })),
+            ...previous.items.filter((i) => i.id < 0),
+          ],
+        };
+      });
       setError(null);
     } catch (e) {
       setError(message(e));
@@ -168,7 +181,8 @@ export function DayEditor({ date, contexts, onChanged }: Props) {
         (d) =>
           d && {
             ...d,
-            items: d.items.map((i) => {
+            // A reload may already have brought the created row from the server; keep the local one.
+            items: d.items.filter((i) => i.id !== created.id).map((i) => {
               if (i.id === tempId) return { ...created, text: i.text, clientKey: i.clientKey };
               // The server shifted the rest of the group down by one; mirror it.
               if (i.contextId === contextId && i.id > 0 && i.sortOrder >= created.sortOrder)
@@ -244,7 +258,7 @@ export function DayEditor({ date, contexts, onChanged }: Props) {
         replace(await api.updateItem(id, { kind: item.kind === 'Todo' ? 'Note' : 'Todo' }), id);
       }, false),
     moveToContext: (item, contextId) =>
-      void run(async () => api.moveItem(await realId(item.id), contextId, Number.MAX_SAFE_INTEGER), true),
+      void run(async () => api.moveItem(await realId(item.id), contextId), true),
     remove: (item) => void run(async () => api.deleteItem(await realId(item.id)), true),
   };
 

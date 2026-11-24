@@ -14,6 +14,10 @@ async function forward(request: NextRequest, { params }: Context): Promise<NextR
   if (path.some((segment) => segment === '..' || segment === '.' || segment === '')) {
     return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
   }
+  // Sign-in has its own routes here; the API's anonymous auth endpoints stay off the proxy.
+  if (path[0] === 'auth') {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
+  }
 
   const authorization =
     request.headers.get('authorization') ??

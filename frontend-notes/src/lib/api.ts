@@ -56,7 +56,8 @@ export const api = {
   day: (date: string) => request<Day>('GET', `days/${date}`),
   addItem: (date: string, item: AddItem) => request<Item>('POST', `days/${date}/items`, item),
   updateItem: (id: number, changes: UpdateItem) => request<Item>('PATCH', `items/${id}`, changes),
-  moveItem: (id: number, contextId: number | null, index: number) =>
+  /** Without an index the item is appended to the target group. */
+  moveItem: (id: number, contextId: number | null, index?: number) =>
     request<Item>('POST', `items/${id}/move`, { contextId, index }),
   deleteItem: (id: number) => request<void>('DELETE', `items/${id}`),
 

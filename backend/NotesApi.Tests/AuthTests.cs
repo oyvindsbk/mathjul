@@ -97,6 +97,27 @@ public class AuthTests(NotesApiFactory factory) : IClassFixture<NotesApiFactory>
     }
 
     [Fact]
+    public async Task Moving_to_another_context_without_an_index_appends_over_http()
+    {
+        var client = factory.CreateClient();
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", NotesApiFactory.Token(NotesApiFactory.AllowedEmail));
+        var json = new System.Text.Json.JsonSerializerOptions(System.Text.Json.JsonSerializerDefaults.Web)
+        {
+            Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() },
+        };
+        var context = await (await client.PostAsJsonAsync("/api/contexts", new { name = "Flytt" }))
+            .Content.ReadFromJsonAsync<Features.Contexts.ContextDto>(json);
+        var item = await (await client.PostAsJsonAsync("/api/days/2026-01-05/items", new { kind = "Todo", text = "x", contextId = (int?)null }))
+            .Content.ReadFromJsonAsync<Features.Days.ItemDto>(json);
+
+        var response = await client.PostAsJsonAsync($"/api/items/{item!.Id}/move", new { contextId = context!.Id });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(context.Id, (await response.Content.ReadFromJsonAsync<Features.Days.ItemDto>(json))!.ContextId);
+    }
+
+    [Fact]
     public async Task Api_errors_come_back_as_json_with_their_status()
     {
         var client = factory.CreateClient();

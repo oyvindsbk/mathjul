@@ -64,6 +64,27 @@ public class ImportTests
     }
 
     [Fact]
+    public async Task Reimport_keeps_progress_made_in_the_app()
+    {
+        using var t = new NotesTestContext();
+        var yesterday = Today.AddDays(-1);
+        var batch = Batch(new ImportDay(yesterday, [Line("carried later"), Line("ticked in app"), Line("still open")]));
+        await t.Import.ImportAsync(batch);
+        var ticked = t.ItemsOn(yesterday).Single(i => i.Text == "ticked in app");
+        await t.Days.UpdateItemAsync(ticked.Id, new UpdateItemRequest(State: ItemState.Done));
+        await t.Days.GetDayAsync(Today); // carries "carried later" and "still open"
+
+        await t.Import.ImportAsync(batch);
+
+        var items = t.ItemsOn(yesterday);
+        Assert.Equal(ItemState.Carried, items.Single(i => i.Text == "carried later").State);
+        Assert.Equal(ItemState.Done, items.Single(i => i.Text == "ticked in app").State);
+        var copies = t.ItemsOn(Today);
+        Assert.All(copies, c => Assert.NotNull(c.CarriedFromItemId));
+        Assert.Equal(2, copies.Count);
+    }
+
+    [Fact]
     public async Task Notes_never_import_as_ticked_or_carried()
     {
         using var t = new NotesTestContext();

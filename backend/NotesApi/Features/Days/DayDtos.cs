@@ -34,5 +34,5 @@ public record UpdateItemRequest(
     ItemState? State = null,
     [Range(0, Item.MaxIndent)] int? Indent = null);
 
-/// <summary>Moves an item to a position within a (possibly different) context group.</summary>
-public record MoveItemRequest(int? ContextId, [Range(0, int.MaxValue)] int Index);
+/// <summary>Moves an item to a position within a (possibly different) context group; no index appends.</summary>
+public record MoveItemRequest(int? ContextId, [Range(0, int.MaxValue)] int? Index = null);

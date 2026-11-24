@@ -86,6 +86,20 @@ public class CarryOverTests
     }
 
     [Fact]
+    public async Task A_day_planned_ahead_still_gets_carry_over_when_it_arrives()
+    {
+        using var t = new NotesTestContext();
+        t.AddDay(Today.AddDays(-1), Todo("left over"));
+        t.AddDay(Today, Note("Møte kl 10 (planlagt i går)")); // created before it was today
+
+        var day = await t.Days.GetDayAsync(Today);
+
+        Assert.Equal(["Møte kl 10 (planlagt i går)", "left over"], day.Items.Select(i => i.Text));
+        Assert.Equal([0, 1], day.Items.Select(i => i.SortOrder));
+        Assert.Equal(ItemState.Carried, t.ItemsOn(Today.AddDays(-1)).Single().State);
+    }
+
+    [Fact]
     public async Task Open_todos_in_an_archived_context_land_in_dagens_todos()
     {
         using var t = new NotesTestContext();

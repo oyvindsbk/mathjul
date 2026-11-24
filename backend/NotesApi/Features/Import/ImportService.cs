@@ -77,20 +77,16 @@ public class ImportService(NotesDbContext db, LocalClock clock)
                 db.Days.Add(day);
             }
 
-            var oldImported = day.Items.Where(i => i.Source == ItemSource.OneNote).ToList();
-            if (oldImported.Count > 0)
-            {
-                var oldIds = oldImported.Select(i => i.Id).ToList();
-                foreach (var copy in await db.Items.Where(i => i.CarriedFromItemId != null && oldIds.Contains(i.CarriedFromItemId.Value)).ToListAsync(ct))
-                    copy.CarriedFromItemId = null;
-                foreach (var old in oldImported)
-                {
-                    day.Items.Remove(old);
-                    db.Items.Remove(old);
-                }
-            }
-
-            var manual = day.Items.ToList();
+            // Previously imported lines are matched to the new ones (same context, kind and text, in
+            // order) and updated in place, so what happened in the app since survives a re-import:
+            // a carried or ticked to-do keeps its state, and carried copies keep their link.
+            string ContextKey(int? id) => id is null ? "" : contexts.First(c => c.Id == id).Name.ToLowerInvariant();
+            string LineKey(string contextKey, ItemKind kind, string text) => $"{contextKey}\u0001{kind}\u0001{text}";
+            var previous = day.Items.Where(i => i.Source == ItemSource.OneNote)
+                .OrderBy(i => i.ContextId).ThenBy(i => i.SortOrder).ThenBy(i => i.Id)
+                .GroupBy(i => LineKey(ContextKey(i.ContextId), i.Kind, i.Text))
+                .ToDictionary(g => g.Key, g => new Queue<Item>(g));
+            var manual = day.Items.Where(i => i.Source != ItemSource.OneNote).ToList();
             // Imported item count per context group (NoContext = "Dagens TODOs"); new contexts have no id yet.
             var importedByGroup = new Dictionary<WorkContext, int>(ReferenceEqualityComparer.Instance);
 
@@ -103,20 +99,53 @@ public class ImportService(NotesDbContext db, LocalClock clock)
                 importedByGroup[context ?? NoContext] = order + 1;
 
                 var isTodo = line.Kind == ItemKind.Todo;
-                day.Items.Add(new Item
+                var state = isTodo ? line.State : ItemState.Open;
+                var key = LineKey(context?.Name.ToLowerInvariant() ?? "", line.Kind, line.Text);
+                if (previous.TryGetValue(key, out var matches) && matches.TryDequeue(out var existing))
                 {
-                    Context = context,
-                    Kind = line.Kind,
-                    Text = line.Text,
-                    State = isTodo ? line.State : ItemState.Open,
-                    Indent = line.Indent,
-                    SortOrder = order,
-                    CompletedAt = isTodo && line.State == ItemState.Done ? now : null,
-                    Source = ItemSource.OneNote,
-                    CreatedAt = now,
-                    UpdatedAt = now,
-                });
+                    // The app's progress wins over the export's "open".
+                    if (state == ItemState.Open && existing.State is ItemState.Carried or ItemState.Done)
+                        state = existing.State;
+                    existing.Indent = line.Indent;
+                    existing.SortOrder = order;
+                    existing.UpdatedAt = now;
+                    if (existing.State != state)
+                    {
+                        existing.State = state;
+                        existing.CompletedAt = state == ItemState.Done ? now : null;
+                    }
+                }
+                else
+                {
+                    day.Items.Add(new Item
+                    {
+                        Context = context,
+                        Kind = line.Kind,
+                        Text = line.Text,
+                        State = state,
+                        Indent = line.Indent,
+                        SortOrder = order,
+                        CompletedAt = state == ItemState.Done ? now : null,
+                        Source = ItemSource.OneNote,
+                        CreatedAt = now,
+                        UpdatedAt = now,
+                    });
+                }
                 itemCount++;
+            }
+
+            // Lines no longer in the export are removed; any carried copy just loses its link.
+            var removed = previous.Values.SelectMany(q => q).ToList();
+            if (removed.Count > 0)
+            {
+                var removedIds = removed.Select(i => i.Id).ToList();
+                foreach (var copy in await db.Items.Where(i => i.CarriedFromItemId != null && removedIds.Contains(i.CarriedFromItemId.Value)).ToListAsync(ct))
+                    copy.CarriedFromItemId = null;
+                foreach (var old in removed)
+                {
+                    day.Items.Remove(old);
+                    db.Items.Remove(old);
+                }
             }
 
             // Manual items keep their relative order, placed after the imported ones in their group.
