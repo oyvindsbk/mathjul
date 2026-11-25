@@ -90,6 +90,7 @@ jobs:
     env:
       FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
       SHARED: .github/workflows/deploy.yml .github/scripts
+      CHANGES_SUMMARY: changes-summary.md
     steps:
     - uses: actions/checkout@v4
       with:
@@ -99,17 +100,23 @@ jobs:
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Summary header
-      run: |
-        echo "### Deploy Application" >> $GITHUB_STEP_SUMMARY
-        echo "| App | Decision | Why |" >> $GITHUB_STEP_SUMMARY
-        echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
-
     - id: api
       run: bash .github/scripts/changed-since-deployed.sh recipe-api "${{ needs.get-resources.outputs.container-app-name }}" backend/RecipeApi $SHARED
 
     - id: web
       run: bash .github/scripts/changed-since-deployed.sh recipe-web "${{ needs.get-resources.outputs.frontend-container-app-name }}" frontend $SHARED
+
+    - name: Summary
+      # One step: GitHub renders each step's summary separately, so a header written in
+      # another step would not join these rows into a table.
+      run: |
+        {
+          echo "### Deploy Application"
+          echo ""
+          echo "| App | Decision | Why |"
+          echo "|---|---|---|"
+          cat "$CHANGES_SUMMARY"
+        } >> $GITHUB_STEP_SUMMARY
 
   build-and-push-image:
     runs-on: ubuntu-latest
