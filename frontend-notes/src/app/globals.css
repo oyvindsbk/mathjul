@@ -9,6 +9,18 @@
   --accent: #2f5d8a;
   --accent-soft: #e8eff6;
   --done: #8a867e;
+
+  /* Project palette (OneNote-style section colors), see lib/projectColors.ts. */
+  --project-blue: #2f6fd0;
+  --project-yellow: #d9a400;
+  --project-green: #3f9a4a;
+  --project-red: #d2463c;
+  --project-purple: #8a4fc4;
+  --project-cyan: #1f9fc2;
+  --project-orange: #e2761c;
+  --project-magenta: #c2408f;
+  --project-teal: #188f84;
+  --project-gray: #8a867e;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,6 +33,17 @@
     --accent: #8fb5dc;
     --accent-soft: #23303c;
     --done: #7d7970;
+
+    --project-blue: #6fa3ef;
+    --project-yellow: #f0c83a;
+    --project-green: #6cc373;
+    --project-red: #ef7468;
+    --project-purple: #b48ae6;
+    --project-cyan: #5cc9e3;
+    --project-orange: #f5a04d;
+    --project-magenta: #e57bbd;
+    --project-teal: #4fc1b4;
+    --project-gray: #a8a39a;
   }
 }
 

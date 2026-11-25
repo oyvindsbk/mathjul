@@ -5,11 +5,16 @@ using NotesApi.Infrastructure;
 
 namespace NotesApi.Features.Projects;
 
-public record ProjectDto(int Id, string Name, int SortOrder, bool IsArchived);
+public record ProjectDto(int Id, string Name, int SortOrder, bool IsArchived, string? Color);
 
 public record CreateProjectRequest([Required, MaxLength(Project.MaxNameLength)] string Name);
 
-public record UpdateProjectRequest([MaxLength(Project.MaxNameLength)] string? Name = null, bool? IsArchived = null);
+/// <param name="ClearColor">True removes the color; a null <paramref name="Color"/> just means "unchanged".</param>
+public record UpdateProjectRequest(
+    [MaxLength(Project.MaxNameLength)] string? Name = null,
+    bool? IsArchived = null,
+    [MaxLength(ProjectColors.MaxKeyLength)] string? Color = null,
+    bool ClearColor = false);
 
 public record ReorderProjectsRequest([Required] IReadOnlyList<int> Ids);
 
@@ -20,7 +25,7 @@ public class ProjectsController(NotesDbContext db) : ControllerBase
     [HttpGet]
     public async Task<IReadOnlyList<ProjectDto>> List(CancellationToken ct) =>
         await db.Projects.OrderBy(c => c.SortOrder).ThenBy(c => c.Name)
-            .Select(c => new ProjectDto(c.Id, c.Name, c.SortOrder, c.IsArchived))
+            .Select(c => new ProjectDto(c.Id, c.Name, c.SortOrder, c.IsArchived, c.Color))
             .ToListAsync(ct);
 
     [HttpPost]
@@ -33,7 +38,8 @@ public class ProjectsController(NotesDbContext db) : ControllerBase
             return Conflict(new { error = $"A project named '{name}' already exists" });
 
         var next = await db.Projects.Select(c => (int?)c.SortOrder).MaxAsync(ct) ?? -1;
-        var project = new Project { Name = name, SortOrder = next + 1 };
+        var used = await db.Projects.Where(c => !c.IsArchived).Select(c => c.Color).ToListAsync(ct);
+        var project = new Project { Name = name, SortOrder = next + 1, Color = ProjectColors.NextUnused(used) };
         db.Projects.Add(project);
         await db.SaveChangesAsync(ct);
         return ToDto(project);
@@ -45,6 +51,8 @@ public class ProjectsController(NotesDbContext db) : ControllerBase
         var project = await db.Projects.FindAsync([id], ct);
         if (project is null)
             return NotFound();
+        if (request.Color is not null && !ProjectColors.IsValid(request.Color))
+            return BadRequest(new { error = $"Unknown color '{request.Color}'" });
 
         if (request.Name is not null)
         {
@@ -57,6 +65,10 @@ public class ProjectsController(NotesDbContext db) : ControllerBase
         }
         if (request.IsArchived is { } archived)
             project.IsArchived = archived;
+        if (request.ClearColor)
+            project.Color = null;
+        else if (request.Color is not null)
+            project.Color = request.Color;
 
         await db.SaveChangesAsync(ct);
         return ToDto(project);
@@ -85,5 +97,5 @@ public class ProjectsController(NotesDbContext db) : ControllerBase
         return db.Projects.AnyAsync(c => c.Id != exceptId && c.Name.ToLower() == lower, ct);
     }
 
-    private static ProjectDto ToDto(Project c) => new(c.Id, c.Name, c.SortOrder, c.IsArchived);
+    private static ProjectDto ToDto(Project c) => new(c.Id, c.Name, c.SortOrder, c.IsArchived, c.Color);
 }

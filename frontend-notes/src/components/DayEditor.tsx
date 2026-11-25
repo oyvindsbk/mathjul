@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { todayInOslo } from '@/lib/dates';
+import { projectColorVar, type ProjectColor } from '@/lib/projectColors';
 import { MAX_INDENT, type Day, type Item, type ItemKind, type Project } from '@/lib/types';
 import { ItemRow, type ItemHandlers } from './ItemRow';
 
@@ -17,6 +18,7 @@ interface Group {
   id: number | null;
   name: string;
   archived: boolean;
+  color: ProjectColor | null;
 }
 
 const NO_PROJECT = 'Dagens TODOs';
@@ -93,13 +95,14 @@ export function DayEditor({ date, projects, onChanged }: Props) {
     // Past days show only the groups they used; today and later offer every active project.
     const planning = date >= todayInOslo();
     return [
-      { id: null, name: NO_PROJECT, archived: false },
+      { id: null, name: NO_PROJECT, archived: false, color: null },
       ...projects
         .filter((c) => used.has(c.id) || (planning && !c.isArchived))
         .map((c) => ({
           id: c.id,
           name: c.isArchived ? `${c.name} (arkivert)` : c.name,
           archived: c.isArchived,
+          color: c.color,
         })),
     ];
   }, [projects, items, date]);
@@ -276,8 +279,24 @@ export function DayEditor({ date, projects, onChanged }: Props) {
       {groups.map((group) => {
         const groupItems = inGroup(group.id);
         return (
-          <section key={group.id ?? 'none'} data-testid={`group-${group.name}`}>
-            <h3 className="mb-1 text-sm font-semibold text-muted">{group.name}</h3>
+          <section
+            key={group.id ?? 'none'}
+            data-testid={`group-${group.name}`}
+            data-color={group.color ?? ''}
+            // Every group gets the border so items line up; uncolored ones keep it transparent.
+            className="border-l-4 pl-3"
+            style={{ borderColor: group.color ? projectColorVar(group.color) : 'transparent' }}
+          >
+            <h3 className="mb-1 flex items-center gap-2 text-sm font-semibold text-muted">
+              {group.color && (
+                <span
+                  aria-hidden
+                  className="size-2.5 shrink-0 rounded-full"
+                  style={{ background: projectColorVar(group.color) }}
+                />
+              )}
+              {group.name}
+            </h3>
             {groupItems.map((item) => (
               <ItemRow key={item.clientKey ?? item.id} item={item} projects={projects} handlers={handlers} />
             ))}

@@ -31,6 +31,7 @@ public class NotesDbContext(DbContextOptions<NotesDbContext> options) : DbContex
             entity.ToTable("Projects");
             entity.Property(c => c.Name).IsRequired().HasMaxLength(Project.MaxNameLength);
             entity.HasIndex(c => c.Name).IsUnique();
+            entity.Property(c => c.Color).HasMaxLength(ProjectColors.MaxKeyLength);
         });
 
         modelBuilder.Entity<Item>(entity =>

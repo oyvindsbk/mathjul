@@ -14,4 +14,7 @@ public class Project
 
     /// <summary>Archived projects take no new items but keep their history.</summary>
     public bool IsArchived { get; set; }
+
+    /// <summary>A key from <see cref="ProjectColors.All"/>, or null for no color.</summary>
+    public string? Color { get; set; }
 }

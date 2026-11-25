@@ -50,6 +50,7 @@ public class ImportService(NotesDbContext db, LocalClock clock)
             {
                 Name = name,
                 SortOrder = projects.Count == 0 ? 0 : projects.Max(c => c.SortOrder) + 1,
+                Color = ProjectColors.NextUnused(projects.Where(c => !c.IsArchived).Select(c => c.Color).ToList()),
             };
             projects.Add(project);
             db.Projects.Add(project);

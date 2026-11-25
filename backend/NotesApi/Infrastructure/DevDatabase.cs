@@ -35,8 +35,8 @@ public static class DevDatabase
         if (await db.Days.AnyAsync())
             return;
 
-        var jobb = new Project { Name = "Jobb", SortOrder = 0 };
-        var hobby = new Project { Name = "Hobby", SortOrder = 1 };
+        var jobb = new Project { Name = "Jobb", SortOrder = 0, Color = "blue" };
+        var hobby = new Project { Name = "Hobby", SortOrder = 1, Color = "yellow" };
         db.Projects.AddRange(jobb, hobby);
 
         var previous = clock.Today.AddDays(clock.Today.DayOfWeek == DayOfWeek.Monday ? -3 : -1);

@@ -2,9 +2,11 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { api } from '@/lib/api';
+import type { ProjectColor } from '@/lib/projectColors';
 import type { Project } from '@/lib/types';
+import { ColorPicker } from './ColorPicker';
 
-/** Create, rename, reorder and archive the headings that group a day's items. */
+/** Create, rename, color, reorder and archive the headings that group a day's items. */
 export function ProjectsManager() {
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [newName, setNewName] = useState('');
@@ -46,6 +48,12 @@ export function ProjectsManager() {
   const setArchived = (project: Project, isArchived: boolean) =>
     void attempt(async () => {
       await api.updateProject(project.id, { isArchived });
+      return api.projects();
+    });
+
+  const setColor = (project: Project, color: ProjectColor | null) =>
+    void attempt(async () => {
+      await api.updateProject(project.id, color ? { color } : { clearColor: true });
       return api.projects();
     });
 
@@ -93,6 +101,7 @@ export function ProjectsManager() {
             className="flex items-center gap-2 px-3 py-2"
             data-testid="project-row"
           >
+            <ColorPicker color={project.color} label={project.name} onChange={(c) => setColor(project, c)} />
             <input
               defaultValue={project.name}
               maxLength={60}
