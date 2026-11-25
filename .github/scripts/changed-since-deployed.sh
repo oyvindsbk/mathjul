@@ -9,9 +9,11 @@
 # Usage: changed-since-deployed.sh <key> <container-app-name> <path>...
 #   Image tags are expected to end in -<sha> (7 or 40 hex), as deploy.yml and
 #   deploy-notes.yml tag them. Needs the full history (checkout fetch-depth: 0).
-# Env:   RG (or AZURE_RESOURCE_GROUP), FORCE (true|false)
+# Env:   RG (or AZURE_RESOURCE_GROUP), FORCE (true|false),
+#        CHANGES_SUMMARY (file to append the table row to; default $GITHUB_STEP_SUMMARY)
 # Out:   $GITHUB_OUTPUT  <key>=true|false, <key>-reason=<text>
-#        $GITHUB_STEP_SUMMARY  one table row
+#        $CHANGES_SUMMARY  one markdown table row. GitHub renders each step's summary on
+#        its own, so the workflow writes header + rows from one step.
 set -uo pipefail
 
 KEY="$1"
@@ -22,6 +24,7 @@ RG="${RG:-${AZURE_RESOURCE_GROUP:-}}" # workflows set AZURE_RESOURCE_GROUP at th
 : "${RG:?RG or AZURE_RESOURCE_GROUP is required}"
 : "${GITHUB_OUTPUT:=/dev/null}"
 : "${GITHUB_STEP_SUMMARY:=/dev/null}"
+CHANGES_SUMMARY="${CHANGES_SUMMARY:-$GITHUB_STEP_SUMMARY}"
 FORCE="${FORCE:-false}"
 
 decide() { # deploy(true|false), reason
@@ -32,7 +35,7 @@ decide() { # deploy(true|false), reason
   } >> "$GITHUB_OUTPUT"
   local verdict="skip"
   [ "$1" = "true" ] && verdict="**deploy**"
-  echo "| $KEY | $verdict | $2 |" >> "$GITHUB_STEP_SUMMARY"
+  echo "| $KEY | $verdict | $2 |" >> "$CHANGES_SUMMARY"
   exit 0
 }
 
