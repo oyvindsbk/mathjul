@@ -5,6 +5,8 @@
 
 set -uo pipefail
 export LC_ALL=C 2>/dev/null || true
+# Claude Code shows only stderr when a hook blocks (exit 2), so send everything there.
+exec 1>&2
 
 REPO_ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel 2>/dev/null || echo "/c/git/privat/mathjul")"
 cd "$REPO_ROOT"
@@ -26,7 +28,9 @@ FAILED=false
 # ── Backend ──────────────────────────────────────────────────────────────────
 if echo "$CHANGED" | grep -q "^backend/"; then
   echo "🔨 [stop-gate] Backend changes detected — running full backend checks..."
-  if (cd "$REPO_ROOT/backend/RecipeApi" && dotnet build -v q 2>&1 && dotnet test --no-build 2>&1); then
+  # Release, not Debug: a running Aspire session locks bin/Debug (MSB3027), which would
+  # fail the gate for a reason that has nothing to do with the change.
+  if (cd "$REPO_ROOT/backend/RecipeApi.Tests" && dotnet test -c Release -v q 2>&1); then
     echo "✅ Backend checks passed."
   else
     echo "❌ Backend checks FAILED."
