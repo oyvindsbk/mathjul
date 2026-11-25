@@ -1,3 +1,5 @@
+import type { ProjectColor } from './projectColors';
+
 export type ItemKind = 'Todo' | 'Note';
 export type ItemState = 'Open' | 'Done' | 'Carried';
 
@@ -8,7 +10,7 @@ export interface Item {
   state: ItemState;
   indent: number;
   sortOrder: number;
-  contextId: number | null;
+  projectId: number | null;
   /** The date of the item this was carried from, as yyyy-mm-dd. */
   carriedFromDate: string | null;
   completedAt: string | null;
@@ -37,11 +39,12 @@ export interface Week {
   days: DaySummary[];
 }
 
-export interface WorkContext {
+export interface Project {
   id: number;
   name: string;
   sortOrder: number;
   isArchived: boolean;
+  color: ProjectColor | null;
 }
 
 export const MAX_INDENT = 6;

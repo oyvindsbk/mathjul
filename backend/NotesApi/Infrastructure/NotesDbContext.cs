@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using NotesApi.Features.Contexts;
+using NotesApi.Features.Projects;
 using NotesApi.Features.Days;
 
 namespace NotesApi.Infrastructure;
@@ -14,7 +14,7 @@ public class NotesDbContext(DbContextOptions<NotesDbContext> options) : DbContex
 
     public DbSet<Day> Days => Set<Day>();
     public DbSet<Item> Items => Set<Item>();
-    public DbSet<WorkContext> Contexts => Set<WorkContext>();
+    public DbSet<Project> Projects => Set<Project>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -26,11 +26,12 @@ public class NotesDbContext(DbContextOptions<NotesDbContext> options) : DbContex
             entity.Property(d => d.CarriedOverAt).IsConcurrencyToken();
         });
 
-        modelBuilder.Entity<WorkContext>(entity =>
+        modelBuilder.Entity<Project>(entity =>
         {
-            entity.ToTable("Contexts");
-            entity.Property(c => c.Name).IsRequired().HasMaxLength(WorkContext.MaxNameLength);
+            entity.ToTable("Projects");
+            entity.Property(c => c.Name).IsRequired().HasMaxLength(Project.MaxNameLength);
             entity.HasIndex(c => c.Name).IsUnique();
+            entity.Property(c => c.Color).HasMaxLength(ProjectColors.MaxKeyLength);
         });
 
         modelBuilder.Entity<Item>(entity =>
@@ -42,14 +43,14 @@ public class NotesDbContext(DbContextOptions<NotesDbContext> options) : DbContex
 
             entity.HasOne(i => i.Day).WithMany(d => d.Items)
                 .HasForeignKey(i => i.DayId).OnDelete(DeleteBehavior.Cascade);
-            entity.HasOne(i => i.Context).WithMany()
-                .HasForeignKey(i => i.ContextId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne(i => i.Project).WithMany()
+                .HasForeignKey(i => i.ProjectId).OnDelete(DeleteBehavior.SetNull);
             // Deleting an original must not delete its carried copy, and SQL Server
             // rejects a second cascade path to Items, so the link is cleared in code.
             entity.HasOne(i => i.CarriedFrom).WithMany()
                 .HasForeignKey(i => i.CarriedFromItemId).OnDelete(DeleteBehavior.NoAction);
 
-            entity.HasIndex(i => new { i.DayId, i.ContextId, i.SortOrder });
+            entity.HasIndex(i => new { i.DayId, i.ProjectId, i.SortOrder });
             entity.HasIndex(i => i.CarriedFromItemId);
         });
     }

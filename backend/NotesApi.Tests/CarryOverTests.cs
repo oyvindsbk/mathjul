@@ -9,23 +9,23 @@ public class CarryOverTests
     public async Task Opening_today_copies_only_open_todos_and_marks_originals_carried()
     {
         using var t = new NotesTestContext();
-        var jobb = t.AddContext("Jobb");
+        var jobb = t.AddProject("Jobb");
         var yesterday = Today.AddDays(-1);
         t.AddDay(yesterday,
             Todo("open one"),
             Todo("done one", ItemState.Done),
             Note("a note"),
-            Todo("open in context", context: jobb, indent: 1));
+            Todo("open in project", project: jobb, indent: 1));
 
         var day = await t.Days.GetDayAsync(Today);
 
         Assert.True(day.IsToday);
-        Assert.Equal(["open one", "open in context"], day.Items.Select(i => i.Text));
+        Assert.Equal(["open one", "open in project"], day.Items.Select(i => i.Text));
         Assert.All(day.Items, i => Assert.Equal(ItemState.Open, i.State));
         Assert.All(day.Items, i => Assert.Equal(yesterday, i.CarriedFromDate));
-        var inContext = day.Items.Single(i => i.Text == "open in context");
-        Assert.Equal(jobb.Id, inContext.ContextId);
-        Assert.Equal(1, inContext.Indent);
+        var inProject = day.Items.Single(i => i.Text == "open in project");
+        Assert.Equal(jobb.Id, inProject.ProjectId);
+        Assert.Equal(1, inProject.Indent);
 
         var originals = t.ItemsOn(yesterday);
         Assert.Equal(ItemState.Carried, originals.Single(i => i.Text == "open one").State);
@@ -100,15 +100,15 @@ public class CarryOverTests
     }
 
     [Fact]
-    public async Task Open_todos_in_an_archived_context_land_in_dagens_todos()
+    public async Task Open_todos_in_an_archived_project_land_in_dagens_todos()
     {
         using var t = new NotesTestContext();
-        var old = t.AddContext("Gammelt prosjekt", archived: true);
-        t.AddDay(Today.AddDays(-1), Todo("left over", context: old));
+        var old = t.AddProject("Gammelt prosjekt", archived: true);
+        t.AddDay(Today.AddDays(-1), Todo("left over", project: old));
 
         var day = await t.Days.GetDayAsync(Today);
 
-        Assert.Null(day.Items.Single().ContextId);
+        Assert.Null(day.Items.Single().ProjectId);
     }
 
     [Fact]

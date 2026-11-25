@@ -69,3 +69,21 @@ export function shortDay(date: string): string {
 export function weekNumber(key: string): number {
   return Number(key.split('-W')[1]);
 }
+
+const shortWeekdayFormat = new Intl.DateTimeFormat('nb-NO', { weekday: 'short', timeZone: 'UTC' });
+const shortMonthFormat = new Intl.DateTimeFormat('nb-NO', { month: 'short', timeZone: 'UTC' });
+const dayOfMonth = (date: string) => Number(date.slice(8, 10));
+
+/** "Man 23." for the sidebar's day rows. */
+export function sidebarDayLabel(date: string): string {
+  return `${capitalize(shortWeekdayFormat.format(toUtc(date)).replace('.', ''))} ${dayOfMonth(date)}.`;
+}
+
+/** "23.–29. nov", or "30. nov–6. des" across a month boundary. */
+export function weekRange(monday: string): string {
+  const sunday = addDays(monday, 6);
+  const month = (date: string) => shortMonthFormat.format(toUtc(date)).replace('.', '');
+  return month(monday) === month(sunday)
+    ? `${dayOfMonth(monday)}.–${dayOfMonth(sunday)}. ${month(sunday)}`
+    : `${dayOfMonth(monday)}. ${month(monday)}–${dayOfMonth(sunday)}. ${month(sunday)}`;
+}

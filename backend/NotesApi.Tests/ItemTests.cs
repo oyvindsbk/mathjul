@@ -58,10 +58,10 @@ public class ItemTests
     }
 
     [Fact]
-    public async Task Adding_to_an_archived_context_is_refused()
+    public async Task Adding_to_an_archived_project_is_refused()
     {
         using var t = new NotesTestContext();
-        var old = t.AddContext("Old", archived: true);
+        var old = t.AddProject("Old", archived: true);
 
         var ex = await Assert.ThrowsAsync<NotesException>(() =>
             t.Days.AddItemAsync(Today, new AddItemRequest(ItemKind.Todo, "x", old.Id)));
@@ -70,10 +70,10 @@ public class ItemTests
     }
 
     [Fact]
-    public async Task Moving_to_another_context_renumbers_both_groups()
+    public async Task Moving_to_another_project_renumbers_both_groups()
     {
         using var t = new NotesTestContext();
-        var work = t.AddContext("Work");
+        var work = t.AddProject("Work");
         var a = await t.Days.AddItemAsync(Today, new AddItemRequest(ItemKind.Todo, "a", null));
         await t.Days.AddItemAsync(Today, new AddItemRequest(ItemKind.Todo, "b", null));
         await t.Days.AddItemAsync(Today, new AddItemRequest(ItemKind.Todo, "w", work.Id));
@@ -82,8 +82,8 @@ public class ItemTests
 
         var items = t.ItemsOn(Today);
         Assert.Equal(0, items.Single(i => i.Text == "b").SortOrder);
-        Assert.Equal(["a", "w"], items.Where(i => i.ContextId == work.Id).Select(i => i.Text));
-        Assert.Equal([0, 1], items.Where(i => i.ContextId == work.Id).Select(i => i.SortOrder));
+        Assert.Equal(["a", "w"], items.Where(i => i.ProjectId == work.Id).Select(i => i.Text));
+        Assert.Equal([0, 1], items.Where(i => i.ProjectId == work.Id).Select(i => i.SortOrder));
     }
 
     [Fact]

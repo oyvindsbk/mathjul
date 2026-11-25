@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using NotesApi.Features.Contexts;
+using NotesApi.Features.Projects;
 using NotesApi.Features.Days;
 
 namespace NotesApi.Infrastructure;
@@ -35,17 +35,17 @@ public static class DevDatabase
         if (await db.Days.AnyAsync())
             return;
 
-        var jobb = new WorkContext { Name = "Jobb", SortOrder = 0 };
-        var hobby = new WorkContext { Name = "Hobby", SortOrder = 1 };
-        db.Contexts.AddRange(jobb, hobby);
+        var jobb = new Project { Name = "Jobb", SortOrder = 0, Color = "blue" };
+        var hobby = new Project { Name = "Hobby", SortOrder = 1, Color = "yellow" };
+        db.Projects.AddRange(jobb, hobby);
 
         var previous = clock.Today.AddDays(clock.Today.DayOfWeek == DayOfWeek.Monday ? -3 : -1);
         var now = clock.UtcNow;
         var day = new Day { Date = previous, CreatedAt = now };
         var order = 0;
-        Item Line(ItemKind kind, string text, WorkContext? context = null, ItemState state = ItemState.Open, int indent = 0) => new()
+        Item Line(ItemKind kind, string text, Project? project = null, ItemState state = ItemState.Open, int indent = 0) => new()
         {
-            Kind = kind, Text = text, Context = context, State = state, Indent = indent,
+            Kind = kind, Text = text, Project = project, State = state, Indent = indent,
             SortOrder = order++, Source = ItemSource.Manual, CreatedAt = now, UpdatedAt = now,
             CompletedAt = state == ItemState.Done ? now : null,
         };

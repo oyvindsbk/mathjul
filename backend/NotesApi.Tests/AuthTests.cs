@@ -49,12 +49,12 @@ public class NotesApiFactory : WebApplicationFactory<Program>
 
 public class AuthTests(NotesApiFactory factory) : IClassFixture<NotesApiFactory>
 {
-    private async Task<HttpStatusCode> GetContexts(string? token)
+    private async Task<HttpStatusCode> GetProjects(string? token)
     {
         var client = factory.CreateClient();
         if (token is not null)
             client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        return (await client.GetAsync("/api/contexts")).StatusCode;
+        return (await client.GetAsync("/api/projects")).StatusCode;
     }
 
     [Fact]
@@ -63,24 +63,24 @@ public class AuthTests(NotesApiFactory factory) : IClassFixture<NotesApiFactory>
 
     [Fact]
     public async Task Anonymous_requests_are_rejected() =>
-        Assert.Equal(HttpStatusCode.Unauthorized, await GetContexts(null));
+        Assert.Equal(HttpStatusCode.Unauthorized, await GetProjects(null));
 
     [Fact]
     public async Task An_allowlisted_email_gets_in() =>
-        Assert.Equal(HttpStatusCode.OK, await GetContexts(NotesApiFactory.Token(NotesApiFactory.AllowedEmail)));
+        Assert.Equal(HttpStatusCode.OK, await GetProjects(NotesApiFactory.Token(NotesApiFactory.AllowedEmail)));
 
     [Fact]
     public async Task Allowlist_match_ignores_case() =>
-        Assert.Equal(HttpStatusCode.OK, await GetContexts(NotesApiFactory.Token("ME@Example.com")));
+        Assert.Equal(HttpStatusCode.OK, await GetProjects(NotesApiFactory.Token("ME@Example.com")));
 
     [Fact]
     public async Task A_valid_token_for_another_email_is_forbidden() =>
-        Assert.Equal(HttpStatusCode.Forbidden, await GetContexts(NotesApiFactory.Token("stranger@example.com")));
+        Assert.Equal(HttpStatusCode.Forbidden, await GetProjects(NotesApiFactory.Token("stranger@example.com")));
 
     [Fact]
     public async Task A_recipe_app_token_is_rejected_even_with_the_same_secret() =>
         Assert.Equal(HttpStatusCode.Unauthorized,
-            await GetContexts(NotesApiFactory.Token(NotesApiFactory.AllowedEmail, issuer: "RecipeApi", audience: "RecipeFrontend")));
+            await GetProjects(NotesApiFactory.Token(NotesApiFactory.AllowedEmail, issuer: "RecipeApi", audience: "RecipeFrontend")));
 
     [Fact]
     public async Task Dev_token_does_not_exist_outside_development()
@@ -93,11 +93,11 @@ public class AuthTests(NotesApiFactory factory) : IClassFixture<NotesApiFactory>
     public async Task Tokens_from_the_token_service_are_accepted()
     {
         var tokens = factory.Services.GetRequiredService<ITokenService>();
-        Assert.Equal(HttpStatusCode.OK, await GetContexts(tokens.GenerateToken(NotesApiFactory.AllowedEmail)));
+        Assert.Equal(HttpStatusCode.OK, await GetProjects(tokens.GenerateToken(NotesApiFactory.AllowedEmail)));
     }
 
     [Fact]
-    public async Task Moving_to_another_context_without_an_index_appends_over_http()
+    public async Task Moving_to_another_project_without_an_index_appends_over_http()
     {
         var client = factory.CreateClient();
         client.DefaultRequestHeaders.Authorization =
@@ -106,15 +106,15 @@ public class AuthTests(NotesApiFactory factory) : IClassFixture<NotesApiFactory>
         {
             Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() },
         };
-        var context = await (await client.PostAsJsonAsync("/api/contexts", new { name = "Flytt" }))
-            .Content.ReadFromJsonAsync<Features.Contexts.ContextDto>(json);
-        var item = await (await client.PostAsJsonAsync("/api/days/2026-01-05/items", new { kind = "Todo", text = "x", contextId = (int?)null }))
+        var project = await (await client.PostAsJsonAsync("/api/projects", new { name = "Flytt" }))
+            .Content.ReadFromJsonAsync<Features.Projects.ProjectDto>(json);
+        var item = await (await client.PostAsJsonAsync("/api/days/2026-01-05/items", new { kind = "Todo", text = "x", projectId = (int?)null }))
             .Content.ReadFromJsonAsync<Features.Days.ItemDto>(json);
 
-        var response = await client.PostAsJsonAsync($"/api/items/{item!.Id}/move", new { contextId = context!.Id });
+        var response = await client.PostAsJsonAsync($"/api/items/{item!.Id}/move", new { projectId = project!.Id });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(context.Id, (await response.Content.ReadFromJsonAsync<Features.Days.ItemDto>(json))!.ContextId);
+        Assert.Equal(project.Id, (await response.Content.ReadFromJsonAsync<Features.Days.ItemDto>(json))!.ProjectId);
     }
 
     [Fact]

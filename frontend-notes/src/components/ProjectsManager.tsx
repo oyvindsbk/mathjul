@@ -2,21 +2,23 @@
 
 import { useEffect, useState, type FormEvent } from 'react';
 import { api } from '@/lib/api';
-import type { WorkContext } from '@/lib/types';
+import type { ProjectColor } from '@/lib/projectColors';
+import type { Project } from '@/lib/types';
+import { ColorPicker } from './ColorPicker';
 
-/** Create, rename, reorder and archive the headings that group a day's items. */
-export function ContextsManager() {
-  const [contexts, setContexts] = useState<WorkContext[] | null>(null);
+/** Create, rename, color, reorder and archive the headings that group a day's items. */
+export function ProjectsManager() {
+  const [projects, setProjects] = useState<Project[] | null>(null);
   const [newName, setNewName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void api.contexts().then(setContexts, (e: Error) => setError(e.message));
+    void api.projects().then(setProjects, (e: Error) => setError(e.message));
   }, []);
 
-  const attempt = async (action: () => Promise<WorkContext[]>) => {
+  const attempt = async (action: () => Promise<Project[]>) => {
     try {
-      setContexts(await action());
+      setProjects(await action());
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Noe gikk galt');
@@ -28,41 +30,47 @@ export function ContextsManager() {
     const name = newName.trim();
     if (!name) return;
     void attempt(async () => {
-      await api.createContext(name);
+      await api.createProject(name);
       setNewName('');
-      return api.contexts();
+      return api.projects();
     });
   };
 
-  const rename = (context: WorkContext, name: string) => {
+  const rename = (project: Project, name: string) => {
     const trimmed = name.trim();
-    if (!trimmed || trimmed === context.name) return;
+    if (!trimmed || trimmed === project.name) return;
     void attempt(async () => {
-      await api.updateContext(context.id, { name: trimmed });
-      return api.contexts();
+      await api.updateProject(project.id, { name: trimmed });
+      return api.projects();
     });
   };
 
-  const setArchived = (context: WorkContext, isArchived: boolean) =>
+  const setArchived = (project: Project, isArchived: boolean) =>
     void attempt(async () => {
-      await api.updateContext(context.id, { isArchived });
-      return api.contexts();
+      await api.updateProject(project.id, { isArchived });
+      return api.projects();
+    });
+
+  const setColor = (project: Project, color: ProjectColor | null) =>
+    void attempt(async () => {
+      await api.updateProject(project.id, color ? { color } : { clearColor: true });
+      return api.projects();
     });
 
   const move = (index: number, delta: number) => {
-    if (!contexts) return;
-    const ids = contexts.map((c) => c.id);
+    if (!projects) return;
+    const ids = projects.map((c) => c.id);
     const target = index + delta;
     if (target < 0 || target >= ids.length) return;
     [ids[index], ids[target]] = [ids[target], ids[index]];
-    void attempt(() => api.reorderContexts(ids));
+    void attempt(() => api.reorderProjects(ids));
   };
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
-      <h1 className="text-2xl font-semibold">Kontekster</h1>
+      <h1 className="text-2xl font-semibold">Prosjekter</h1>
       <p className="mt-1 text-sm text-muted">
-        Overskriftene oppgavene grupperes under. Arkiverte kontekster får ikke nye oppgaver, men historikken
+        Overskriftene oppgavene grupperes under. Arkiverte prosjekter får ikke nye oppgaver, men historikken
         beholdes.
       </p>
 
@@ -76,9 +84,9 @@ export function ContextsManager() {
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          placeholder="Ny kontekst"
+          placeholder="Nytt prosjekt"
           maxLength={60}
-          aria-label="Navn på ny kontekst"
+          aria-label="Navn på nytt prosjekt"
           className="flex-1 rounded-md border border-border bg-surface px-3 py-2"
         />
         <button type="submit" className="rounded-md bg-accent px-4 py-2 font-medium text-white dark:text-black">
@@ -87,49 +95,50 @@ export function ContextsManager() {
       </form>
 
       <ul className="mt-6 divide-y divide-border rounded-lg border border-border bg-surface">
-        {contexts?.map((context, index) => (
+        {projects?.map((project, index) => (
           <li
-            key={`${context.id}-${context.name}`}
+            key={`${project.id}-${project.name}`}
             className="flex items-center gap-2 px-3 py-2"
-            data-testid="context-row"
+            data-testid="project-row"
           >
+            <ColorPicker color={project.color} label={project.name} onChange={(c) => setColor(project, c)} />
             <input
-              defaultValue={context.name}
+              defaultValue={project.name}
               maxLength={60}
-              aria-label={`Navn på ${context.name}`}
-              onBlur={(e) => rename(context, e.target.value)}
+              aria-label={`Navn på ${project.name}`}
+              onBlur={(e) => rename(project, e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-              className={`min-w-0 flex-1 bg-transparent py-1 outline-none ${context.isArchived ? 'text-muted' : ''}`}
+              className={`min-w-0 flex-1 bg-transparent py-1 outline-none ${project.isArchived ? 'text-muted' : ''}`}
             />
-            {context.isArchived && <span className="text-xs text-muted">Arkivert</span>}
+            {project.isArchived && <span className="text-xs text-muted">Arkivert</span>}
             <button
               type="button"
               onClick={() => move(index, -1)}
               disabled={index === 0}
               className="px-1 text-muted disabled:opacity-30"
-              aria-label={`Flytt ${context.name} opp`}
+              aria-label={`Flytt ${project.name} opp`}
             >
               ↑
             </button>
             <button
               type="button"
               onClick={() => move(index, 1)}
-              disabled={index === contexts.length - 1}
+              disabled={index === projects.length - 1}
               className="px-1 text-muted disabled:opacity-30"
-              aria-label={`Flytt ${context.name} ned`}
+              aria-label={`Flytt ${project.name} ned`}
             >
               ↓
             </button>
             <button
               type="button"
-              onClick={() => setArchived(context, !context.isArchived)}
+              onClick={() => setArchived(project, !project.isArchived)}
               className="rounded px-2 py-1 text-sm text-muted hover:text-foreground"
             >
-              {context.isArchived ? 'Gjenopprett' : 'Arkiver'}
+              {project.isArchived ? 'Gjenopprett' : 'Arkiver'}
             </button>
           </li>
         ))}
-        {contexts?.length === 0 && <li className="px-3 py-2 text-sm text-muted">Ingen kontekster ennå.</li>}
+        {projects?.length === 0 && <li className="px-3 py-2 text-sm text-muted">Ingen prosjekter ennå.</li>}
       </ul>
     </main>
   );

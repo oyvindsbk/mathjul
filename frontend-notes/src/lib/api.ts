@@ -1,4 +1,5 @@
-import type { Day, Item, ItemKind, ItemState, Week, WorkContext } from './types';
+import type { ProjectColor } from './projectColors';
+import type { Day, Item, ItemKind, ItemState, Week, Project } from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -39,7 +40,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 export interface AddItem {
   kind: ItemKind;
   text: string;
-  contextId: number | null;
+  projectId: number | null;
   indent?: number;
   afterItemId?: number;
 }
@@ -51,19 +52,27 @@ export interface UpdateItem {
   indent?: number;
 }
 
+export interface UpdateProject {
+  name?: string;
+  isArchived?: boolean;
+  color?: ProjectColor;
+  /** Removes the color; leaving out color just keeps it. */
+  clearColor?: boolean;
+}
+
 export const api = {
   week: (key: string) => request<Week>('GET', `weeks/${encodeURIComponent(key)}`),
   day: (date: string) => request<Day>('GET', `days/${date}`),
   addItem: (date: string, item: AddItem) => request<Item>('POST', `days/${date}/items`, item),
   updateItem: (id: number, changes: UpdateItem) => request<Item>('PATCH', `items/${id}`, changes),
   /** Without an index the item is appended to the target group. */
-  moveItem: (id: number, contextId: number | null, index?: number) =>
-    request<Item>('POST', `items/${id}/move`, { contextId, index }),
+  moveItem: (id: number, projectId: number | null, index?: number) =>
+    request<Item>('POST', `items/${id}/move`, { projectId, index }),
   deleteItem: (id: number) => request<void>('DELETE', `items/${id}`),
 
-  contexts: () => request<WorkContext[]>('GET', 'contexts'),
-  createContext: (name: string) => request<WorkContext>('POST', 'contexts', { name }),
-  updateContext: (id: number, changes: { name?: string; isArchived?: boolean }) =>
-    request<WorkContext>('PATCH', `contexts/${id}`, changes),
-  reorderContexts: (ids: number[]) => request<WorkContext[]>('POST', 'contexts/reorder', { ids }),
+  projects: () => request<Project[]>('GET', 'projects'),
+  createProject: (name: string) => request<Project>('POST', 'projects', { name }),
+  updateProject: (id: number, changes: UpdateProject) =>
+    request<Project>('PATCH', `projects/${id}`, changes),
+  reorderProjects: (ids: number[]) => request<Project[]>('POST', 'projects/reorder', { ids }),
 };

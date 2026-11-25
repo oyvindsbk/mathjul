@@ -21,9 +21,9 @@ public class DayService(NotesDbContext db, LocalClock clock)
 
         var items = await db.Items
             .Where(i => i.Day.Date == date)
-            .OrderBy(i => i.ContextId).ThenBy(i => i.SortOrder).ThenBy(i => i.Id)
+            .OrderBy(i => i.ProjectId).ThenBy(i => i.SortOrder).ThenBy(i => i.Id)
             .Select(i => new ItemDto(
-                i.Id, i.Kind, i.Text, i.State, i.Indent, i.SortOrder, i.ContextId,
+                i.Id, i.Kind, i.Text, i.State, i.Indent, i.SortOrder, i.ProjectId,
                 i.CarriedFrom == null ? null : i.CarriedFrom.Day.Date,
                 i.CompletedAt))
             .ToListAsync(ct);
@@ -79,9 +79,9 @@ public class DayService(NotesDbContext db, LocalClock clock)
         if (sourceDayId is not null)
         {
             var open = await db.Items
-                .Include(i => i.Context)
+                .Include(i => i.Project)
                 .Where(i => i.DayId == sourceDayId && i.Kind == ItemKind.Todo && i.State == ItemState.Open)
-                .OrderBy(i => i.ContextId).ThenBy(i => i.SortOrder)
+                .OrderBy(i => i.ProjectId).ThenBy(i => i.SortOrder)
                 .ToListAsync(ct);
 
             // Carried copies go after anything already planned on the day, per group.
@@ -89,14 +89,14 @@ public class DayService(NotesDbContext db, LocalClock clock)
                 ? new Dictionary<int, int>()
                 : await db.Items
                     .Where(i => i.DayId == plannedDayId)
-                    .GroupBy(i => i.ContextId ?? 0)
+                    .GroupBy(i => i.ProjectId ?? 0)
                     .Select(g => new { g.Key, Next = g.Max(i => i.SortOrder) + 1 })
-                    .ToDictionaryAsync(g => g.Key, g => g.Next, ct); // key: context id, 0 for no context
+                    .ToDictionaryAsync(g => g.Key, g => g.Next, ct); // key: project id, 0 for no project
             foreach (var original in open)
             {
-                // Archived contexts take no new items, so their open to-dos land in "Dagens TODOs".
-                var contextId = original.Context is { IsArchived: true } ? null : original.ContextId;
-                var key = contextId ?? 0;
+                // Archived projects take no new items, so their open to-dos land in "Dagens TODOs".
+                var projectId = original.Project is { IsArchived: true } ? null : original.ProjectId;
+                var key = projectId ?? 0;
                 var order = nextOrder.GetValueOrDefault(key);
                 nextOrder[key] = order + 1;
 
@@ -107,7 +107,7 @@ public class DayService(NotesDbContext db, LocalClock clock)
                     Text = original.Text,
                     State = ItemState.Open,
                     Indent = original.Indent,
-                    ContextId = contextId,
+                    ProjectId = projectId,
                     SortOrder = order,
                     CarriedFromItemId = original.Id,
                     Source = ItemSource.Manual,
@@ -136,7 +136,7 @@ public class DayService(NotesDbContext db, LocalClock clock)
 
     public async Task<ItemDto> AddItemAsync(DateOnly date, AddItemRequest request, CancellationToken ct = default)
     {
-        await EnsureContextUsableAsync(request.ContextId, ct);
+        await EnsureProjectUsableAsync(request.ProjectId, ct);
         if (date == clock.Today)
             await EnsureTodayAsync(ct);
 
@@ -149,20 +149,20 @@ public class DayService(NotesDbContext db, LocalClock clock)
             await db.SaveChangesAsync(ct);
         }
 
-        var group = await GroupAsync(day.Id, request.ContextId, ct);
+        var group = await GroupAsync(day.Id, request.ProjectId, ct);
         var index = group.Count;
         if (request.AfterItemId is { } afterId)
         {
             var after = group.FindIndex(i => i.Id == afterId);
             if (after < 0)
-                throw new NotesException(StatusCodes.Status400BadRequest, "afterItemId is not in the same day and context");
+                throw new NotesException(StatusCodes.Status400BadRequest, "afterItemId is not in the same day and project");
             index = after + 1;
         }
 
         var item = new Item
         {
             DayId = day.Id,
-            ContextId = request.ContextId,
+            ProjectId = request.ProjectId,
             Kind = request.Kind,
             Text = request.Text,
             State = ItemState.Open,
@@ -220,15 +220,15 @@ public class DayService(NotesDbContext db, LocalClock clock)
     {
         var item = await db.Items.FirstOrDefaultAsync(i => i.Id == id, ct)
             ?? throw new NotesException(StatusCodes.Status404NotFound, "Item not found");
-        if (request.ContextId != item.ContextId)
-            await EnsureContextUsableAsync(request.ContextId, ct);
+        if (request.ProjectId != item.ProjectId)
+            await EnsureProjectUsableAsync(request.ProjectId, ct);
 
-        var from = await GroupAsync(item.DayId, item.ContextId, ct);
+        var from = await GroupAsync(item.DayId, item.ProjectId, ct);
         from.RemoveAll(i => i.Id == item.Id);
         Renumber(from);
 
-        var to = request.ContextId == item.ContextId ? from : await GroupAsync(item.DayId, request.ContextId, ct);
-        item.ContextId = request.ContextId;
+        var to = request.ProjectId == item.ProjectId ? from : await GroupAsync(item.DayId, request.ProjectId, ct);
+        item.ProjectId = request.ProjectId;
         to.Insert(Math.Min(request.Index ?? to.Count, to.Count), item);
         Renumber(to);
 
@@ -246,16 +246,16 @@ public class DayService(NotesDbContext db, LocalClock clock)
         foreach (var copy in await db.Items.Where(i => i.CarriedFromItemId == id).ToListAsync(ct))
             copy.CarriedFromItemId = null;
 
-        var group = await GroupAsync(item.DayId, item.ContextId, ct);
+        var group = await GroupAsync(item.DayId, item.ProjectId, ct);
         group.RemoveAll(i => i.Id == id);
         Renumber(group);
         db.Items.Remove(item);
         await db.SaveChangesAsync(ct);
     }
 
-    private async Task<List<Item>> GroupAsync(int dayId, int? contextId, CancellationToken ct) =>
+    private async Task<List<Item>> GroupAsync(int dayId, int? projectId, CancellationToken ct) =>
         await db.Items
-            .Where(i => i.DayId == dayId && i.ContextId == contextId)
+            .Where(i => i.DayId == dayId && i.ProjectId == projectId)
             .OrderBy(i => i.SortOrder).ThenBy(i => i.Id)
             .ToListAsync(ct);
 
@@ -265,20 +265,20 @@ public class DayService(NotesDbContext db, LocalClock clock)
             group[i].SortOrder = i;
     }
 
-    private async Task EnsureContextUsableAsync(int? contextId, CancellationToken ct)
+    private async Task EnsureProjectUsableAsync(int? projectId, CancellationToken ct)
     {
-        if (contextId is null)
+        if (projectId is null)
             return;
-        var context = await db.Contexts.FirstOrDefaultAsync(c => c.Id == contextId, ct)
-            ?? throw new NotesException(StatusCodes.Status400BadRequest, "Unknown context");
-        if (context.IsArchived)
-            throw new NotesException(StatusCodes.Status409Conflict, $"Context '{context.Name}' is archived");
+        var project = await db.Projects.FirstOrDefaultAsync(c => c.Id == projectId, ct)
+            ?? throw new NotesException(StatusCodes.Status400BadRequest, "Unknown project");
+        if (project.IsArchived)
+            throw new NotesException(StatusCodes.Status409Conflict, $"Project '{project.Name}' is archived");
     }
 
     private Task<ItemDto> ToDtoAsync(int id, CancellationToken ct) =>
         db.Items.Where(i => i.Id == id)
             .Select(i => new ItemDto(
-                i.Id, i.Kind, i.Text, i.State, i.Indent, i.SortOrder, i.ContextId,
+                i.Id, i.Kind, i.Text, i.State, i.Indent, i.SortOrder, i.ProjectId,
                 i.CarriedFrom == null ? null : i.CarriedFrom.Day.Date,
                 i.CompletedAt))
             .FirstAsync(ct);

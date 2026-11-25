@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type KeyboardEvent } from 'react';
 import { shortDay } from '@/lib/dates';
-import type { Item, WorkContext } from '@/lib/types';
+import type { Item, Project } from '@/lib/types';
 
 export interface ItemHandlers {
   commit: (item: Item, text: string) => void;
@@ -13,18 +13,18 @@ export interface ItemHandlers {
   reorder: (item: Item, delta: number, text: string) => void;
   navigate: (item: Item, delta: number) => void;
   toggleKind: (item: Item) => void;
-  moveToContext: (item: Item, contextId: number | null) => void;
+  moveToProject: (item: Item, projectId: number | null) => void;
   remove: (item: Item) => void;
 }
 
 interface Props {
   item: Item;
-  contexts: WorkContext[];
+  projects: Project[];
   handlers: ItemHandlers;
 }
 
 /** One line of the day: checkbox or bullet, the text, and controls revealed on hover/focus. */
-export function ItemRow({ item, contexts, handlers: h }: Props) {
+export function ItemRow({ item, projects, handlers: h }: Props) {
   const [draft, setDraft] = useState(item.text);
   // Server responses replace the item; keep the editor in step without remounting it.
   useEffect(() => setDraft(item.text), [item.text]);
@@ -66,7 +66,7 @@ export function ItemRow({ item, contexts, handlers: h }: Props) {
     else h.commit(item, draft);
   }
 
-  const contextChoices = contexts.filter((c) => !c.isArchived || c.id === item.contextId);
+  const projectChoices = projects.filter((c) => !c.isArchived || c.id === item.projectId);
 
   return (
     <div
@@ -125,12 +125,12 @@ export function ItemRow({ item, contexts, handlers: h }: Props) {
           </button>
           <select
             className="max-w-28 rounded border border-border bg-surface px-1 py-0.5 text-muted"
-            value={item.contextId ?? ''}
-            onChange={(e) => h.moveToContext(item, e.target.value === '' ? null : Number(e.target.value))}
-            aria-label="Kontekst"
+            value={item.projectId ?? ''}
+            onChange={(e) => h.moveToProject(item, e.target.value === '' ? null : Number(e.target.value))}
+            aria-label="Prosjekt"
           >
             <option value="">Dagens TODOs</option>
-            {contextChoices.map((c) => (
+            {projectChoices.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
               </option>
