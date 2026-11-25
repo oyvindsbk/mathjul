@@ -3,6 +3,12 @@ name: Deploy Infrastructure
 on:
   workflow_dispatch:
 
+# Shared with deploy.yml and deploy-notes.yml: the preflight reads the running images, and an
+# app deploy finishing in between would be rolled back by this run.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
 env:
   AZURE_RESOURCE_GROUP: 'rg-recipe-app-prod'
   AZURE_LOCATION: 'northeurope'
@@ -30,6 +36,20 @@ jobs:
           --name ${{ env.AZURE_RESOURCE_GROUP }} \
           --location ${{ env.AZURE_LOCATION }}
     
+    - name: Preflight (keep running images, guard domains and CORS)
+      id: preflight
+      # ARM replaces each Container App wholesale. Read what is live so the template keeps
+      # it, and stop before deploying if it would remove a domain or leave CORS empty.
+      env:
+        RG: ${{ env.AZURE_RESOURCE_GROUP }}
+        FRONTEND_CUSTOM_DOMAIN: ${{ vars.FRONTEND_CUSTOM_DOMAIN }}
+        FRONTEND_CUSTOM_DOMAIN_CERT: ${{ vars.FRONTEND_CUSTOM_DOMAIN_CERT }}
+        FRONTEND_URL: ${{ vars.FRONTEND_URL }}
+        NOTES_ENABLED: ${{ secrets.NOTES_JWT_SECRET_KEY != '' }}
+        NOTES_CUSTOM_DOMAIN: ${{ vars.NOTES_CUSTOM_DOMAIN }}
+        NOTES_CUSTOM_DOMAIN_CERT: ${{ vars.NOTES_CUSTOM_DOMAIN_CERT }}
+      run: bash .github/scripts/infra-preflight.sh
+
     - name: Check and purge soft-deleted Key Vault
       run: |
         # Check if there's a soft-deleted vault with our naming pattern
@@ -68,6 +88,13 @@ jobs:
           notesAllowedEmails=${{ secrets.NOTES_ALLOWED_EMAILS }}
           notesCustomDomainName=${{ vars.NOTES_CUSTOM_DOMAIN }}
           notesCustomDomainCertificateName=${{ vars.NOTES_CUSTOM_DOMAIN_CERT }}
+          recipeApiImage=${{ steps.preflight.outputs.recipe-api-image }}
+          recipeWebImage=${{ steps.preflight.outputs.recipe-web-image }}
+          notesApiImage=${{ steps.preflight.outputs.notes-api-image }}
+          notesWebImage=${{ steps.preflight.outputs.notes-web-image }}
+          frontendFqdnUrl=${{ steps.preflight.outputs.frontend-fqdn-url }}
+          ghcrUsername=${{ github.actor }}
+          ghcrToken=${{ secrets.GHCR_TOKEN }}
         failOnStdErr: false
 
     - name: Display deployment info
