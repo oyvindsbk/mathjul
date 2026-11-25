@@ -13,7 +13,8 @@
 #      NOTES_ENABLED (true|false), NOTES_CUSTOM_DOMAIN, NOTES_CUSTOM_DOMAIN_CERT
 set -uo pipefail
 
-: "${RG:?RG is required}"
+RG="${RG:-${AZURE_RESOURCE_GROUP:-}}" # workflows set AZURE_RESOURCE_GROUP at the top
+: "${RG:?RG or AZURE_RESOURCE_GROUP is required}"
 : "${GITHUB_OUTPUT:=/dev/null}"
 : "${GITHUB_STEP_SUMMARY:=/dev/null}"
 FRONTEND_CUSTOM_DOMAIN="${FRONTEND_CUSTOM_DOMAIN:-}"

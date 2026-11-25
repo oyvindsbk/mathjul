@@ -3,11 +3,24 @@ name: Deploy Application
 on:
   push:
     branches: [ main ]
+    # Starts the workflow; the `changes` job then decides which of the two apps to deploy.
+    # Not backend/** -- that matches NotesApi and the test projects.
     paths:
-      - 'backend/**'
+      - 'backend/RecipeApi/**'
       - 'frontend/**'
       - '.github/workflows/deploy.yml'
+      - '.github/scripts/**'
   workflow_dispatch:
+    inputs:
+      force:
+        description: 'Deploy both apps even if their code is unchanged'
+        type: boolean
+        default: false
+
+# Shared with infrastructure.yml and deploy-notes.yml (see DEPLOYMENT.md).
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
 
 env:
   DOTNET_VERSION: '10.0.x'
@@ -67,8 +80,41 @@ jobs:
         echo "frontend-container-app-name=$FRONTEND_APP_NAME" >> $GITHUB_OUTPUT
         echo "backend-url=https://${BACKEND_FQDN}" >> $GITHUB_OUTPUT
 
+  changes:
+    # Per app: deploy only if its paths changed since the commit its running image was built from.
+    runs-on: ubuntu-latest
+    needs: get-resources
+    outputs:
+      recipe-api: ${{ steps.api.outputs.recipe-api }}
+      recipe-web: ${{ steps.web.outputs.recipe-web }}
+    env:
+      FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+      SHARED: .github/workflows/deploy.yml .github/scripts
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Summary header
+      run: |
+        echo "### Deploy Application" >> $GITHUB_STEP_SUMMARY
+        echo "| App | Decision | Why |" >> $GITHUB_STEP_SUMMARY
+        echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
+
+    - id: api
+      run: bash .github/scripts/changed-since-deployed.sh recipe-api "${{ needs.get-resources.outputs.container-app-name }}" backend/RecipeApi $SHARED
+
+    - id: web
+      run: bash .github/scripts/changed-since-deployed.sh recipe-web "${{ needs.get-resources.outputs.frontend-container-app-name }}" frontend $SHARED
+
   build-and-push-image:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.recipe-api == 'true'
     outputs:
       image-tag: ${{ steps.sha-tag.outputs.tag }}
 
@@ -115,7 +161,8 @@ jobs:
 
   build-and-push-frontend-image:
     runs-on: ubuntu-latest
-    needs: get-resources
+    needs: [get-resources, changes]
+    if: needs.changes.outputs.recipe-web == 'true'
     outputs:
       image-tag: ${{ steps.sha-tag.outputs.tag }}
 
@@ -165,6 +212,7 @@ jobs:
   deploy-backend:
     runs-on: ubuntu-latest
     needs: [get-resources, build-and-push-image]
+    # Skipped along with build-and-push-image when the API is unchanged.
     
     steps:
     - name: Azure Login
@@ -232,7 +280,10 @@ jobs:
 
   deploy-frontend:
     runs-on: ubuntu-latest
-    needs: [get-resources, build-and-push-frontend-image, migrate-database]
+    needs: [get-resources, changes, build-and-push-frontend-image, migrate-database]
+    # migrate-database is skipped when the API is unchanged; that must not skip this job too.
+    # A failed or cancelled API deploy or migration still blocks it.
+    if: ${{ !failure() && !cancelled() && needs.changes.outputs.recipe-web == 'true' }}
     
     steps:
     - name: Azure Login

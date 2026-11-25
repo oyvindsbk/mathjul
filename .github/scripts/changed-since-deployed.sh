@@ -9,7 +9,7 @@
 # Usage: changed-since-deployed.sh <key> <container-app-name> <path>...
 #   Image tags are expected to end in -<sha> (7 or 40 hex), as deploy.yml and
 #   deploy-notes.yml tag them. Needs the full history (checkout fetch-depth: 0).
-# Env:   RG, FORCE (true|false)
+# Env:   RG (or AZURE_RESOURCE_GROUP), FORCE (true|false)
 # Out:   $GITHUB_OUTPUT  <key>=true|false, <key>-reason=<text>
 #        $GITHUB_STEP_SUMMARY  one table row
 set -uo pipefail
@@ -18,7 +18,8 @@ KEY="$1"
 APP="$2"
 shift 2
 PATHS=("$@")
-: "${RG:?RG is required}"
+RG="${RG:-${AZURE_RESOURCE_GROUP:-}}" # workflows set AZURE_RESOURCE_GROUP at the top
+: "${RG:?RG or AZURE_RESOURCE_GROUP is required}"
 : "${GITHUB_OUTPUT:=/dev/null}"
 : "${GITHUB_STEP_SUMMARY:=/dev/null}"
 FORCE="${FORCE:-false}"

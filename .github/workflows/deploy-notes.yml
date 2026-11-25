@@ -2,6 +2,7 @@ name: Deploy Notater
 
 # Builds and deploys the Notater API and web app, and migrates the `notes` schema.
 # Separate from deploy.yml: the two apps share infrastructure but deploy independently.
+# Each of the two is only built and deployed when its own code changed (`changes` job).
 
 on:
   push:
@@ -10,7 +11,18 @@ on:
       - 'backend/NotesApi/**'
       - 'frontend-notes/**'
       - '.github/workflows/deploy-notes.yml'
+      - '.github/scripts/**'
   workflow_dispatch:
+    inputs:
+      force:
+        description: 'Deploy both apps even if their code is unchanged'
+        type: boolean
+        default: false
+
+# Shared with infrastructure.yml and deploy.yml (see DEPLOYMENT.md).
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
 
 env:
   DOTNET_VERSION: '10.0.x'
@@ -43,15 +55,53 @@ jobs:
         echo "api-name=$API" >> $GITHUB_OUTPUT
         echo "web-name=$WEB" >> $GITHUB_OUTPUT
 
+  changes:
+    # Per app: deploy only if its paths changed since the commit its running image was built from.
+    runs-on: ubuntu-latest
+    needs: get-resources
+    outputs:
+      notes-api: ${{ steps.api.outputs.notes-api }}
+      notes-web: ${{ steps.web.outputs.notes-web }}
+      build-matrix: ${{ steps.matrix.outputs.build-matrix }}
+    env:
+      FORCE: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+      SHARED: .github/workflows/deploy-notes.yml .github/scripts
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Summary header
+      run: |
+        echo "### Deploy Notater" >> $GITHUB_STEP_SUMMARY
+        echo "| App | Decision | Why |" >> $GITHUB_STEP_SUMMARY
+        echo "|---|---|---|" >> $GITHUB_STEP_SUMMARY
+
+    - id: api
+      run: bash .github/scripts/changed-since-deployed.sh notes-api "${{ needs.get-resources.outputs.api-name }}" backend/NotesApi $SHARED
+
+    - id: web
+      run: bash .github/scripts/changed-since-deployed.sh notes-web "${{ needs.get-resources.outputs.web-name }}" frontend-notes $SHARED
+
+    - name: Build matrix
+      id: matrix
+      run: |
+        ITEMS=()
+        [ "${{ steps.api.outputs.notes-api }}" = "true" ] && ITEMS+=('{"image":"notes-api","context":"./backend/NotesApi"}')
+        [ "${{ steps.web.outputs.notes-web }}" = "true" ] && ITEMS+=('{"image":"notes-web","context":"./frontend-notes"}')
+        echo "build-matrix=[$(IFS=,; echo "${ITEMS[*]}")]" >> $GITHUB_OUTPUT
+
   build:
     runs-on: ubuntu-latest
+    needs: changes
+    if: needs.changes.outputs.build-matrix != '[]'
     strategy:
       matrix:
-        include:
-          - image: notes-api
-            context: ./backend/NotesApi
-          - image: notes-web
-            context: ./frontend-notes
+        include: ${{ fromJSON(needs.changes.outputs.build-matrix) }}
     steps:
     - uses: actions/checkout@v4
     - uses: docker/setup-buildx-action@v3
@@ -72,8 +122,10 @@ jobs:
         cache-to: type=gha,mode=max,scope=${{ matrix.image }}
 
   migrate:
+    # Migrations live in the API project, so they only run when the API is deployed.
     runs-on: ubuntu-latest
-    needs: get-resources
+    needs: [get-resources, changes]
+    if: needs.changes.outputs.notes-api == 'true'
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-dotnet@v4
@@ -92,17 +144,24 @@ jobs:
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [get-resources, build, migrate]
+    needs: [get-resources, changes, build, migrate]
+    # build or migrate may be skipped (only one app changed); that must not skip this job.
+    # A failed or cancelled build or migration still blocks it.
+    if: ${{ !failure() && !cancelled() && (needs.changes.outputs.notes-api == 'true' || needs.changes.outputs.notes-web == 'true') }}
     steps:
     - uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-    - name: Deploy both apps
+    - name: Deploy the changed apps
       run: |
         TAG="${{ github.ref_name }}-${{ github.sha }}"
-        for pair in "${{ needs.get-resources.outputs.api-name }}:notes-api" "${{ needs.get-resources.outputs.web-name }}:notes-web"; do
+        PAIRS=()
+        [ "${{ needs.changes.outputs.notes-api }}" = "true" ] && PAIRS+=("${{ needs.get-resources.outputs.api-name }}:notes-api")
+        [ "${{ needs.changes.outputs.notes-web }}" = "true" ] && PAIRS+=("${{ needs.get-resources.outputs.web-name }}:notes-web")
+        for pair in "${PAIRS[@]}"; do
           APP="${pair%%:*}"; IMAGE="${pair##*:}"
+          echo "Deploying $IMAGE:$TAG to $APP"
           az containerapp registry set -n "$APP" -g ${{ env.AZURE_RESOURCE_GROUP }} \
             --server ghcr.io --username ${{ github.actor }} --password ${{ secrets.GHCR_TOKEN }}
           az containerapp update -n "$APP" -g ${{ env.AZURE_RESOURCE_GROUP }} \
