@@ -7,9 +7,6 @@ export function AppHeader() {
         <Link href="/" className="font-semibold">
           Notater
         </Link>
-        <Link href="/" className="text-muted hover:text-foreground">
-          Denne uka
-        </Link>
         <Link href="/kontekster" className="text-muted hover:text-foreground">
           Kontekster
         </Link>

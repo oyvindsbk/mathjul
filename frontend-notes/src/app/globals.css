@@ -45,3 +45,16 @@ body {
 .item-text {
   field-sizing: content;
 }
+
+/* Tailwind v4 resets buttons to cursor: default; every enabled clickable shows the hand. */
+@layer base {
+  a[href],
+  button:not(:disabled),
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  [role="button"],
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+}
