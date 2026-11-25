@@ -23,7 +23,7 @@ namespace NotesApi.Migrations
                 WITH ordered AS (
                     SELECT Color, ROW_NUMBER() OVER (ORDER BY SortOrder, Id) - 1 AS n FROM notes.Projects
                 )
-                UPDATE ordered SET Color = CHOOSE(n % 10 + 1,
+                UPDATE ordered SET Color = CHOOSE(CAST(n % 10 AS int) + 1,
                     'blue', 'yellow', 'green', 'red', 'purple', 'cyan', 'orange', 'magenta', 'teal', 'gray');
                 """);
         }

@@ -70,9 +70,10 @@ test.describe('Notater', () => {
     const title = page.getByTestId('week-title');
     const current = await title.textContent();
 
-    await page.getByRole('link', { name: '← Forrige' }).click();
+    const main = page.getByRole('main');
+    await main.getByRole('link', { name: '← Forrige' }).click();
     await expect(title).not.toHaveText(current ?? '');
-    await page.getByRole('link', { name: 'I dag' }).click();
+    await main.getByRole('link', { name: 'I dag', exact: true }).click();
     await expect(title).toHaveText(current ?? '');
   });
 
@@ -119,6 +120,71 @@ test.describe('Notater', () => {
 
     await expect(day.getByTestId('group-Jobb').locator(`textarea:text-is("${text}")`)).toBeVisible();
     await expect(page.getByRole('alert').filter({ hasText: /\S/ })).toHaveCount(0);
+  });
+
+  test('old /kontekster links land on /prosjekter', async ({ page }) => {
+    await signIn(page);
+    await page.goto('/kontekster');
+    await expect(page).toHaveURL(/\/prosjekter$/);
+    await expect(page.getByRole('heading', { name: 'Prosjekter' })).toBeVisible();
+  });
+
+  test('the header has one home link and no "Denne uka"', async ({ page }) => {
+    await signIn(page);
+    const header = page.getByRole('banner');
+    await expect(header.getByRole('link', { name: 'Notater' })).toBeVisible();
+    await expect(header.getByRole('link', { name: 'Prosjekter' })).toBeVisible();
+    await expect(header.getByText('Denne uka')).toHaveCount(0);
+  });
+
+  test('a new project gets a color that can be changed and shows on the day', async ({ page }) => {
+    await signIn(page);
+    const name = unique('Farge');
+
+    await page.goto('/prosjekter');
+    await page.getByLabel('Navn på nytt prosjekt').fill(name);
+    await page.getByRole('button', { name: 'Legg til' }).click();
+    const row = page.getByTestId('project-row').filter({ has: page.locator(`input[value="${name}"]`) });
+    await expect(row.getByTestId('color-swatch')).not.toHaveAttribute('data-color', '');
+
+    await row.getByRole('button', { name: `Farge for ${name}` }).click();
+    await page.getByRole('group', { name: `Velg farge for ${name}` }).getByRole('button', { name: 'Lilla' }).click();
+    await expect(row.getByTestId('color-swatch')).toHaveAttribute('data-color', 'purple');
+
+    await page.reload();
+    await expect(row.getByTestId('color-swatch')).toHaveAttribute('data-color', 'purple');
+
+    await page.goto('/');
+    await expect(today(page).getByTestId(`group-${name}`)).toHaveAttribute('data-color', 'purple');
+
+    // Tidy up so the project does not show on every later day.
+    await page.goto('/prosjekter');
+    await row.getByRole('button', { name: 'Arkiver' }).click();
+    await expect(row.getByText('Arkivert')).toBeVisible();
+  });
+
+  test('the sidebar opens a day and marks it as the current page', async ({ page }) => {
+    await signIn(page);
+    const sidebar = page.getByTestId('sidebar');
+    const week = page.url().split('/uke/')[1];
+    const days = sidebar.getByTestId(`sidebar-week-${week}`).locator('[data-testid^="sidebar-day-"]');
+    await expect(days.first()).toBeVisible();
+
+    const monday = days.first();
+    const date = (await monday.getAttribute('data-testid'))!.replace('sidebar-day-', '');
+    await monday.click();
+
+    await expect(page).toHaveURL(new RegExp(`/dag/${date}$`));
+    await expect(sidebar.getByTestId(`sidebar-day-${date}`)).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByTestId(`day-${date}`)).toBeVisible();
+  });
+
+  test('the sidebar loads older weeks on demand', async ({ page }) => {
+    await signIn(page);
+    const weeks = page.getByTestId('sidebar').locator('[data-testid^="sidebar-week-"]');
+    await expect(weeks).toHaveCount(8);
+    await page.getByRole('button', { name: 'Eldre uker' }).click();
+    await expect(weeks).toHaveCount(16);
   });
 
   test('the API proxy does not expose the API sign-in endpoints', async ({ request }) => {
