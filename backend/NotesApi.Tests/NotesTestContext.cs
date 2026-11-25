@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Time.Testing;
-using NotesApi.Features.Contexts;
+using NotesApi.Features.Projects;
 using NotesApi.Features.Days;
 using NotesApi.Features.Import;
 using NotesApi.Infrastructure;
@@ -30,12 +30,12 @@ public sealed class NotesTestContext : IDisposable
         Import = new ImportService(Db, Clock);
     }
 
-    public WorkContext AddContext(string name, bool archived = false)
+    public Project AddProject(string name, bool archived = false)
     {
-        var context = new WorkContext { Name = name, IsArchived = archived, SortOrder = Db.Contexts.Count() };
-        Db.Contexts.Add(context);
+        var project = new Project { Name = name, IsArchived = archived, SortOrder = Db.Projects.Count() };
+        Db.Projects.Add(project);
         Db.SaveChanges();
-        return context;
+        return project;
     }
 
     /// <summary>Adds a day with the given items directly, bypassing carry-over.</summary>
@@ -45,7 +45,7 @@ public sealed class NotesTestContext : IDisposable
         var order = new Dictionary<int, int>();
         foreach (var item in items)
         {
-            var key = item.ContextId ?? item.Context?.Id ?? 0;
+            var key = item.ProjectId ?? item.Project?.Id ?? 0;
             item.SortOrder = order.GetValueOrDefault(key);
             order[key] = item.SortOrder + 1;
             item.CreatedAt = item.UpdatedAt = DateTime.UtcNow;
@@ -56,18 +56,18 @@ public sealed class NotesTestContext : IDisposable
         return day;
     }
 
-    public static Item Todo(string text, ItemState state = ItemState.Open, WorkContext? context = null, int indent = 0) =>
-        new() { Kind = ItemKind.Todo, Text = text, State = state, Context = context, Indent = indent };
+    public static Item Todo(string text, ItemState state = ItemState.Open, Project? project = null, int indent = 0) =>
+        new() { Kind = ItemKind.Todo, Text = text, State = state, Project = project, Indent = indent };
 
-    public static Item Note(string text, WorkContext? context = null) =>
-        new() { Kind = ItemKind.Note, Text = text, Context = context };
+    public static Item Note(string text, Project? project = null) =>
+        new() { Kind = ItemKind.Note, Text = text, Project = project };
 
     /// <summary>Reads through a fresh tracker so tests see what was saved, not what is cached.</summary>
     public List<Item> ItemsOn(DateOnly date)
     {
         Db.ChangeTracker.Clear();
         return Db.Items.Include(i => i.Day).Where(i => i.Day.Date == date)
-            .OrderBy(i => i.ContextId).ThenBy(i => i.SortOrder).ToList();
+            .OrderBy(i => i.ProjectId).ThenBy(i => i.SortOrder).ToList();
     }
 
     public void Dispose() => Db.Dispose();

@@ -4,14 +4,14 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { addDays, dayTitle, isoWeekKey, weekNumber } from '@/lib/dates';
-import type { WorkContext } from '@/lib/types';
+import type { Project } from '@/lib/types';
 import { DayEditor } from './DayEditor';
 
 export function DayPage({ date }: { date: string }) {
-  const [contexts, setContexts] = useState<WorkContext[] | null>(null);
+  const [projects, setProjects] = useState<Project[] | null>(null);
 
   useEffect(() => {
-    void api.contexts().then(setContexts);
+    void api.projects().then(setProjects);
   }, []);
 
   const week = isoWeekKey(date);
@@ -34,7 +34,7 @@ export function DayPage({ date }: { date: string }) {
         </nav>
       </div>
       <div className="rounded-lg border border-border bg-surface px-4 py-3">
-        {contexts ? <DayEditor date={date} contexts={contexts} /> : <p className="text-sm text-muted">Laster …</p>}
+        {projects ? <DayEditor date={date} projects={projects} /> : <p className="text-sm text-muted">Laster …</p>}
       </div>
     </main>
   );

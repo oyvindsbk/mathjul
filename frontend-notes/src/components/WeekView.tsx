@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { addDays, dayTitle, isoWeekKey, weekNumber } from '@/lib/dates';
-import type { DaySummary, Week, WorkContext } from '@/lib/types';
+import type { DaySummary, Week, Project } from '@/lib/types';
 import { DayEditor } from './DayEditor';
 
 const rangeFormat = new Intl.DateTimeFormat('nb-NO', {
@@ -28,7 +28,7 @@ const isEmpty = (d: DaySummary) => d.open + d.done + d.carried + d.notes === 0;
 /** A week of days, Monday to Friday plus any weekend day with content. Today starts expanded. */
 export function WeekView({ weekKey, monday }: { weekKey: string; monday: string }) {
   const [week, setWeek] = useState<Week | null>(null);
-  const [contexts, setContexts] = useState<WorkContext[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [expanded, setExpanded] = useState<Set<string> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,10 +44,10 @@ export function WeekView({ weekKey, monday }: { weekKey: string; monday: string 
     let cancelled = false;
     void (async () => {
       try {
-        const [w, c] = await Promise.all([api.week(weekKey), api.contexts()]);
+        const [w, c] = await Promise.all([api.week(weekKey), api.projects()]);
         if (cancelled) return;
         setWeek(w);
-        setContexts(c);
+        setProjects(c);
         setExpanded(new Set(w.days.some((d) => d.date === w.today) ? [w.today] : []));
       } catch (e) {
         if (!cancelled) setError(e instanceof Error ? e.message : 'Noe gikk galt');
@@ -129,7 +129,7 @@ export function WeekView({ weekKey, monday }: { weekKey: string; monday: string 
                   </header>
                   {open && (
                     <div className="border-t border-border px-4 py-3">
-                      <DayEditor date={d.date} contexts={contexts} onChanged={loadWeek} />
+                      <DayEditor date={d.date} projects={projects} onChanged={loadWeek} />
                     </div>
                   )}
                 </article>

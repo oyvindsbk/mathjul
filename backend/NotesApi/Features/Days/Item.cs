@@ -1,4 +1,4 @@
-using NotesApi.Features.Contexts;
+using NotesApi.Features.Projects;
 
 namespace NotesApi.Features.Days;
 
@@ -34,8 +34,8 @@ public class Item
     public Day Day { get; set; } = null!;
 
     /// <summary>Null means the "Dagens TODOs" group.</summary>
-    public int? ContextId { get; set; }
-    public WorkContext? Context { get; set; }
+    public int? ProjectId { get; set; }
+    public Project? Project { get; set; }
 
     public ItemKind Kind { get; set; }
     public string Text { get; set; } = "";
@@ -45,7 +45,7 @@ public class Item
 
     public int Indent { get; set; }
 
-    /// <summary>Order within the item's (day, context) group.</summary>
+    /// <summary>Order within the item's (day, project) group.</summary>
     public int SortOrder { get; set; }
 
     public int? CarriedFromItemId { get; set; }

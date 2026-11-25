@@ -10,11 +10,11 @@ public class ImportTests
 
     private static ImportRequest Batch(params ImportDay[] days) => new(null, days);
 
-    private static ImportItem Line(string text, ItemKind kind = ItemKind.Todo, ItemState state = ItemState.Open, string? context = null, int indent = 0) =>
-        new(kind, text, state, indent, context);
+    private static ImportItem Line(string text, ItemKind kind = ItemKind.Todo, ItemState state = ItemState.Open, string? project = null, int indent = 0) =>
+        new(kind, text, state, indent, project);
 
     [Fact]
-    public async Task Import_creates_days_items_and_contexts()
+    public async Task Import_creates_days_items_and_projects()
     {
         using var t = new NotesTestContext();
 
@@ -23,12 +23,12 @@ public class ImportTests
             [new ImportDay(Monday, [
                 Line("Start: 08:00", ItemKind.Note),
                 Line("PR review", state: ItemState.Done),
-                Line("Bildeoptimalisering", state: ItemState.Carried, context: "jobb"),
-                Line("Workshop-roller", context: "Prosjekt B", indent: 1),
+                Line("Bildeoptimalisering", state: ItemState.Carried, project: "jobb"),
+                Line("Workshop-roller", project: "Prosjekt B", indent: 1),
             ])]));
 
         Assert.Equal(new ImportResult(1, 4, 3), result);
-        Assert.Equal(["Hobby", "Jobb", "Prosjekt B"], t.Db.Contexts.OrderBy(c => c.SortOrder).Select(c => c.Name));
+        Assert.Equal(["Hobby", "Jobb", "Prosjekt B"], t.Db.Projects.OrderBy(c => c.SortOrder).Select(c => c.Name));
         var items = t.ItemsOn(Monday);
         Assert.All(items, i => Assert.Equal(ItemSource.OneNote, i.Source));
         Assert.Equal(ItemState.Carried, items.Single(i => i.Text == "Bildeoptimalisering").State);
@@ -54,13 +54,13 @@ public class ImportTests
     public async Task Import_is_idempotent()
     {
         using var t = new NotesTestContext();
-        var batch = Batch(new ImportDay(Monday, [Line("a", context: "Jobb"), Line("b")]));
+        var batch = Batch(new ImportDay(Monday, [Line("a", project: "Jobb"), Line("b")]));
 
         await t.Import.ImportAsync(batch);
         await t.Import.ImportAsync(batch);
 
         Assert.Equal(2, t.ItemsOn(Monday).Count);
-        Assert.Single(t.Db.Contexts);
+        Assert.Single(t.Db.Projects);
     }
 
     [Fact]

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
-using NotesApi.Features.Contexts;
+using NotesApi.Features.Projects;
 using NotesApi.Features.Days;
 using NotesApi.Infrastructure;
 
@@ -11,7 +11,7 @@ public record ImportItem(
     [MaxLength(Item.MaxTextLength)] string Text,
     ItemState State,
     [Range(0, Item.MaxIndent)] int Indent,
-    [MaxLength(WorkContext.MaxNameLength)] string? Context);
+    [MaxLength(Project.MaxNameLength)] string? Project);
 
 public record ImportDay(DateOnly Date, [Required] IReadOnlyList<ImportItem> Items);
 
@@ -20,10 +20,10 @@ public record ImportDay(DateOnly Date, [Required] IReadOnlyList<ImportItem> Item
 /// happen in the importer; the API stores what it is given.
 /// </summary>
 public record ImportRequest(
-    IReadOnlyList<string>? Contexts,
+    IReadOnlyList<string>? Projects,
     [Required, MaxLength(200)] IReadOnlyList<ImportDay> Days);
 
-public record ImportResult(int Days, int Items, int ContextsCreated);
+public record ImportResult(int Days, int Items, int ProjectsCreated);
 
 public class ImportService(NotesDbContext db, LocalClock clock)
 {
@@ -34,30 +34,30 @@ public class ImportService(NotesDbContext db, LocalClock clock)
     public async Task<ImportResult> ImportAsync(ImportRequest request, CancellationToken ct = default)
     {
         var now = clock.UtcNow;
-        var contexts = await db.Contexts.ToListAsync(ct);
+        var projects = await db.Projects.ToListAsync(ct);
         var created = 0;
 
-        WorkContext? Resolve(string? name)
+        Project? Resolve(string? name)
         {
             name = name?.Trim();
             if (string.IsNullOrEmpty(name))
                 return null;
-            var existing = contexts.FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase));
+            var existing = projects.FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase));
             if (existing is not null)
                 return existing;
 
-            var context = new WorkContext
+            var project = new Project
             {
                 Name = name,
-                SortOrder = contexts.Count == 0 ? 0 : contexts.Max(c => c.SortOrder) + 1,
+                SortOrder = projects.Count == 0 ? 0 : projects.Max(c => c.SortOrder) + 1,
             };
-            contexts.Add(context);
-            db.Contexts.Add(context);
+            projects.Add(project);
+            db.Projects.Add(project);
             created++;
-            return context;
+            return project;
         }
 
-        foreach (var name in request.Contexts ?? [])
+        foreach (var name in request.Projects ?? [])
             Resolve(name);
 
         var dates = request.Days.Select(d => d.Date).ToList();
@@ -77,30 +77,30 @@ public class ImportService(NotesDbContext db, LocalClock clock)
                 db.Days.Add(day);
             }
 
-            // Previously imported lines are matched to the new ones (same context, kind and text, in
+            // Previously imported lines are matched to the new ones (same project, kind and text, in
             // order) and updated in place, so what happened in the app since survives a re-import:
             // a carried or ticked to-do keeps its state, and carried copies keep their link.
-            string ContextKey(int? id) => id is null ? "" : contexts.First(c => c.Id == id).Name.ToLowerInvariant();
-            string LineKey(string contextKey, ItemKind kind, string text) => $"{contextKey}\u0001{kind}\u0001{text}";
+            string ProjectKey(int? id) => id is null ? "" : projects.First(c => c.Id == id).Name.ToLowerInvariant();
+            string LineKey(string projectKey, ItemKind kind, string text) => $"{projectKey}\u0001{kind}\u0001{text}";
             var previous = day.Items.Where(i => i.Source == ItemSource.OneNote)
-                .OrderBy(i => i.ContextId).ThenBy(i => i.SortOrder).ThenBy(i => i.Id)
-                .GroupBy(i => LineKey(ContextKey(i.ContextId), i.Kind, i.Text))
+                .OrderBy(i => i.ProjectId).ThenBy(i => i.SortOrder).ThenBy(i => i.Id)
+                .GroupBy(i => LineKey(ProjectKey(i.ProjectId), i.Kind, i.Text))
                 .ToDictionary(g => g.Key, g => new Queue<Item>(g));
             var manual = day.Items.Where(i => i.Source != ItemSource.OneNote).ToList();
-            // Imported item count per context group (NoContext = "Dagens TODOs"); new contexts have no id yet.
-            var importedByGroup = new Dictionary<WorkContext, int>(ReferenceEqualityComparer.Instance);
+            // Imported item count per project group (NoProject = "Dagens TODOs"); new projects have no id yet.
+            var importedByGroup = new Dictionary<Project, int>(ReferenceEqualityComparer.Instance);
 
             foreach (var line in import.Items)
             {
                 if (string.IsNullOrWhiteSpace(line.Text))
                     continue;
-                var context = Resolve(line.Context);
-                var order = importedByGroup.GetValueOrDefault(context ?? NoContext);
-                importedByGroup[context ?? NoContext] = order + 1;
+                var project = Resolve(line.Project);
+                var order = importedByGroup.GetValueOrDefault(project ?? NoProject);
+                importedByGroup[project ?? NoProject] = order + 1;
 
                 var isTodo = line.Kind == ItemKind.Todo;
                 var state = isTodo ? line.State : ItemState.Open;
-                var key = LineKey(context?.Name.ToLowerInvariant() ?? "", line.Kind, line.Text);
+                var key = LineKey(project?.Name.ToLowerInvariant() ?? "", line.Kind, line.Text);
                 if (previous.TryGetValue(key, out var matches) && matches.TryDequeue(out var existing))
                 {
                     // The app's progress wins over the export's "open".
@@ -119,7 +119,7 @@ public class ImportService(NotesDbContext db, LocalClock clock)
                 {
                     day.Items.Add(new Item
                     {
-                        Context = context,
+                        Project = project,
                         Kind = line.Kind,
                         Text = line.Text,
                         State = state,
@@ -149,10 +149,10 @@ public class ImportService(NotesDbContext db, LocalClock clock)
             }
 
             // Manual items keep their relative order, placed after the imported ones in their group.
-            foreach (var group in manual.GroupBy(i => i.ContextId))
+            foreach (var group in manual.GroupBy(i => i.ProjectId))
             {
-                var context = group.Key is null ? NoContext : contexts.First(c => c.Id == group.Key);
-                var offset = importedByGroup.GetValueOrDefault(context);
+                var project = group.Key is null ? NoProject : projects.First(c => c.Id == group.Key);
+                var offset = importedByGroup.GetValueOrDefault(project);
                 foreach (var (item, index) in group.OrderBy(i => i.SortOrder).Select((item, index) => (item, index)))
                     item.SortOrder = offset + index;
             }
@@ -177,6 +177,6 @@ public class ImportService(NotesDbContext db, LocalClock clock)
         await db.SaveChangesAsync(ct);
     }
 
-    /// <summary>Stands in for "no context" as a dictionary key.</summary>
-    private static readonly WorkContext NoContext = new() { Name = "" };
+    /// <summary>Stands in for "no project" as a dictionary key.</summary>
+    private static readonly Project NoProject = new() { Name = "" };
 }

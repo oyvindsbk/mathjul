@@ -7,8 +7,8 @@ export function AppHeader() {
         <Link href="/" className="font-semibold">
           Notater
         </Link>
-        <Link href="/kontekster" className="text-muted hover:text-foreground">
-          Kontekster
+        <Link href="/prosjekter" className="text-muted hover:text-foreground">
+          Prosjekter
         </Link>
         <form action="/api/auth/logout" method="post" className="ml-auto">
           <button type="submit" className="text-muted hover:text-foreground">

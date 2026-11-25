@@ -23,33 +23,6 @@ namespace NotesApi.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
-            modelBuilder.Entity("NotesApi.Features.Contexts.WorkContext", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<bool>("IsArchived")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(60)
-                        .HasColumnType("nvarchar(60)");
-
-                    b.Property<int>("SortOrder")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("Contexts", "notes");
-                });
-
             modelBuilder.Entity("NotesApi.Features.Days.Day", b =>
                 {
                     b.Property<int>("Id")
@@ -90,9 +63,6 @@ namespace NotesApi.Migrations
                     b.Property<DateTime?>("CompletedAt")
                         .HasColumnType("datetime2");
 
-                    b.Property<int?>("ContextId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -106,6 +76,9 @@ namespace NotesApi.Migrations
                         .IsRequired()
                         .HasMaxLength(10)
                         .HasColumnType("nvarchar(10)");
+
+                    b.Property<int?>("ProjectId")
+                        .HasColumnType("int");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("int");
@@ -131,11 +104,38 @@ namespace NotesApi.Migrations
 
                     b.HasIndex("CarriedFromItemId");
 
-                    b.HasIndex("ContextId");
+                    b.HasIndex("ProjectId");
 
-                    b.HasIndex("DayId", "ContextId", "SortOrder");
+                    b.HasIndex("DayId", "ProjectId", "SortOrder");
 
                     b.ToTable("Items", "notes");
+                });
+
+            modelBuilder.Entity("NotesApi.Features.Projects.Project", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("Projects", "notes");
                 });
 
             modelBuilder.Entity("NotesApi.Features.Days.Item", b =>
@@ -145,22 +145,22 @@ namespace NotesApi.Migrations
                         .HasForeignKey("CarriedFromItemId")
                         .OnDelete(DeleteBehavior.NoAction);
 
-                    b.HasOne("NotesApi.Features.Contexts.WorkContext", "Context")
-                        .WithMany()
-                        .HasForeignKey("ContextId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("NotesApi.Features.Days.Day", "Day")
                         .WithMany("Items")
                         .HasForeignKey("DayId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("NotesApi.Features.Projects.Project", "Project")
+                        .WithMany()
+                        .HasForeignKey("ProjectId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.Navigation("CarriedFrom");
 
-                    b.Navigation("Context");
-
                     b.Navigation("Day");
+
+                    b.Navigation("Project");
                 });
 
             modelBuilder.Entity("NotesApi.Features.Days.Day", b =>

@@ -3,12 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { todayInOslo } from '@/lib/dates';
-import { MAX_INDENT, type Day, type Item, type ItemKind, type WorkContext } from '@/lib/types';
+import { MAX_INDENT, type Day, type Item, type ItemKind, type Project } from '@/lib/types';
 import { ItemRow, type ItemHandlers } from './ItemRow';
 
 interface Props {
   date: string;
-  contexts: WorkContext[];
+  projects: Project[];
   /** Called after anything changes, so a surrounding week view can refresh its counts. */
   onChanged?: () => void;
 }
@@ -19,7 +19,7 @@ interface Group {
   archived: boolean;
 }
 
-const NO_CONTEXT = 'Dagens TODOs';
+const NO_PROJECT = 'Dagens TODOs';
 
 const message = (e: unknown) => (e instanceof Error ? e.message : 'Noe gikk galt');
 
@@ -33,7 +33,7 @@ let nextTempId = -1;
  * so typing straight after Enter never lands on the previous line. Their stable clientKey
  * keeps the same textarea mounted when the real id arrives.
  */
-export function DayEditor({ date, contexts, onChanged }: Props) {
+export function DayEditor({ date, projects, onChanged }: Props) {
   const [day, setDay] = useState<Day | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [focusId, setFocusId] = useState<number | null>(null);
@@ -89,12 +89,12 @@ export function DayEditor({ date, contexts, onChanged }: Props) {
   const items = useMemo(() => day?.items ?? [], [day]);
 
   const groups: Group[] = useMemo(() => {
-    const used = new Set(items.map((i) => i.contextId));
-    // Past days show only the groups they used; today and later offer every active context.
+    const used = new Set(items.map((i) => i.projectId));
+    // Past days show only the groups they used; today and later offer every active project.
     const planning = date >= todayInOslo();
     return [
-      { id: null, name: NO_CONTEXT, archived: false },
-      ...contexts
+      { id: null, name: NO_PROJECT, archived: false },
+      ...projects
         .filter((c) => used.has(c.id) || (planning && !c.isArchived))
         .map((c) => ({
           id: c.id,
@@ -102,11 +102,11 @@ export function DayEditor({ date, contexts, onChanged }: Props) {
           archived: c.isArchived,
         })),
     ];
-  }, [contexts, items, date]);
+  }, [projects, items, date]);
 
   const inGroup = useCallback(
-    (contextId: number | null) =>
-      items.filter((i) => i.contextId === contextId).sort((a, b) => a.sortOrder - b.sortOrder),
+    (projectId: number | null) =>
+      items.filter((i) => i.projectId === projectId).sort((a, b) => a.sortOrder - b.sortOrder),
     [items]
   );
 
@@ -151,7 +151,7 @@ export function DayEditor({ date, contexts, onChanged }: Props) {
   /** Inserts a blank line right away, then creates it on the server and swaps in the real id. */
   const insertLine = (
     kind: ItemKind,
-    contextId: number | null,
+    projectId: number | null,
     indent: number,
     after: Item | null,
     beforeCreate?: () => Promise<unknown>
@@ -166,7 +166,7 @@ export function DayEditor({ date, contexts, onChanged }: Props) {
       state: 'Open',
       indent,
       sortOrder,
-      contextId,
+      projectId,
       carriedFromDate: null,
       completedAt: null,
     };
@@ -176,7 +176,7 @@ export function DayEditor({ date, contexts, onChanged }: Props) {
     const creation = (async () => {
       await beforeCreate?.();
       const afterItemId = after ? await realId(after.id) : undefined;
-      const created = await api.addItem(date, { kind, text: '', contextId, indent, afterItemId });
+      const created = await api.addItem(date, { kind, text: '', projectId, indent, afterItemId });
       setDay(
         (d) =>
           d && {
@@ -185,7 +185,7 @@ export function DayEditor({ date, contexts, onChanged }: Props) {
             items: d.items.filter((i) => i.id !== created.id).map((i) => {
               if (i.id === tempId) return { ...created, text: i.text, clientKey: i.clientKey };
               // The server shifted the rest of the group down by one; mirror it.
-              if (i.contextId === contextId && i.id > 0 && i.sortOrder >= created.sortOrder)
+              if (i.projectId === projectId && i.id > 0 && i.sortOrder >= created.sortOrder)
                 return { ...i, sortOrder: i.sortOrder + 1 };
               return i;
             }),
@@ -215,7 +215,7 @@ export function DayEditor({ date, contexts, onChanged }: Props) {
           replace(await api.updateItem(id, { text }), id);
         };
       }
-      insertLine(item.kind, item.contextId, item.indent, { ...item, text }, commit);
+      insertLine(item.kind, item.projectId, item.indent, { ...item, text }, commit);
     },
     toggle: (item) =>
       void run(async () => {
@@ -238,13 +238,13 @@ export function DayEditor({ date, contexts, onChanged }: Props) {
       void run(async () => api.deleteItem(await realId(item.id)), false);
     },
     reorder: (item, delta, text) => {
-      const group = inGroup(item.contextId);
+      const group = inGroup(item.projectId);
       const target = group.findIndex((i) => i.id === item.id) + delta;
       if (target < 0 || target >= group.length) return;
       void run(async () => {
         const id = await realId(item.id);
         if (text !== item.text) await api.updateItem(id, { text });
-        await api.moveItem(id, item.contextId, target);
+        await api.moveItem(id, item.projectId, target);
         setFocusId(id);
       }, true);
     },
@@ -257,8 +257,8 @@ export function DayEditor({ date, contexts, onChanged }: Props) {
         const id = await realId(item.id);
         replace(await api.updateItem(id, { kind: item.kind === 'Todo' ? 'Note' : 'Todo' }), id);
       }, false),
-    moveToContext: (item, contextId) =>
-      void run(async () => api.moveItem(await realId(item.id), contextId), true),
+    moveToProject: (item, projectId) =>
+      void run(async () => api.moveItem(await realId(item.id), projectId), true),
     remove: (item) => void run(async () => api.deleteItem(await realId(item.id)), true),
   };
 
@@ -279,7 +279,7 @@ export function DayEditor({ date, contexts, onChanged }: Props) {
           <section key={group.id ?? 'none'} data-testid={`group-${group.name}`}>
             <h3 className="mb-1 text-sm font-semibold text-muted">{group.name}</h3>
             {groupItems.map((item) => (
-              <ItemRow key={item.clientKey ?? item.id} item={item} contexts={contexts} handlers={handlers} />
+              <ItemRow key={item.clientKey ?? item.id} item={item} projects={projects} handlers={handlers} />
             ))}
             {!group.archived && (
               <button

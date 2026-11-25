@@ -3,7 +3,7 @@ import { saved, signIn, today, unique } from './helpers';
 
 test.describe('Notater', () => {
   test('pages require sign-in', async ({ page }) => {
-    await page.goto('/kontekster');
+    await page.goto('/prosjekter');
     await expect(page).toHaveURL(/\/login$/);
   });
 
@@ -76,26 +76,26 @@ test.describe('Notater', () => {
     await expect(title).toHaveText(current ?? '');
   });
 
-  test('contexts can be created, renamed and archived', async ({ page }) => {
+  test('projects can be created, renamed and archived', async ({ page }) => {
     await signIn(page);
     const name = unique('E2E');
     const renamed = `${name} ny`;
 
-    await page.goto('/kontekster');
-    await page.getByLabel('Navn på ny kontekst').fill(name);
+    await page.goto('/prosjekter');
+    await page.getByLabel('Navn på nytt prosjekt').fill(name);
     await page.getByRole('button', { name: 'Legg til' }).click();
-    const row = page.getByTestId('context-row').filter({ has: page.locator(`input[value="${name}"]`) });
+    const row = page.getByTestId('project-row').filter({ has: page.locator(`input[value="${name}"]`) });
     await expect(row).toBeVisible();
 
     await row.locator('input').fill(renamed);
     await row.locator('input').press('Enter');
-    const renamedRow = page.getByTestId('context-row').filter({ has: page.locator(`input[value="${renamed}"]`) });
+    const renamedRow = page.getByTestId('project-row').filter({ has: page.locator(`input[value="${renamed}"]`) });
     await expect(renamedRow).toBeVisible();
 
     await page.goto('/');
     await expect(today(page).getByTestId(`group-${renamed}`)).toBeVisible();
 
-    await page.goto('/kontekster');
+    await page.goto('/prosjekter');
     await renamedRow.getByRole('button', { name: 'Arkiver' }).click();
     await expect(renamedRow.getByText('Arkivert')).toBeVisible();
 
@@ -103,7 +103,7 @@ test.describe('Notater', () => {
     await expect(today(page).getByTestId(`group-${renamed}`)).toHaveCount(0);
   });
 
-  test('an item can be moved to another context', async ({ page }) => {
+  test('an item can be moved to another project', async ({ page }) => {
     await signIn(page);
     const day = today(page);
     const text = unique('Flyttes');
@@ -114,7 +114,7 @@ test.describe('Notater', () => {
     await saved(page);
 
     const row = day.getByTestId('item-row').filter({ has: page.locator(`textarea:text-is("${text}")`) });
-    await row.getByLabel('Kontekst').selectOption({ label: 'Jobb' });
+    await row.getByLabel('Prosjekt').selectOption({ label: 'Jobb' });
     await saved(page);
 
     await expect(day.getByTestId('group-Jobb').locator(`textarea:text-is("${text}")`)).toBeVisible();
@@ -129,7 +129,7 @@ test.describe('Notater', () => {
   });
 
   test('the API proxy rejects requests without a session', async ({ request }) => {
-    const response = await request.get('/api/proxy/contexts');
+    const response = await request.get('/api/proxy/projects');
     expect(response.status()).toBe(401);
   });
 });
