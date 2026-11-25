@@ -7,8 +7,11 @@ param location string
 @description('Key Vault name')
 param keyVaultName string
 
-@description('Frontend URL for CORS (optional)')
-param frontendUrl string = ''
+@description('Origins the frontend is served from (custom domain, ingress fqdn). Written to Cors__AllowedOrigins__N.')
+param corsAllowedOrigins array = []
+
+@description('Public frontend URL that share links are built from. Empty: not set.')
+param publicBaseUrl string = ''
 
 @description('JWT Secret Key for token signing')
 @secure()
@@ -22,6 +25,22 @@ param containerImage string = 'mcr.microsoft.com/dotnet/samples:aspnetapp'
 
 @description('Tags to apply to resources')
 param tags object = {}
+
+@description('Registry user (ghcr.io). Empty, or registryPassword empty: no registry is declared.')
+param registryUsername string = ''
+
+@description('Registry password. In the template so an infra deploy keeps it (ARM replaces the whole configuration).')
+@secure()
+param registryPassword string = ''
+
+// Same secret name as `az containerapp registry set` uses (server without dots + user), so
+// the app workflows' `registry set` finds this secret instead of adding a second one.
+var useRegistry = !empty(registryUsername) && !empty(registryPassword)
+var registrySecretName = 'ghcrio-${toLower(registryUsername)}'
+var registrySecrets = useRegistry ? [{ name: registrySecretName, value: registryPassword }] : []
+var registries = useRegistry ? [{ server: 'ghcr.io', username: registryUsername, passwordSecretRef: registrySecretName }] : []
+
+var corsEnv = [for (origin, i) in corsAllowedOrigins: { name: 'Cors__AllowedOrigins__${i}', value: origin }]
 
 // Log Analytics Workspace (required for Container Apps)
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
@@ -83,6 +102,8 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
         transport: 'auto'
         allowInsecure: false
       }
+      secrets: registrySecrets
+      registries: registries
     }
     template: {
       containers: [
@@ -121,18 +142,17 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
               name: 'KeyVault__VaultUri'
               value: keyVault.properties.vaultUri
             }
-// Seeds CORS/Sharing on first creation only. infrastructure.yml's post-deploy step
-            // immediately overwrites both with the live frontend URL(s) (custom domain +
-            // ingress fqdn) in the same job run, via `az containerapp update --set-env-vars` --
-            // so frontendUrl only needs to be a reasonable value, never the source of truth.
-            {
-              name: 'Cors__AllowedOrigins__0'
-              value: frontendUrl != '' ? frontendUrl : 'https://placeholder-update-after-deployment.com'
-            }
-            {
-              name: 'Sharing__PublicBaseUrl'
-              value: frontendUrl != '' ? frontendUrl : 'https://placeholder-update-after-deployment.com'
-            }
+            // CORS and share links are owned by this template; no workflow step changes them
+            // afterwards. infrastructure.yml fails before deploying if an existing API would be
+            // left with no origin. The policy uses AllowCredentials(), so every origin the
+            // browser may send is listed exactly: custom domain and ingress fqdn.
+            ...corsEnv
+            ...(!empty(publicBaseUrl) ? [
+              {
+                name: 'Sharing__PublicBaseUrl'
+                value: publicBaseUrl
+              }
+            ] : [])
             {
               name: 'Jwt__Issuer'
               value: 'RecipeApi'

@@ -130,18 +130,51 @@ gh workflow run deploy.yml -f environment=dev
 
 ## 📋 Deployment Workflows
 
-### Infrastructure Workflow
-- Manually triggered
-- Creates all Azure resources
-- Uses Bicep templates
-- Outputs resource URLs and names
+All three workflows share the concurrency group `deploy-prod`, so they never run at the same time. GitHub keeps only one waiting run per group: if a third run is queued while one runs and one waits, the waiting one is cancelled. In that case, rerun it.
 
-### Application Workflow
-- Auto-triggers on push to `main` branch
-- Builds Docker image for backend
-- Deploys to Container Apps
-- Runs EF Core migrations
-- Deploys frontend to Static Web Apps
+### Infrastructure Workflow (`infrastructure.yml`)
+- Manually triggered. Deploys `infrastructure/main.bicep`.
+- **Keeps the running apps.** A preflight step (`.github/scripts/infra-preflight.sh`) reads the image each Container App runs and passes it to Bicep, so the apps stay on their current image. Only an app that doesn't exist yet gets the placeholder. The GHCR registry is declared in the template too (`GHCR_TOKEN`), so the apps can still pull afterwards. You don't need to rerun the app workflows after an infra deploy.
+- **Refuses to break a domain.** If a web app has a custom domain bound and `FRONTEND_CUSTOM_DOMAIN`/`_CERT` (or `NOTES_CUSTOM_DOMAIN`/`_CERT`) are empty or different, the preflight fails, names the variable and its live value, and nothing is deployed. It also fails if the recipe API would be left with no CORS origin.
+- **Owns the recipe API's CORS and share links.** `Cors__AllowedOrigins__N` gets the custom domain, `FRONTEND_URL` and the frontend's ingress URL, and `Sharing__PublicBaseUrl` the custom domain (or `FRONTEND_URL`). Values set by hand in the portal are overwritten on the next infra deploy. Change the variables instead.
+
+### Application Workflows (`deploy.yml`, `deploy-notes.yml`)
+- Trigger on push to `main` when their own app's code changes:
+
+  | Workflow | App | Paths |
+  |---|---|---|
+  | `deploy.yml` | recipe-api | `backend/RecipeApi/**` |
+  | `deploy.yml` | recipe-web | `frontend/**` |
+  | `deploy-notes.yml` | notes-api | `backend/NotesApi/**` |
+  | `deploy-notes.yml` | notes-web | `frontend-notes/**` |
+
+- **Only changed apps are deployed.** The `changes` job (`.github/scripts/changed-since-deployed.sh`) takes the commit from the running image's tag and diffs the app's paths against it. A change to the workflow file itself, or to `.github/scripts/`, deploys every app in that workflow. If the running commit can't be found (placeholder, unknown tag), the app is deployed. The run summary lists each app and why it was deployed or skipped.
+- An API's migration runs only when that API is deployed.
+- **Run workflow** has a `force` option that deploys every app in the workflow, e.g. after the recipe API's URL changes (it is baked into the frontend image).
+
+### Variables and secrets
+
+Settings → Secrets and variables → Actions. Put them on the **repository**, not on the `prod` environment: only `infrastructure.yml` runs in `prod`, so the app workflows can't see environment-level values.
+
+| Name | Kind | Used by | What |
+|---|---|---|---|
+| `AZURE_CREDENTIALS` | secret | all | Service principal JSON for `azure/login` |
+| `GHCR_TOKEN` | secret | all | Token with `read:packages`. The apps pull images from ghcr.io with it |
+| `AZURE_SQL_CONNECTION_STRING` | secret | app workflows | Admin connection for EF migrations |
+| `SQL_ADMIN_USERNAME`, `SQL_ADMIN_PASSWORD` | secret | infra | SQL server admin |
+| `JWT_SECRET_KEY` | secret | infra | Recipe API token signing (to Key Vault) |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | secret | infra | Google sign-in, both web apps |
+| `NOTES_JWT_SECRET_KEY` | secret | infra | Notater token signing. Empty: Notater isn't deployed |
+| `NOTES_ALLOWED_EMAILS` | secret | infra | Who may sign in to Notater |
+| `FRONTEND_CUSTOM_DOMAIN` | variable | infra | e.g. `mathjul.kheradmandi.no`, without `https://`. **Required once a domain is bound** |
+| `FRONTEND_CUSTOM_DOMAIN_CERT` | variable | infra | Name of the managed certificate for that domain (see below). **Required once it has TLS** |
+| `FRONTEND_URL` | variable | infra | Public frontend URL with `https://`, no trailing slash. CORS origin and share-link base when there's no custom domain |
+| `PUBLIC_APP_URL` | variable | `deploy.yml` | Same URL as above. Printed after the frontend deploy |
+| `NOTES_CUSTOM_DOMAIN`, `NOTES_CUSTOM_DOMAIN_CERT` | variable | infra | Same as the frontend's, for Notater |
+
+**Finding the certificate name.** Portal → the Container Apps environment (`ca-recipe-web-prod-…-env` for the recipe frontend, `ca-recipe-api-prod-…-env` for Notater) → Certificates → Managed certificate. Copy the name column, e.g. `mc-ca-recipe-w-mathjul-kheradm-1234`. The certificate itself is created once in the portal (the app's Custom domains → Add, with a managed certificate). It isn't in Bicep, because Azure only issues it after the domain is attached to the app.
+
+**A new web app shows "TargetPort 3000 does not match the listening port 8080"** until its first app deploy. The placeholder image listens on 8080. That's expected, and the next app deploy fixes it.
 
 ## 🔧 Manual Azure CLI Commands
 
@@ -337,7 +370,7 @@ Notater is a separate app: `backend/NotesApi` and `frontend-notes`. It runs on t
    Re-running the import is safe: it replaces imported items per date and keeps anything written in the app. `out/import-report.txt` lists the corrected dates, attached pages and skipped pages.
 
 ### Notes
-- **Re-running Deploy Infrastructure resets both Notater images to the placeholder**, the same as for the recipe apps. Run **Deploy Notater** afterwards.
+- **Re-running Deploy Infrastructure keeps the running Notater images** (see Deployment Workflows). Only a brand-new app starts on the placeholder until **Deploy Notater** runs.
 - **Both apps scale to zero**, so the first request after idle takes a few seconds.
 - **Locally**, `aspire run` starts Notater on http://localhost:3100 with a dev login. RecipeApi recreates the local database on every start, and that includes the notes schema.
 
