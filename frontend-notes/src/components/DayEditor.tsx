@@ -2,10 +2,11 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '@/lib/api';
-import { todayInOslo } from '@/lib/dates';
+import { isoWeekKey, todayInOslo } from '@/lib/dates';
 import { projectColorVar, type ProjectColor } from '@/lib/projectColors';
 import { MAX_INDENT, type Day, type Item, type ItemKind, type Project } from '@/lib/types';
 import { ItemRow, type ItemHandlers } from './ItemRow';
+import { useSidebarRefresh } from './NotesShell';
 
 interface Props {
   date: string;
@@ -44,6 +45,7 @@ export function DayEditor({ date, projects, onChanged }: Props) {
   const pending = useRef(new Map<number, Promise<number>>());
   /** Saves still in flight; leaving the page now would drop them. */
   const [saving, setSaving] = useState(0);
+  const refreshSidebar = useSidebarRefresh();
 
   useEffect(() => {
     if (saving === 0) return;
@@ -132,6 +134,7 @@ export function DayEditor({ date, projects, onChanged }: Props) {
         await action();
         if (reload) await load();
         onChanged?.();
+        refreshSidebar(isoWeekKey(date));
       } catch (e) {
         setError(message(e));
         await load();
@@ -139,7 +142,7 @@ export function DayEditor({ date, projects, onChanged }: Props) {
         setSaving((n) => n - 1);
       }
     },
-    [load, onChanged]
+    [load, onChanged, refreshSidebar, date]
   );
 
   const neighbourId = (item: Item, delta: number): number | null => {

@@ -1,9 +1,17 @@
 import Link from 'next/link';
 
-export function AppHeader() {
+export function AppHeader({ onMenu }: { onMenu: () => void }) {
   return (
     <header className="border-b border-border bg-surface">
-      <nav className="mx-auto flex max-w-3xl items-center gap-4 px-4 py-3 text-sm">
+      <nav className="flex items-center gap-4 px-4 py-3 text-sm">
+        <button
+          type="button"
+          onClick={onMenu}
+          className="-ml-1 px-1 text-lg leading-none text-muted hover:text-foreground md:hidden"
+          aria-label="Vis dager"
+        >
+          ☰
+        </button>
         <Link href="/" className="font-semibold">
           Notater
         </Link>
