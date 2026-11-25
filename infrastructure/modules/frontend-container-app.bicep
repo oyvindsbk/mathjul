@@ -29,6 +29,20 @@ param containerImage string = 'mcr.microsoft.com/dotnet/samples:aspnetapp'
 @description('Tags to apply to resources')
 param tags object = {}
 
+@description('Registry user (ghcr.io). Empty, or registryPassword empty: no registry is declared.')
+param registryUsername string = ''
+
+@description('Registry password. In the template so an infra deploy keeps it (ARM replaces the whole configuration).')
+@secure()
+param registryPassword string = ''
+
+// Same secret name as `az containerapp registry set` uses (server without dots + user), so
+// the app workflows' `registry set` finds this secret instead of adding a second one.
+var useRegistry = !empty(registryUsername) && !empty(registryPassword)
+var registrySecretName = 'ghcrio-${toLower(registryUsername)}'
+var registrySecrets = useRegistry ? [{ name: registrySecretName, value: registryPassword }] : []
+var registries = useRegistry ? [{ server: 'ghcr.io', username: registryUsername, passwordSecretRef: registrySecretName }] : []
+
 // Log Analytics Workspace for container logs
 resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
   name: '${containerAppName}-logs'
@@ -83,12 +97,13 @@ resource containerApp 'Microsoft.App/containerApps@2023-05-01' = {
           }
         ]
       }
-      secrets: !empty(googleClientSecret) ? [
+      secrets: concat(!empty(googleClientSecret) ? [
         {
           name: 'google-client-secret'
           value: googleClientSecret
         }
-      ] : []
+      ] : [], registrySecrets)
+      registries: registries
     }
     template: {
       containers: [

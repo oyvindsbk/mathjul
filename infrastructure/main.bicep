@@ -48,6 +48,30 @@ param notesCustomDomainName string = ''
 @description('Notater: managed certificate name for notesCustomDomainName.')
 param notesCustomDomainCertificateName string = ''
 
+// Running images. infrastructure.yml reads them from the live apps, so an infra deploy keeps
+// each app on the image it already runs. Empty means the app does not exist yet: placeholder.
+@description('Image the recipe API runs now. Empty: placeholder (first deploy).')
+param recipeApiImage string = ''
+
+@description('Image the recipe frontend runs now. Empty: placeholder (first deploy).')
+param recipeWebImage string = ''
+
+@description('Image the Notater API runs now. Empty: placeholder (first deploy).')
+param notesApiImage string = ''
+
+@description('Image the Notater web app runs now. Empty: placeholder (first deploy).')
+param notesWebImage string = ''
+
+@description('GHCR user the apps pull images as. Empty (with ghcrToken): no registry is declared.')
+param ghcrUsername string = ''
+
+@description('GHCR token (read:packages). Declared in the template so an infra deploy keeps the registry.')
+@secure()
+param ghcrToken string = ''
+
+@description('Live ingress URL of the recipe frontend (https://<fqdn>), read by infrastructure.yml. Allowed by CORS next to the custom domain.')
+param frontendFqdnUrl string = ''
+
 // Generate unique names
 var uniqueSuffix = uniqueString(resourceGroup().id)
 var sqlServerName = 'sql-recipe-${environment}-${uniqueSuffix}'
@@ -60,6 +84,19 @@ var storageAccountName = 'strecipe${environment}${take(uniqueSuffix, 8)}'
 var notesApiName = 'ca-notes-api-${environment}-${uniqueSuffix}'
 var notesWebName = 'ca-notes-web-${environment}-${uniqueSuffix}'
 var deployNotes = !empty(notesJwtSecretKey)
+
+// Placeholder for apps that do not exist yet. It listens on 8080, so the web apps (3000)
+// fail activation until their first app deploy -- expected.
+var placeholderImage = 'mcr.microsoft.com/dotnet/samples:aspnetapp'
+
+// Origins the browser loads the recipe frontend from, for the API's CORS policy. The fqdn
+// cannot come from frontendContainerApp's output (that module depends on the API's), so
+// the workflow passes it in.
+var frontendCustomDomainUrl = !empty(frontendCustomDomainName) ? 'https://${frontendCustomDomainName}' : ''
+var apiCorsOrigins = union(filter([frontendCustomDomainUrl, frontendUrl, frontendFqdnUrl], o => !empty(o)), [])
+var publicBaseUrl = !empty(frontendCustomDomainUrl)
+  ? frontendCustomDomainUrl
+  : (!empty(frontendUrl) ? frontendUrl : frontendFqdnUrl)
 
 // Tags
 var commonTags = {
@@ -102,8 +139,12 @@ module containerApp 'modules/container-app.bicep' = {
     location: location
     keyVaultName: keyVault.outputs.keyVaultName
     jwtSecretKey: jwtSecretKey
-    frontendUrl: frontendUrl
+    corsAllowedOrigins: apiCorsOrigins
+    publicBaseUrl: publicBaseUrl
     blobStorageAccountName: storageAccountName
+    containerImage: !empty(recipeApiImage) ? recipeApiImage : placeholderImage
+    registryUsername: ghcrUsername
+    registryPassword: ghcrToken
     tags: commonTags
   }
 }
@@ -148,6 +189,9 @@ module frontendContainerApp 'modules/frontend-container-app.bicep' = {
     // The OAuth redirect URI must name the host users actually arrive on, so the custom
     // domain wins when there is one. Falls back to frontendUrl (the fqdn) otherwise.
     appUrl: !empty(frontendCustomDomainName) ? 'https://${frontendCustomDomainName}' : frontendUrl
+    containerImage: !empty(recipeWebImage) ? recipeWebImage : placeholderImage
+    registryUsername: ghcrUsername
+    registryPassword: ghcrToken
     tags: commonTags
   }
 }
@@ -165,6 +209,9 @@ module notesApi 'modules/notes-api-container-app.bicep' = if (deployNotes) {
     jwtSecretKey: notesJwtSecretKey
     allowedEmails: notesAllowedEmails
     googleClientId: googleClientId
+    containerImage: !empty(notesApiImage) ? notesApiImage : placeholderImage
+    registryUsername: ghcrUsername
+    registryPassword: ghcrToken
     tags: union(commonTags, { application: 'notater' })
   }
 }
@@ -180,6 +227,9 @@ module notesWeb 'modules/notes-web-container-app.bicep' = if (deployNotes) {
     googleClientSecret: googleClientSecret
     customDomainName: notesCustomDomainName
     customDomainCertificateName: notesCustomDomainCertificateName
+    containerImage: !empty(notesWebImage) ? notesWebImage : placeholderImage
+    registryUsername: ghcrUsername
+    registryPassword: ghcrToken
     tags: union(commonTags, { application: 'notater' })
   }
 }

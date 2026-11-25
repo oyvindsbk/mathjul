@@ -118,7 +118,7 @@ None.
 - Rebuilding recipe-web when the recipe API's URL changes (it's baked in at build time). Use `force`.
 - Moving registry auth to a managed identity or ACR.
 
-## Open Questions
-- Q1: Registry secret name. `az containerapp registry set` names the password secret after the server and user (e.g. `ghcrio-<user>`). Either Bicep uses that exact name, or Bicep owns the registry and the app workflows stop calling `registry set`. **Proposal:** Bicep owns it, and the app workflows keep `registry set` only as a fallback for apps deployed before this change. Check against the live app in Task 1 (`az containerapp show --query properties.configuration.registries`).
-- Q2: Are the GHCR packages private? If they're public, R3 isn't needed and `ghcrToken` can be left out. **Proposal:** keep R3 either way, since it costs little and stays correct if the visibility changes.
-- Q3: Should this branch be cut from `068-notater` (it is) and merged after it? `deploy-notes.yml` and the Notater modules only exist there.
+## Resolved Questions
+- Q1 (registry secret name): Bicep declares the registry and names the secret `ghcrio-<lower(user)>`, the same name `az containerapp registry set` generates. The app workflows keep calling `registry set`; it finds the secret with the same value, so that's harmless. **Not checked against the live apps:** the local `az` was signed in to another subscription. If the live name differs, the app keeps one unused extra secret, and nothing breaks. Check after the first infra deploy (`az containerapp show --query properties.configuration.secrets[].name`).
+- Q2 (GHCR visibility): R3 is kept whatever the visibility, because it costs little and stays correct.
+- Q3 (branch base): 068 was squash-merged to `main` (`e1fe150`), and 069 is based on `main`.

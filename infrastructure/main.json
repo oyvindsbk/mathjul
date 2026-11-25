@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.41.2.15936",
-      "templateHash": "18002520746086960013"
+      "templateHash": "16825338495859243717"
     }
   },
   "parameters": {
@@ -75,6 +75,83 @@
       "metadata": {
         "description": "Managed certificate name for frontendCustomDomainName. Leave empty to bind without TLS (domain validation only)."
       }
+    },
+    "notesJwtSecretKey": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Notater: JWT signing key. Leave empty to skip deploying the Notater apps."
+      }
+    },
+    "notesAllowedEmails": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Notater: comma-separated emails allowed to sign in."
+      }
+    },
+    "notesCustomDomainName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Notater: custom domain, e.g. notater.kheradmandi.no. Empty: generated hostname only."
+      }
+    },
+    "notesCustomDomainCertificateName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Notater: managed certificate name for notesCustomDomainName."
+      }
+    },
+    "recipeApiImage": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Image the recipe API runs now. Empty: placeholder (first deploy)."
+      }
+    },
+    "recipeWebImage": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Image the recipe frontend runs now. Empty: placeholder (first deploy)."
+      }
+    },
+    "notesApiImage": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Image the Notater API runs now. Empty: placeholder (first deploy)."
+      }
+    },
+    "notesWebImage": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Image the Notater web app runs now. Empty: placeholder (first deploy)."
+      }
+    },
+    "ghcrUsername": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "GHCR user the apps pull images as. Empty (with ghcrToken): no registry is declared."
+      }
+    },
+    "ghcrToken": {
+      "type": "securestring",
+      "defaultValue": "",
+      "metadata": {
+        "description": "GHCR token (read:packages). Declared in the template so an infra deploy keeps the registry."
+      }
+    },
+    "frontendFqdnUrl": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Live ingress URL of the recipe frontend (https://<fqdn>), read by infrastructure.yml. Allowed by CORS next to the custom domain."
+      }
     }
   },
   "variables": {
@@ -85,6 +162,13 @@
     "frontendContainerAppName": "[format('ca-recipe-web-{0}-{1}', parameters('environment'), variables('uniqueSuffix'))]",
     "keyVaultName": "[format('kv-recipe-{0}-{1}', parameters('environment'), take(variables('uniqueSuffix'), 8))]",
     "storageAccountName": "[format('strecipe{0}{1}', parameters('environment'), take(variables('uniqueSuffix'), 8))]",
+    "notesApiName": "[format('ca-notes-api-{0}-{1}', parameters('environment'), variables('uniqueSuffix'))]",
+    "notesWebName": "[format('ca-notes-web-{0}-{1}', parameters('environment'), variables('uniqueSuffix'))]",
+    "deployNotes": "[not(empty(parameters('notesJwtSecretKey')))]",
+    "placeholderImage": "mcr.microsoft.com/dotnet/samples:aspnetapp",
+    "frontendCustomDomainUrl": "[if(not(empty(parameters('frontendCustomDomainName'))), format('https://{0}', parameters('frontendCustomDomainName')), '')]",
+    "apiCorsOrigins": "[union(filter(createArray(variables('frontendCustomDomainUrl'), parameters('frontendUrl'), parameters('frontendFqdnUrl')), lambda('o', not(empty(lambdaVariables('o'))))), createArray())]",
+    "publicBaseUrl": "[if(not(empty(variables('frontendCustomDomainUrl'))), variables('frontendCustomDomainUrl'), if(not(empty(parameters('frontendUrl'))), parameters('frontendUrl'), parameters('frontendFqdnUrl')))]",
     "commonTags": {
       "environment": "[parameters('environment')]",
       "application": "recipe-app",
@@ -371,11 +455,21 @@
           "jwtSecretKey": {
             "value": "[parameters('jwtSecretKey')]"
           },
-          "frontendUrl": {
-            "value": "[parameters('frontendUrl')]"
+          "corsAllowedOrigins": {
+            "value": "[variables('apiCorsOrigins')]"
+          },
+          "publicBaseUrl": {
+            "value": "[variables('publicBaseUrl')]"
           },
           "blobStorageAccountName": {
             "value": "[variables('storageAccountName')]"
+          },
+          "containerImage": "[if(not(empty(parameters('recipeApiImage'))), createObject('value', parameters('recipeApiImage')), createObject('value', variables('placeholderImage')))]",
+          "registryUsername": {
+            "value": "[parameters('ghcrUsername')]"
+          },
+          "registryPassword": {
+            "value": "[parameters('ghcrToken')]"
           },
           "tags": {
             "value": "[variables('commonTags')]"
@@ -388,7 +482,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "10505185192852569433"
+              "templateHash": "16605184243522661728"
             }
           },
           "parameters": {
@@ -410,11 +504,18 @@
                 "description": "Key Vault name"
               }
             },
-            "frontendUrl": {
+            "corsAllowedOrigins": {
+              "type": "array",
+              "defaultValue": [],
+              "metadata": {
+                "description": "Origins the frontend is served from (custom domain, ingress fqdn). Written to Cors__AllowedOrigins__N."
+              }
+            },
+            "publicBaseUrl": {
               "type": "string",
               "defaultValue": "",
               "metadata": {
-                "description": "Frontend URL for CORS (optional)"
+                "description": "Public frontend URL that share links are built from. Empty: not set."
               }
             },
             "jwtSecretKey": {
@@ -443,7 +544,37 @@
               "metadata": {
                 "description": "Tags to apply to resources"
               }
+            },
+            "registryUsername": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Registry user (ghcr.io). Empty, or registryPassword empty: no registry is declared."
+              }
+            },
+            "registryPassword": {
+              "type": "securestring",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Registry password. In the template so an infra deploy keeps it (ARM replaces the whole configuration)."
+              }
             }
+          },
+          "variables": {
+            "copy": [
+              {
+                "name": "corsEnv",
+                "count": "[length(parameters('corsAllowedOrigins'))]",
+                "input": {
+                  "name": "[format('Cors__AllowedOrigins__{0}', copyIndex('corsEnv'))]",
+                  "value": "[parameters('corsAllowedOrigins')[copyIndex('corsEnv')]]"
+                }
+              }
+            ],
+            "useRegistry": "[and(not(empty(parameters('registryUsername'))), not(empty(parameters('registryPassword'))))]",
+            "registrySecretName": "[format('ghcrio-{0}', toLower(parameters('registryUsername')))]",
+            "registrySecrets": "[if(variables('useRegistry'), createArray(createObject('name', variables('registrySecretName'), 'value', parameters('registryPassword'))), createArray())]",
+            "registries": "[if(variables('useRegistry'), createArray(createObject('server', 'ghcr.io', 'username', parameters('registryUsername'), 'passwordSecretRef', variables('registrySecretName'))), createArray())]"
           },
           "resources": [
             {
@@ -503,7 +634,9 @@
                     "targetPort": 8080,
                     "transport": "auto",
                     "allowInsecure": false
-                  }
+                  },
+                  "secrets": "[variables('registrySecrets')]",
+                  "registries": "[variables('registries')]"
                 },
                 "template": {
                   "containers": [
@@ -526,44 +659,7 @@
                           "failureThreshold": 18
                         }
                       ],
-                      "env": [
-                        {
-                          "name": "ASPNETCORE_ENVIRONMENT",
-                          "value": "Production"
-                        },
-                        {
-                          "name": "ASPNETCORE_URLS",
-                          "value": "http://+:8080"
-                        },
-                        {
-                          "name": "KeyVault__VaultUri",
-                          "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri]"
-                        },
-                        {
-                          "name": "Cors__AllowedOrigins__0",
-                          "value": "[if(not(equals(parameters('frontendUrl'), '')), parameters('frontendUrl'), 'https://placeholder-update-after-deployment.com')]"
-                        },
-                        {
-                          "name": "Sharing__PublicBaseUrl",
-                          "value": "[if(not(equals(parameters('frontendUrl'), '')), parameters('frontendUrl'), 'https://placeholder-update-after-deployment.com')]"
-                        },
-                        {
-                          "name": "Jwt__Issuer",
-                          "value": "RecipeApi"
-                        },
-                        {
-                          "name": "Jwt__Audience",
-                          "value": "RecipeFrontend"
-                        },
-                        {
-                          "name": "BlobStorage__AccountName",
-                          "value": "[parameters('blobStorageAccountName')]"
-                        },
-                        {
-                          "name": "BlobStorage__ContainerName",
-                          "value": "recipe-images"
-                        }
-                      ]
+                      "env": "[flatten(createArray(createArray(createObject('name', 'ASPNETCORE_ENVIRONMENT', 'value', 'Production'), createObject('name', 'ASPNETCORE_URLS', 'value', 'http://+:8080'), createObject('name', 'KeyVault__VaultUri', 'value', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri)), variables('corsEnv'), if(not(empty(parameters('publicBaseUrl'))), createArray(createObject('name', 'Sharing__PublicBaseUrl', 'value', parameters('publicBaseUrl'))), createArray()), createArray(createObject('name', 'Jwt__Issuer', 'value', 'RecipeApi'), createObject('name', 'Jwt__Audience', 'value', 'RecipeFrontend'), createObject('name', 'BlobStorage__AccountName', 'value', parameters('blobStorageAccountName')), createObject('name', 'BlobStorage__ContainerName', 'value', 'recipe-images'))))]"
                     }
                   ],
                   "scale": {
@@ -599,6 +695,13 @@
             "principalId": {
               "type": "string",
               "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('containerAppName')), '2023-05-01', 'full').identity.principalId]"
+            },
+            "environmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "Shared with the Notater apps, which run in the same environment"
+              },
+              "value": "[resourceId('Microsoft.App/managedEnvironments', format('{0}-env', parameters('containerAppName')))]"
             }
           }
         }
@@ -797,6 +900,13 @@
             "value": "[parameters('frontendCustomDomainCertificateName')]"
           },
           "appUrl": "[if(not(empty(parameters('frontendCustomDomainName'))), createObject('value', format('https://{0}', parameters('frontendCustomDomainName'))), createObject('value', parameters('frontendUrl')))]",
+          "containerImage": "[if(not(empty(parameters('recipeWebImage'))), createObject('value', parameters('recipeWebImage')), createObject('value', variables('placeholderImage')))]",
+          "registryUsername": {
+            "value": "[parameters('ghcrUsername')]"
+          },
+          "registryPassword": {
+            "value": "[parameters('ghcrToken')]"
+          },
           "tags": {
             "value": "[variables('commonTags')]"
           }
@@ -808,7 +918,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.41.2.15936",
-              "templateHash": "14807910622047225012"
+              "templateHash": "13419999728041505990"
             }
           },
           "parameters": {
@@ -878,7 +988,27 @@
               "metadata": {
                 "description": "Tags to apply to resources"
               }
+            },
+            "registryUsername": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Registry user (ghcr.io). Empty, or registryPassword empty: no registry is declared."
+              }
+            },
+            "registryPassword": {
+              "type": "securestring",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Registry password. In the template so an infra deploy keeps it (ARM replaces the whole configuration)."
+              }
             }
+          },
+          "variables": {
+            "useRegistry": "[and(not(empty(parameters('registryUsername'))), not(empty(parameters('registryPassword'))))]",
+            "registrySecretName": "[format('ghcrio-{0}', toLower(parameters('registryUsername')))]",
+            "registrySecrets": "[if(variables('useRegistry'), createArray(createObject('name', variables('registrySecretName'), 'value', parameters('registryPassword'))), createArray())]",
+            "registries": "[if(variables('useRegistry'), createArray(createObject('server', 'ghcr.io', 'username', parameters('registryUsername'), 'passwordSecretRef', variables('registrySecretName'))), createArray())]"
           },
           "resources": [
             {
@@ -929,7 +1059,8 @@
                     "allowInsecure": false,
                     "customDomains": "[if(empty(parameters('customDomainName')), createArray(), createArray(createObject('name', parameters('customDomainName'), 'bindingType', if(empty(parameters('customDomainCertificateName')), 'Disabled', 'SniEnabled'), 'certificateId', if(empty(parameters('customDomainCertificateName')), null(), format('{0}/managedCertificates/{1}', resourceId('Microsoft.App/managedEnvironments', format('{0}-env', parameters('containerAppName'))), parameters('customDomainCertificateName'))))))]"
                   },
-                  "secrets": "[if(not(empty(parameters('googleClientSecret'))), createArray(createObject('name', 'google-client-secret', 'value', parameters('googleClientSecret'))), createArray())]"
+                  "secrets": "[concat(if(not(empty(parameters('googleClientSecret'))), createArray(createObject('name', 'google-client-secret', 'value', parameters('googleClientSecret'))), createArray()), variables('registrySecrets'))]",
+                  "registries": "[variables('registries')]"
                 },
                 "template": {
                   "containers": [
@@ -979,9 +1110,453 @@
       "dependsOn": [
         "[resourceId('Microsoft.Resources/deployments', 'containerAppDeployment')]"
       ]
+    },
+    {
+      "condition": "[variables('deployNotes')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "notesApiDeployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "containerAppName": {
+            "value": "[variables('notesApiName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "environmentId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'containerAppDeployment'), '2025-04-01').outputs.environmentId.value]"
+          },
+          "sqlServerFqdn": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'sqlServerDeployment'), '2025-04-01').outputs.sqlServerFqdn.value]"
+          },
+          "sqlDatabaseName": {
+            "value": "[variables('sqlDatabaseName')]"
+          },
+          "jwtSecretKey": {
+            "value": "[parameters('notesJwtSecretKey')]"
+          },
+          "allowedEmails": {
+            "value": "[parameters('notesAllowedEmails')]"
+          },
+          "googleClientId": {
+            "value": "[parameters('googleClientId')]"
+          },
+          "containerImage": "[if(not(empty(parameters('notesApiImage'))), createObject('value', parameters('notesApiImage')), createObject('value', variables('placeholderImage')))]",
+          "registryUsername": {
+            "value": "[parameters('ghcrUsername')]"
+          },
+          "registryPassword": {
+            "value": "[parameters('ghcrToken')]"
+          },
+          "tags": {
+            "value": "[union(variables('commonTags'), createObject('application', 'notater'))]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "5591006948980717234"
+            }
+          },
+          "parameters": {
+            "containerAppName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Container App"
+              }
+            },
+            "location": {
+              "type": "string"
+            },
+            "environmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "Id of the Container Apps environment to run in (shared with the recipe API)"
+              }
+            },
+            "sqlServerFqdn": {
+              "type": "string",
+              "metadata": {
+                "description": "SQL Server FQDN; the app authenticates with its managed identity"
+              }
+            },
+            "sqlDatabaseName": {
+              "type": "string"
+            },
+            "jwtSecretKey": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Signing key for notes JWTs (separate from the recipe app's key)"
+              }
+            },
+            "allowedEmails": {
+              "type": "securestring",
+              "metadata": {
+                "description": "Comma-separated emails allowed to sign in"
+              }
+            },
+            "googleClientId": {
+              "type": "string",
+              "metadata": {
+                "description": "Google OAuth client id that sign-in id_tokens must be issued for"
+              }
+            },
+            "containerImage": {
+              "type": "string",
+              "defaultValue": "mcr.microsoft.com/dotnet/samples:aspnetapp"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            },
+            "registryUsername": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Registry user (ghcr.io). Empty, or registryPassword empty: no registry is declared."
+              }
+            },
+            "registryPassword": {
+              "type": "securestring",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Registry password. In the template so an infra deploy keeps it (ARM replaces the whole configuration)."
+              }
+            }
+          },
+          "variables": {
+            "useRegistry": "[and(not(empty(parameters('registryUsername'))), not(empty(parameters('registryPassword'))))]",
+            "registrySecretName": "[format('ghcrio-{0}', toLower(parameters('registryUsername')))]",
+            "registrySecrets": "[if(variables('useRegistry'), createArray(createObject('name', variables('registrySecretName'), 'value', parameters('registryPassword'))), createArray())]",
+            "registries": "[if(variables('useRegistry'), createArray(createObject('server', 'ghcr.io', 'username', parameters('registryUsername'), 'passwordSecretRef', variables('registrySecretName'))), createArray())]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2023-05-01",
+              "name": "[parameters('containerAppName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "properties": {
+                "managedEnvironmentId": "[parameters('environmentId')]",
+                "configuration": {
+                  "ingress": {
+                    "external": false,
+                    "targetPort": 8080,
+                    "transport": "auto",
+                    "allowInsecure": false
+                  },
+                  "secrets": "[flatten(createArray(createArray(createObject('name', 'jwt-secret-key', 'value', parameters('jwtSecretKey')), createObject('name', 'allowed-emails', 'value', parameters('allowedEmails'))), variables('registrySecrets')))]",
+                  "registries": "[variables('registries')]"
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "notes-api",
+                      "image": "[parameters('containerImage')]",
+                      "resources": {
+                        "cpu": "[json('0.25')]",
+                        "memory": "0.5Gi"
+                      },
+                      "probes": [
+                        {
+                          "type": "Readiness",
+                          "httpGet": {
+                            "path": "/health",
+                            "port": 8080
+                          },
+                          "initialDelaySeconds": 3,
+                          "periodSeconds": 10,
+                          "failureThreshold": 12
+                        }
+                      ],
+                      "env": [
+                        {
+                          "name": "ASPNETCORE_ENVIRONMENT",
+                          "value": "Production"
+                        },
+                        {
+                          "name": "ASPNETCORE_URLS",
+                          "value": "http://+:8080"
+                        },
+                        {
+                          "name": "ConnectionStrings__NotesDb",
+                          "value": "[format('Server=tcp:{0},1433;Initial Catalog={1};Encrypt=True;TrustServerCertificate=False;', parameters('sqlServerFqdn'), parameters('sqlDatabaseName'))]"
+                        },
+                        {
+                          "name": "Jwt__SecretKey",
+                          "secretRef": "jwt-secret-key"
+                        },
+                        {
+                          "name": "Notes__AllowedEmails",
+                          "secretRef": "allowed-emails"
+                        },
+                        {
+                          "name": "Notes__GoogleClientId",
+                          "value": "[parameters('googleClientId')]"
+                        }
+                      ]
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 0,
+                    "maxReplicas": 1
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "internalUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "Internal URL, reachable only from inside the environment"
+              },
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', parameters('containerAppName')), '2023-05-01').configuration.ingress.fqdn)]"
+            },
+            "containerAppName": {
+              "type": "string",
+              "value": "[parameters('containerAppName')]"
+            },
+            "principalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/containerApps', parameters('containerAppName')), '2023-05-01', 'full').identity.principalId]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'containerAppDeployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'sqlServerDeployment')]"
+      ]
+    },
+    {
+      "condition": "[variables('deployNotes')]",
+      "type": "Microsoft.Resources/deployments",
+      "apiVersion": "2025-04-01",
+      "name": "notesWebDeployment",
+      "properties": {
+        "expressionEvaluationOptions": {
+          "scope": "inner"
+        },
+        "mode": "Incremental",
+        "parameters": {
+          "containerAppName": {
+            "value": "[variables('notesWebName')]"
+          },
+          "location": {
+            "value": "[parameters('location')]"
+          },
+          "environmentId": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'containerAppDeployment'), '2025-04-01').outputs.environmentId.value]"
+          },
+          "notesApiUrl": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'notesApiDeployment'), '2025-04-01').outputs.internalUrl.value]"
+          },
+          "googleClientId": {
+            "value": "[parameters('googleClientId')]"
+          },
+          "googleClientSecret": {
+            "value": "[parameters('googleClientSecret')]"
+          },
+          "customDomainName": {
+            "value": "[parameters('notesCustomDomainName')]"
+          },
+          "customDomainCertificateName": {
+            "value": "[parameters('notesCustomDomainCertificateName')]"
+          },
+          "containerImage": "[if(not(empty(parameters('notesWebImage'))), createObject('value', parameters('notesWebImage')), createObject('value', variables('placeholderImage')))]",
+          "registryUsername": {
+            "value": "[parameters('ghcrUsername')]"
+          },
+          "registryPassword": {
+            "value": "[parameters('ghcrToken')]"
+          },
+          "tags": {
+            "value": "[union(variables('commonTags'), createObject('application', 'notater'))]"
+          }
+        },
+        "template": {
+          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+          "contentVersion": "1.0.0.0",
+          "metadata": {
+            "_generator": {
+              "name": "bicep",
+              "version": "0.41.2.15936",
+              "templateHash": "15458832614521659638"
+            }
+          },
+          "parameters": {
+            "containerAppName": {
+              "type": "string",
+              "metadata": {
+                "description": "Name of the Container App"
+              }
+            },
+            "location": {
+              "type": "string"
+            },
+            "environmentId": {
+              "type": "string",
+              "metadata": {
+                "description": "Id of the Container Apps environment (must be the notes API's, for internal ingress)"
+              }
+            },
+            "notesApiUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "Internal URL of the notes API"
+              }
+            },
+            "googleClientId": {
+              "type": "string"
+            },
+            "googleClientSecret": {
+              "type": "securestring"
+            },
+            "customDomainName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Custom domain, e.g. notater.kheradmandi.no. Empty: serve on the generated fqdn only."
+              }
+            },
+            "customDomainCertificateName": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Managed certificate name for customDomainName. Empty: bind without TLS (validation only)."
+              }
+            },
+            "containerImage": {
+              "type": "string",
+              "defaultValue": "mcr.microsoft.com/dotnet/samples:aspnetapp"
+            },
+            "tags": {
+              "type": "object",
+              "defaultValue": {}
+            },
+            "registryUsername": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Registry user (ghcr.io). Empty, or registryPassword empty: no registry is declared."
+              }
+            },
+            "registryPassword": {
+              "type": "securestring",
+              "defaultValue": "",
+              "metadata": {
+                "description": "Registry password. In the template so an infra deploy keeps it (ARM replaces the whole configuration)."
+              }
+            }
+          },
+          "variables": {
+            "useRegistry": "[and(not(empty(parameters('registryUsername'))), not(empty(parameters('registryPassword'))))]",
+            "registrySecretName": "[format('ghcrio-{0}', toLower(parameters('registryUsername')))]",
+            "registrySecrets": "[if(variables('useRegistry'), createArray(createObject('name', variables('registrySecretName'), 'value', parameters('registryPassword'))), createArray())]",
+            "registries": "[if(variables('useRegistry'), createArray(createObject('server', 'ghcr.io', 'username', parameters('registryUsername'), 'passwordSecretRef', variables('registrySecretName'))), createArray())]"
+          },
+          "resources": [
+            {
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2023-05-01",
+              "name": "[parameters('containerAppName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
+              "properties": {
+                "managedEnvironmentId": "[parameters('environmentId')]",
+                "configuration": {
+                  "ingress": {
+                    "external": true,
+                    "targetPort": 3000,
+                    "transport": "auto",
+                    "allowInsecure": false,
+                    "customDomains": "[if(empty(parameters('customDomainName')), createArray(), createArray(createObject('name', parameters('customDomainName'), 'bindingType', if(empty(parameters('customDomainCertificateName')), 'Disabled', 'SniEnabled'), 'certificateId', if(empty(parameters('customDomainCertificateName')), null(), format('{0}/managedCertificates/{1}', parameters('environmentId'), parameters('customDomainCertificateName'))))))]"
+                  },
+                  "secrets": "[flatten(createArray(createArray(createObject('name', 'google-client-secret', 'value', parameters('googleClientSecret'))), variables('registrySecrets')))]",
+                  "registries": "[variables('registries')]"
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "name": "notes-web",
+                      "image": "[parameters('containerImage')]",
+                      "resources": {
+                        "cpu": "[json('0.25')]",
+                        "memory": "0.5Gi"
+                      },
+                      "env": [
+                        {
+                          "name": "NOTES_API_URL",
+                          "value": "[parameters('notesApiUrl')]"
+                        },
+                        {
+                          "name": "APP_URL",
+                          "value": "[if(not(empty(parameters('customDomainName'))), format('https://{0}', parameters('customDomainName')), format('https://{0}.{1}', parameters('containerAppName'), reference(resourceId('Microsoft.App/managedEnvironments', last(split(parameters('environmentId'), '/'))), '2023-05-01').defaultDomain))]"
+                        },
+                        {
+                          "name": "GOOGLE_CLIENT_ID",
+                          "value": "[parameters('googleClientId')]"
+                        },
+                        {
+                          "name": "GOOGLE_CLIENT_SECRET",
+                          "secretRef": "google-client-secret"
+                        }
+                      ]
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 0,
+                    "maxReplicas": 1
+                  }
+                }
+              }
+            }
+          ],
+          "outputs": {
+            "appUrl": {
+              "type": "string",
+              "value": "[if(not(empty(parameters('customDomainName'))), format('https://{0}', parameters('customDomainName')), format('https://{0}.{1}', parameters('containerAppName'), reference(resourceId('Microsoft.App/managedEnvironments', last(split(parameters('environmentId'), '/'))), '2023-05-01').defaultDomain))]"
+            },
+            "containerAppName": {
+              "type": "string",
+              "value": "[parameters('containerAppName')]"
+            }
+          }
+        }
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', 'containerAppDeployment')]",
+        "[resourceId('Microsoft.Resources/deployments', 'notesApiDeployment')]"
+      ]
     }
   ],
   "outputs": {
+    "notesWebUrl": {
+      "type": "string",
+      "value": "[coalesce(tryGet(if(variables('deployNotes'), reference(resourceId('Microsoft.Resources/deployments', 'notesWebDeployment'), '2025-04-01'), null()), 'outputs', 'appUrl', 'value'), '')]"
+    },
+    "notesApiName": {
+      "type": "string",
+      "value": "[coalesce(tryGet(if(variables('deployNotes'), reference(resourceId('Microsoft.Resources/deployments', 'notesApiDeployment'), '2025-04-01'), null()), 'outputs', 'containerAppName', 'value'), '')]"
+    },
+    "notesApiPrincipalId": {
+      "type": "string",
+      "value": "[coalesce(tryGet(if(variables('deployNotes'), reference(resourceId('Microsoft.Resources/deployments', 'notesApiDeployment'), '2025-04-01'), null()), 'outputs', 'principalId', 'value'), '')]"
+    },
     "keyVaultName": {
       "type": "string",
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'keyVaultDeployment'), '2025-04-01').outputs.keyVaultName.value]"
